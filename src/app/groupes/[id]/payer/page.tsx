@@ -57,12 +57,8 @@ function Payer() {
   const [refWave, setRefWave] = useState("");
   const [copie, setCopie] = useState(false);
   const [aide, setAide] = useState("");
-  const [android, setAndroid] = useState(false);
   const [ios, setIos] = useState(false);
-  useEffect(() => {
-    setAndroid(/android/i.test(navigator.userAgent));
-    setIos(/iphone|ipad|ipod/i.test(navigator.userAgent));
-  }, []);
+  useEffect(() => setIos(/iphone|ipad|ipod/i.test(navigator.userAgent)), []);
   const [erreur, setErreur] = useState("");
 
   if (!ok || !loaded) return <Loading />;
@@ -298,13 +294,14 @@ function Payer() {
                   const app = APPS[method];
                   // Lien direct (pas d'attente avant l'ouverture, sinon Android bloque)
                   const lienBusiness = method === "wave" && lienWaveValide(g.waveLink) ? lienWaveAvecMontant(g.waveLink!, total) : undefined;
-                  const href = lienBusiness ?? (app.ussd ? `tel:${encodeURIComponent(app.ussd)}` : android && app.android ? app.android : ios && app.ios ? app.ios : undefined);
+                  const href = lienBusiness ?? (app.ussd ? `tel:${encodeURIComponent(app.ussd)}` : ios && app.ios ? app.ios : app.android);
                   const consigne = lienBusiness
                     ? `Wave s’ouvre avec ${fcfa(total)} déjà rempli. Vérifie le nom ${tresorier ? tresorier.name : "du trésorier"} et valide avec ton code.`
                     : app.ussd
                     ? `Numéro copié. Dans le menu, choisis « Transfert », colle le numéro ${telAffiche(num)}${tresorier ? ` (${tresorier.name})` : ""} et envoie ${fcfa(total)}.`
                     : `Numéro copié. Dans ${op.nom}, choisis « Envoyer », colle le numéro ${telAffiche(num)}${tresorier ? ` (${tresorier.name})` : ""} et envoie ${fcfa(total)}.${href ? "" : " Ouvre ton application " + op.nom + " maintenant."}`;
                   return (
+                    <>
                     <a
                       href={href}
                       onClick={() => {
@@ -315,6 +312,19 @@ function Payer() {
                     >
                       {lienBusiness ? `Payer ${fcfa(total)} avec Wave` : app.label} <ArrowUpRight size={17} strokeWidth={2} />
                     </a>
+                    {method === "wave" && !ios && (
+                      <a
+                        href="market://launch?id=com.wave.personal"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(num).catch(() => {});
+                          setAide(consigne);
+                        }}
+                        className="block text-center text-xs font-semibold text-sky-700 underline"
+                      >
+                        Wave ne s’ouvre pas ? Essayer l’autre méthode
+                      </a>
+                    )}
+                    </>
                   );
                 })()}
                 <p className="text-[11px] leading-snug text-stone-500">
