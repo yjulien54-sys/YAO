@@ -10,7 +10,7 @@ import type { MemberStatus } from "@/lib/types";
 export function Logo({ className = "" }: { className?: string }) {
   return (
     <span className={`inline-flex items-center gap-2 font-extrabold tracking-tight ${className}`}>
-      <span className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-orange-500 to-blue-600 text-white">
+      <span className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-orange-500 to-emerald-600 text-white">
         C
       </span>
       Cotiz
@@ -49,7 +49,7 @@ export function Progress({ value, className = "" }: { value: number; className?:
   return (
     <div className={`h-2.5 w-full overflow-hidden rounded-full bg-stone-200 ${className}`}>
       <div
-        className="h-full rounded-full bg-gradient-to-r from-blue-500 to-blue-600 transition-all"
+        className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 transition-all"
         style={{ width: `${Math.round(value * 100)}%` }}
       />
     </div>
@@ -67,7 +67,7 @@ export function StatusBadge({ status }: { status: MemberStatus }) {
   return <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${s.cls}`}>{s.label}</span>;
 }
 
-const AVATAR_COLORS = ["bg-orange-100 text-orange-700", "bg-blue-100 text-blue-700", "bg-sky-100 text-sky-700", "bg-violet-100 text-violet-700", "bg-rose-100 text-rose-700", "bg-amber-100 text-amber-800"];
+const AVATAR_COLORS = ["bg-orange-100 text-orange-700", "bg-emerald-100 text-emerald-700", "bg-sky-100 text-sky-700", "bg-violet-100 text-violet-700", "bg-rose-100 text-rose-700", "bg-amber-100 text-amber-800"];
 
 export function Avatar({ name, size = 40 }: { name: string; size?: number }) {
   const c = AVATAR_COLORS[[...name].reduce((s, ch) => s + ch.charCodeAt(0), 0) % AVATAR_COLORS.length];
@@ -81,7 +81,7 @@ export function Avatar({ name, size = 40 }: { name: string; size?: number }) {
 type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "ghost" | "whatsapp" };
 
 const VARIANTS = {
-  primary: "bg-blue-600 text-white hover:bg-blue-700 disabled:bg-stone-300",
+  primary: "bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-stone-300",
   secondary: "bg-white text-stone-800 ring-1 ring-stone-300 hover:bg-stone-50",
   ghost: "text-stone-600 hover:bg-stone-100",
   whatsapp: "bg-[#25D366] text-white hover:bg-[#1fb857]",
@@ -103,7 +103,7 @@ export function WhatsAppIcon({ size = 18 }: { size?: number }) {
 }
 
 export const inputClass =
-  "w-full rounded-xl border border-stone-300 bg-white px-3.5 py-3 text-[15px] text-stone-900 outline-none placeholder:text-stone-400 focus:border-blue-500 focus:ring-2 focus:ring-blue-100";
+  "w-full rounded-xl border border-stone-300 bg-white px-3.5 py-3 text-[15px] text-stone-900 outline-none placeholder:text-stone-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100";
 
 export function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
