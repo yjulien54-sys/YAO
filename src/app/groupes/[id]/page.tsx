@@ -12,7 +12,8 @@ import { METHOD_LABEL, MODE_PAIEMENT } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
 import { invitation, waLink } from "@/lib/whatsapp";
 import { MessageModal } from "@/components/MessageModal";
-import { ArrowUpRight, CalendarDays, ChevronsRight, MessageCircle, Phone, Settings, Check, CheckCircle2, Clock, Gift, HeartHandshake, PartyPopper, Smartphone, UserPlus, X } from "lucide-react";
+import { Tirage } from "@/components/Tirage";
+import { ArrowUpRight, CalendarDays, ChevronsRight, Flag, History, Users, MessageCircle, Phone, Settings, Check, CheckCircle2, Clock, Gift, HeartHandshake, PartyPopper, Smartphone, UserPlus, X } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 import type { Member } from "@/lib/types";
 
@@ -27,6 +28,7 @@ export default function GroupeDetail() {
   const [tab, setTab] = useState<Tab>("membres");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
+  const [newParts, setNewParts] = useState(1);
   const [toast, setToast] = useState("");
   const [msg, setMsg] = useState<{ type: "relance" | "groupe"; member?: Member } | null>(null);
   const [versement, setVersement] = useState(false);
@@ -61,6 +63,10 @@ export default function GroupeDetail() {
   const mesDeclarations = me ? g.pending.filter((p) => p.memberId === me.id) : [];
   const tourEnAttente = me ? mesDeclarations.some((p) => p.round === g.currentRound || g.type === "collecte") : false;
   const tresorier = g.members.find((m) => m.role === "tresorier");
+  const termine =
+    g.type === "collecte"
+      ? Date.now() > new Date(g.startDate).getTime() + 24 * 3600 * 1000
+      : g.type === "tontine" && g.order.length > 0 && g.currentRound >= g.order.length && !!payoutFor(g, g.order.length);
 
   const flash = (t: string) => {
     setToast(t);
@@ -144,6 +150,21 @@ export default function GroupeDetail() {
 
         {g.description && <p className="px-1 text-sm leading-relaxed text-stone-600">{g.description}</p>}
 
+        {termine && (
+          <Card className="space-y-2 border-stone-300 bg-stone-50">
+            <p className="flex items-center gap-2 text-sm font-bold"><IconBadge icon={Flag} taille="sm" />Ce groupe est terminé</p>
+            <p className="text-xs text-stone-600">
+              {g.type === "collecte" ? "La date limite de la collecte est passée." : "Tous les tours ont été versés."}
+              {userId && g.createdBy === userId ? " Tu peux garder le groupe pour l’historique, ou le supprimer." : ""}
+            </p>
+            {userId && g.createdBy === userId && (
+              <Link href={`/groupes/${g.id}/parametres#supprimer`} className={btnClass("secondary", "w-full !text-red-600")}>
+                Supprimer le groupe
+              </Link>
+            )}
+          </Card>
+        )}
+
         {/* Actions */}
         <div className="space-y-2">
           {me && mesArrieres.length > 0 && (
@@ -172,15 +193,35 @@ export default function GroupeDetail() {
           {me && myStatus === "paye" && g.type === "collecte" && (
             <Link href={`/groupes/${g.id}/payer`} className={btnClass("secondary", "w-full")}>Ajouter une participation</Link>
           )}
-          <div className="grid grid-cols-2 gap-2">
-            <button onClick={() => setMsg({ type: "groupe" })} disabled={g.type !== "collecte" && unpaid.length === 0} className={btnClass("whatsapp", "disabled:opacity-50")}>
-              <WhatsAppIcon /> {g.type === "collecte" ? "Partager l’appel" : `Relancer (${unpaid.length})`}
-            </button>
-            <a href={invitation(g)} target="_blank" rel="noreferrer" className={btnClass("secondary")}>
-              <UserPlus size={17} strokeWidth={1.9} /> Inviter
-            </a>
+          {/* Actions rapides, façon application bancaire */}
+          <div className="grid grid-cols-4 gap-1 pt-1">
+            <ActionRapide
+              label={g.type === "collecte" ? "Partager" : "Relancer"}
+              badge={g.type !== "collecte" && unpaid.length > 0 ? unpaid.length : undefined}
+              disabled={g.type !== "collecte" && unpaid.length === 0}
+              onClick={() => setMsg({ type: "groupe" })}
+            >
+              <WhatsAppIcon size={20} />
+            </ActionRapide>
+            <ActionRapide label="Inviter" href={invitation(g)}>
+              <UserPlus size={20} strokeWidth={1.75} />
+            </ActionRapide>
+            <ActionRapide label="Historique" onClick={() => setTab("historique")}>
+              <History size={20} strokeWidth={1.75} />
+            </ActionRapide>
+            {dr.gestionnaire ? (
+              <ActionRapide label="Réglages" href={`/groupes/${g.id}/parametres`} interne>
+                <Settings size={20} strokeWidth={1.75} />
+              </ActionRapide>
+            ) : (
+              <ActionRapide label="Membres" onClick={() => setTab("membres")}>
+                <Users size={20} strokeWidth={1.75} />
+              </ActionRapide>
+            )}
           </div>
         </div>
+
+        <Tirage g={g} tresorier={isTreasurer} onVoirOrdre={() => setTab("tours")} />
 
         {isTreasurer && declarations.length > 0 && (
           <Card className="space-y-3 border-amber-300 bg-amber-50/60">
@@ -271,7 +312,7 @@ export default function GroupeDetail() {
                     {arrears(g, m.id).length > 0 && (
                       <p className="text-[11px] font-semibold text-red-600">Doit : tour{arrears(g, m.id).length > 1 ? "s" : ""} {arrears(g, m.id).join(", ")}</p>
                     )}
-                    {m.id !== me?.id && m.phone && (
+                    {m.id !== me?.id && m.profileId !== userId && m.phone && (
                       <div className="mt-1.5 flex gap-1.5">
                         <a href={`tel:${m.phone.replace(/\D/g, "").slice(-10)}`} className="inline-flex items-center gap-1 rounded-lg bg-stone-100 px-2 py-1 text-[11px] font-semibold text-stone-700">
                           <Phone size={12} strokeWidth={2} /> Appeler
@@ -284,7 +325,10 @@ export default function GroupeDetail() {
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
                     <StatusBadge status={s} />
-                    {s !== "paye" && m.id !== me?.id && (
+                    {s !== "paye" && m.id !== me?.id && m.profileId && m.profileId === userId && g.type !== "collecte" && (
+                      <Link href={`/groupes/${g.id}/payer?membre=${m.id}`} className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white">Payer</Link>
+                    )}
+                    {s !== "paye" && m.id !== me?.id && m.profileId !== userId && (
                       <div className="flex gap-1">
                         <button onClick={() => setMsg({ type: "relance", member: m })} title="Relancer sur WhatsApp" className="rounded-lg bg-[#25D366]/10 p-1.5 text-[#128C7E] hover:bg-[#25D366]/20">
                           <WhatsAppIcon size={16} />
@@ -321,11 +365,12 @@ export default function GroupeDetail() {
                 e.preventDefault();
                 if (!newName.trim()) return;
                 const n = newName;
-                addMember(g.id, newName, newPhone)
+                addMember(g.id, newName, newPhone, g.type === "tontine" ? newParts : 1)
                   .then(() => flash(`${prenom(n)} ajouté(e) au groupe`))
                   .catch((err) => flash("Erreur : " + err.message));
                 setNewName("");
                 setNewPhone("");
+                setNewParts(1);
               }}
             >
               <p className="text-sm font-semibold text-stone-700">Ajouter un membre</p>
@@ -333,6 +378,16 @@ export default function GroupeDetail() {
                 <input className={inputClass} placeholder="Nom" value={newName} onChange={(e) => setNewName(e.target.value)} />
                 <input className={inputClass} placeholder="Téléphone" inputMode="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
               </div>
+              {g.type === "tontine" && (
+                <div className="flex items-center gap-1.5 text-xs">
+                  <span className="text-stone-500">Nombre de parts :</span>
+                  {[1, 2, 3].map((n) => (
+                    <button key={n} type="button" onClick={() => setNewParts(n)} className={`h-7 w-7 rounded-full text-xs font-bold ring-1 ${newParts === n ? "bg-emerald-600 text-white ring-emerald-600" : "bg-white text-stone-700 ring-stone-300"}`}>
+                      {n}
+                    </button>
+                  ))}
+                </div>
+              )}
               <Button type="submit" variant="secondary" className="w-full !py-2.5">Ajouter</Button>
             </form>
             )}
@@ -377,6 +432,9 @@ export default function GroupeDetail() {
 
         {tab === "tours" && g.type === "tontine" && (
           <Card className="divide-y divide-stone-100 !p-0">
+            <p className="px-4 py-2.5 text-xs text-stone-500">
+              {g.tirageFait ? `Ordre tiré au sort le ${dateLongue(g.tirageFait)} par ${g.tiragePar ?? "le trésorier"}.` : "Ordre fixé par le trésorier."}
+            </p>
             {g.order.map((mid, i) => {
               const m = g.members.find((x) => x.id === mid);
               const r = i + 1;
@@ -577,3 +635,19 @@ function Invitation({ id, onJoin }: { id: string; onJoin: () => Promise<void> })
   );
 }
 
+
+/** Bouton rond d'action rapide (style application bancaire) */
+function ActionRapide({ label, children, onClick, href, interne, disabled, badge }: { label: string; children: React.ReactNode; onClick?: () => void; href?: string; interne?: boolean; disabled?: boolean; badge?: number }) {
+  const rond = (
+    <span className="relative grid h-14 w-14 place-items-center rounded-full bg-white text-emerald-700 shadow-sm ring-1 ring-stone-200">
+      {children}
+      {badge !== undefined && (
+        <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">{badge}</span>
+      )}
+    </span>
+  );
+  const cls = `flex flex-col items-center gap-1.5 text-[11px] font-semibold text-stone-700 ${disabled ? "pointer-events-none opacity-40" : ""}`;
+  if (href && interne) return <Link href={href} className={cls}>{rond}{label}</Link>;
+  if (href) return <a href={href} target="_blank" rel="noreferrer" className={cls}>{rond}{label}</a>;
+  return <button onClick={onClick} disabled={disabled} className={cls}>{rond}{label}</button>;
+}

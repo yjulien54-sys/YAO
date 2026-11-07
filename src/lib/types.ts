@@ -1,5 +1,5 @@
 export type GroupType = "tontine" | "association" | "collecte";
-export type Frequency = "hebdomadaire" | "mensuelle" | "unique";
+export type Frequency = "quotidienne" | "3jours" | "hebdomadaire" | "2semaines" | "mensuelle" | "trimestrielle" | "semestrielle" | "annuelle" | "unique";
 export type PayMethod = "wave" | "orange" | "mtn" | "moov" | "especes";
 export type AddPolicy = "tresorier" | "gestionnaires" | "tous";
 export type MemberStatus = "paye" | "attente" | "retard";
@@ -66,5 +66,8 @@ export interface Group {
   waveLink?: string; // lien de paiement Wave Business (montant pré-rempli)
   addPolicy: AddPolicy; // qui peut ajouter des membres
   createdBy?: string;
+  tiragePrevu?: string; // date prévue du tirage au sort (ISO)
+  tirageFait?: string; // date à laquelle le tirage a été fait (ISO)
+  tiragePar?: string; // nom de la personne qui a lancé le tirage
   createdAt: string;
 }

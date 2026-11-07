@@ -36,7 +36,7 @@ export {
 } from "lucide-react";
 
 const TONS = {
-  vert: "bg-emerald-50 text-emerald-700 ring-emerald-100",
+  vert: "bg-white text-emerald-700 ring-emerald-200/70 shadow-sm",
   orange: "bg-orange-50 text-orange-600 ring-orange-100",
   bleu: "bg-sky-50 text-sky-700 ring-sky-100",
   violet: "bg-violet-50 text-violet-700 ring-violet-100",
@@ -52,7 +52,7 @@ const TAILLES = { sm: [32, 16], md: [40, 20], lg: [48, 22], xl: [64, 28] } as co
 export function IconBadge({ icon: Icon, ton = "vert", taille = "md", className = "" }: { icon: LucideIcon; ton?: keyof typeof TONS; taille?: keyof typeof TAILLES; className?: string }) {
   const [box, ico] = TAILLES[taille];
   return (
-    <span className={`grid shrink-0 place-items-center rounded-2xl ring-1 ${TONS[ton]} ${className}`} style={{ width: box, height: box }}>
+    <span className={`grid shrink-0 place-items-center rounded-full ring-1 ${TONS[ton]} ${className}`} style={{ width: box, height: box }}>
       <Icon size={ico} strokeWidth={1.75} aria-hidden />
     </span>
   );

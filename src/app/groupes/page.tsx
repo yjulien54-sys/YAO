@@ -3,14 +3,14 @@
 import Link from "next/link";
 import { Card, Header, Loading, Page, Progress, btnClass, useRequireUser } from "@/components/ui";
 import { dateCourte, fcfa, prenom } from "@/lib/format";
-import { TYPE_LABEL, beneficiary, dueDate, isLate, roundStats } from "@/lib/logic";
+import { TYPE_LABEL, beneficiary, parFrequence, dueDate, isLate, roundStats } from "@/lib/logic";
 import { useStore } from "@/lib/store";
 import { BottomNav } from "@/components/BottomNav";
 import { AlertCircle, CalendarDays, Gift, HandCoins, Plus, Repeat, Users } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 
 const TYPE_ICON = { tontine: Repeat, association: Users, collecte: HandCoins };
-const TYPE_TON = { tontine: "orange", association: "bleu", collecte: "violet" } as const;
+const TYPE_TON = { tontine: "vert", association: "vert", collecte: "vert" } as const;
 
 export default function Groupes() {
   const ok = useRequireUser();
@@ -65,7 +65,7 @@ export default function Groupes() {
                       <p className="truncate font-bold text-stone-900">{g.name}</p>
                       <p className="text-xs text-stone-500">
                         {TYPE_LABEL[g.type]} · {g.members.length} membres
-                        {g.type !== "collecte" && ` · ${fcfa(g.amount)}/${g.frequency === "mensuelle" ? "mois" : "sem."}`}
+                        {g.type !== "collecte" && ` · ${fcfa(g.amount)}/${parFrequence(g.frequency)}`}
                       </p>
                     </div>
                   </div>

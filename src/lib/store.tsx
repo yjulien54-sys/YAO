@@ -17,15 +17,17 @@ export interface NewGroupInput {
   startDate: string;
   penalty: number;
   target?: number;
-  members: { name: string; phone: string; gestionnaire?: boolean }[];
+  members: { name: string; phone: string; gestionnaire?: boolean; parts?: number }[];
   shuffle: boolean;
   addPolicy: AddPolicy;
+  mesParts?: number;
 }
 
 export interface GroupUpdate {
   name?: string;
   description?: string | null;
   amount?: number;
+  frequency?: Frequency;
   startDate?: string;
   penalty?: number;
   target?: number | null;
@@ -43,7 +45,7 @@ interface Ctx {
   reload: () => Promise<void>;
   getGroup: (id: string) => Group | undefined;
   createGroup: (input: NewGroupInput) => Promise<string>;
-  addMember: (groupId: string, name: string, phone: string) => Promise<void>;
+  addMember: (groupId: string, name: string, phone: string, parts?: number) => Promise<void>;
   recordPayment: (groupId: string, memberId: string, method: PayMethod, amount?: number) => Promise<Payment>;
   /** Paie un ou plusieurs tours (paiement en avance / arriérés). Pour une collecte, utiliser `amount`. */
   recordPayments: (groupId: string, memberId: string, method: PayMethod, opts: { rounds?: number[]; amount?: number }) => Promise<Payment[]>;
@@ -57,6 +59,8 @@ interface Ctx {
   removeMember: (memberId: string) => Promise<void>;
   setOrder: (groupId: string, memberIds: string[]) => Promise<void>;
   deleteGroup: (groupId: string) => Promise<void>;
+  setTiragePrevu: (groupId: string, date: string | null) => Promise<void>;
+  lancerTirage: (groupId: string) => Promise<string[]>;
   updateProfile: (u: User) => Promise<void>;
   setWaveLink: (groupId: string, link: string) => Promise<void>;
   recordPayout: (groupId: string, p: { round: number; memberId?: string | null; beneficiaryName: string; amount: number; method: PayoutMethod; note?: string }) => Promise<void>;
@@ -103,6 +107,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         if (prof) {
           setUserId(uid);
           setUser(prof);
+          await supabase.rpc("rattacher_par_numero");
           await reload();
         }
       }
@@ -143,6 +148,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const uid = data.session!.user.id;
       const { error } = await supabase.from("profiles").upsert({ id: uid, name: u.name, phone: u.phone });
       fail(error);
+      // Reconnaissance par numéro : retrouve les groupes où un trésorier a ajouté ce numéro
+      await supabase.rpc("rattacher_par_numero");
       setUserId(uid);
       setUser(u);
       await reload();
@@ -175,29 +182,34 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           penalty: isCollecte ? 0 : input.penalty,
           target: isCollecte ? input.target ?? null : null,
           add_policy: input.addPolicy,
+          // tirage au sort public prévu : à lancer depuis le groupe
+          tirage_prevu: input.type === "tontine" && input.shuffle ? new Date(input.startDate).toISOString() : null,
         })
         .select("id")
         .single();
       fail(error);
 
+      // Une ligne par part (« main ») : une personne peut avoir 2 ou 3 parts dans une tontine
+      const avecParts = <T extends { name: string }>(p: T, n: number) =>
+        Array.from({ length: Math.max(1, Math.min(3, n)) }, (_, k) => ({ ...p, name: k === 0 ? p.name : `${p.name} (part ${k + 1})` }));
+      const tontine = input.type === "tontine";
       const people = [
-        { name: user!.name, phone: user!.phone, role: "tresorier", profile_id: userId },
+        ...avecParts({ name: user!.name, phone: user!.phone, role: "tresorier", profile_id: userId }, tontine ? input.mesParts ?? 1 : 1),
         ...input.members
           .filter((m) => m.name.trim())
-          .map((m) => ({
-            name: m.name.trim(),
-            phone: m.phone.replace(/\D/g, ""),
-            role: m.gestionnaire && input.addPolicy !== "tresorier" ? "gestionnaire" : "membre",
-            profile_id: null,
-          })),
+          .flatMap((m) =>
+            avecParts(
+              {
+                name: m.name.trim(),
+                phone: m.phone.replace(/\D/g, ""),
+                role: m.gestionnaire && input.addPolicy !== "tresorier" ? "gestionnaire" : "membre",
+                profile_id: null as string | null,
+              },
+              tontine ? m.parts ?? 1 : 1
+            )
+          ),
       ];
       const positions = people.map((_, i) => i);
-      if (input.shuffle) {
-        for (let i = positions.length - 1; i > 0; i--) {
-          const j = Math.floor(Math.random() * (i + 1));
-          [positions[i], positions[j]] = [positions[j], positions[i]];
-        }
-      }
       const res = await supabase
         .from("members")
         .insert(people.map((p, i) => ({ ...p, group_id: g!.id, turn_position: positions[i] })));
@@ -209,14 +221,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const addMember = useCallback(
-    async (groupId: string, name: string, phone: string) => {
+    async (groupId: string, name: string, phone: string, parts = 1) => {
       const g = groups.find((x) => x.id === groupId);
-      const { error } = await supabase.from("members").insert({
-        group_id: groupId,
-        name: name.trim(),
-        phone: phone.replace(/\D/g, ""),
-        turn_position: g ? g.members.length : 0,
-      });
+      const base = g ? g.members.length : 0;
+      const n = Math.max(1, Math.min(3, parts));
+      const { error } = await supabase.from("members").insert(
+        Array.from({ length: n }, (_, k) => ({
+          group_id: groupId,
+          name: k === 0 ? name.trim() : `${name.trim()} (part ${k + 1})`,
+          phone: phone.replace(/\D/g, ""),
+          turn_position: base + k,
+        }))
+      );
       fail(error);
       await reload();
     },
@@ -321,6 +337,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (u.name !== undefined) row.name = u.name.trim();
       if (u.description !== undefined) row.description = u.description?.trim() || null;
       if (u.amount !== undefined) row.amount = Math.round(u.amount);
+      if (u.frequency !== undefined) row.frequency = u.frequency;
       if (u.startDate !== undefined) row.start_date = new Date(u.startDate).toISOString();
       if (u.penalty !== undefined) row.penalty = Math.round(u.penalty);
       if (u.target !== undefined) row.target = u.target;
@@ -373,6 +390,42 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       await reload();
     },
     [reload]
+  );
+
+  const setTiragePrevu = useCallback(
+    async (groupId: string, date: string | null) => {
+      const { error } = await supabase.from("groups").update({ tirage_prevu: date ? new Date(date).toISOString() : null }).eq("id", groupId);
+      fail(error);
+      await reload();
+    },
+    [reload]
+  );
+
+  /** Tirage au sort de l'ordre de passage (une seule fois, visible par tous) */
+  const lancerTirage = useCallback(
+    async (groupId: string) => {
+      const g = groups.find((x) => x.id === groupId)!;
+      if (g.tirageFait) throw new Error("Le tirage a déjà été fait");
+      const ids = g.members.map((m) => m.id);
+      const alea = new Uint32Array(ids.length);
+      crypto.getRandomValues(alea);
+      for (let i = ids.length - 1; i > 0; i--) {
+        const j = alea[i] % (i + 1);
+        [ids[i], ids[j]] = [ids[j], ids[i]];
+      }
+      for (let i = 0; i < ids.length; i++) {
+        const { error } = await supabase.from("members").update({ turn_position: i }).eq("id", ids[i]).eq("group_id", groupId);
+        fail(error);
+      }
+      const { error } = await supabase
+        .from("groups")
+        .update({ tirage_fait: new Date().toISOString(), tirage_par: user?.name ?? "Le trésorier" })
+        .eq("id", groupId);
+      fail(error);
+      await reload();
+      return ids;
+    },
+    [groups, reload, user]
   );
 
   const updateProfile = useCallback(
@@ -439,7 +492,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider
-      value={{ ready, loaded, user, userId, groups, login, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, setWaveLink, updateGroup, updateMember, removeMember, setOrder, deleteGroup, updateProfile, recordPayout, nextRound, joinGroup }}
+      value={{ ready, loaded, user, userId, groups, login, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, setWaveLink, updateGroup, updateMember, removeMember, setOrder, deleteGroup, setTiragePrevu, lancerTirage, updateProfile, recordPayout, nextRound, joinGroup }}
     >
       {children}
     </StoreContext.Provider>

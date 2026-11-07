@@ -6,9 +6,9 @@ import { ArrowDown, ArrowUp, Gift, Settings2, ShieldCheck, Trash2, UserCog, User
 import { IconBadge } from "@/components/icons";
 import { Avatar, Button, Card, Field, Header, Loading, Page, inputClass, useRequireUser } from "@/components/ui";
 import { fcfa, telAffiche } from "@/lib/format";
-import { ADD_POLICY_LABEL, ROLE_LABEL, droits } from "@/lib/logic";
+import { ADD_POLICY_LABEL, FREQUENCES, ROLE_LABEL, droits } from "@/lib/logic";
 import { useMe, useStore } from "@/lib/store";
-import type { AddPolicy, Member } from "@/lib/types";
+import type { AddPolicy, Frequency, Member } from "@/lib/types";
 
 export default function Parametres() {
   const ok = useRequireUser();
@@ -25,6 +25,7 @@ export default function Parametres() {
   const [description, setDescription] = useState("");
   const [amount, setAmount] = useState("");
   const [penalty, setPenalty] = useState("");
+  const [frequency, setFrequency] = useState<Frequency>("mensuelle");
   const [startDate, setStartDate] = useState("");
   const [target, setTarget] = useState("");
   const [ordre, setOrdre] = useState<string[]>([]);
@@ -36,6 +37,7 @@ export default function Parametres() {
     setDescription(g.description ?? "");
     setAmount(String(g.amount));
     setPenalty(String(g.penalty));
+    setFrequency(g.frequency);
     setStartDate(g.startDate.slice(0, 10));
     setTarget(String(g.target ?? ""));
     setOrdre(g.order);
@@ -128,6 +130,13 @@ export default function Parametres() {
                   <input className={inputClass} inputMode="numeric" value={penalty} onChange={(e) => setPenalty(e.target.value.replace(/\D/g, ""))} />
                 </Field>
               </div>
+              <Field label="Fréquence">
+                <select className={inputClass} value={frequency} onChange={(e) => setFrequency(e.target.value as Frequency)}>
+                  {FREQUENCES.map((f) => (
+                    <option key={f.id} value={f.id}>{f.label}</option>
+                  ))}
+                </select>
+              </Field>
               <Field label="Date de la 1ère échéance" hint="Les échéances suivantes sont calculées à partir de cette date.">
                 <input type="date" className={inputClass} value={startDate} onChange={(e) => setStartDate(e.target.value)} />
               </Field>
@@ -145,7 +154,7 @@ export default function Parametres() {
                     startDate,
                     ...(g.type === "collecte"
                       ? { target: Number(target) || null }
-                      : { amount: Number(amount) || 0, penalty: Number(penalty) || 0 }),
+                      : { amount: Number(amount) || 0, penalty: Number(penalty) || 0, frequency }),
                   }),
                 "Informations enregistrées"
               )
@@ -283,7 +292,8 @@ export default function Parametres() {
 
         {/* Zone sensible */}
         {userId && g.createdBy === userId && (
-          <Card className="space-y-2 border-red-200">
+          <Card className="space-y-2 border-red-200" >
+            <span id="supprimer" />
             <p className="font-bold text-red-700">Supprimer le groupe</p>
             <p className="text-xs text-stone-600">Le groupe, ses membres et tout son historique seront effacés pour tout le monde. Cette action est définitive.</p>
             <Button

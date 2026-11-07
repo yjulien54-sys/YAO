@@ -81,3 +81,73 @@ begin
 end $$;
 drop trigger if exists garde_groupes on public.groups;
 create trigger garde_groupes before update on public.groups for each row execute function public.garde_groupes();
+
+-- ---------------------------------------------------------------------
+-- Fréquences : jour, 3 jours, semaine, 2 semaines, mois, 3 mois, 6 mois, an
+-- ---------------------------------------------------------------------
+alter table public.groups drop constraint if exists groups_frequency_check;
+alter table public.groups add constraint groups_frequency_check check (frequency in
+  ('quotidienne','3jours','hebdomadaire','2semaines','mensuelle','trimestrielle','semestrielle','annuelle','unique'));
+
+-- ---------------------------------------------------------------------
+-- Tirage au sort public (tontine)
+-- ---------------------------------------------------------------------
+alter table public.groups add column if not exists tirage_prevu timestamptz;
+alter table public.groups add column if not exists tirage_fait timestamptz;
+alter table public.groups add column if not exists tirage_par text;
+
+create or replace function public.garde_groupes() returns trigger
+language plpgsql security definer set search_path = public as $$
+begin
+  if not public.can_manage(new.id) and (
+       new.payment_phone is distinct from old.payment_phone
+    or new.wave_link     is distinct from old.wave_link
+    or new.add_policy    is distinct from old.add_policy
+    or new.current_round is distinct from old.current_round
+    or new.created_by    is distinct from old.created_by
+    or new.tirage_prevu  is distinct from old.tirage_prevu
+    or new.tirage_fait   is distinct from old.tirage_fait
+    or new.tirage_par    is distinct from old.tirage_par) then
+    raise exception 'Seul le trésorier peut modifier ce réglage';
+  end if;
+  return new;
+end $$;
+
+-- ---------------------------------------------------------------------
+-- Reconnaissance par numéro : à la connexion, on rattache automatiquement
+-- les places réservées à ce numéro par un trésorier (encore libres).
+-- ---------------------------------------------------------------------
+create or replace function public.rattacher_par_numero() returns integer
+language plpgsql security definer set search_path = public as $$
+declare p profiles; n integer;
+begin
+  select * into p from profiles where id = auth.uid();
+  if p is null then return 0; end if;
+  update members set profile_id = auth.uid()
+   where profile_id is null
+     and length(regexp_replace(p.phone, '\D', '', 'g')) >= 8
+     and right(regexp_replace(phone, '\D', '', 'g'), 10) = right(regexp_replace(p.phone, '\D', '', 'g'), 10);
+  get diagnostics n = row_count;
+  return n;
+end $$;
+grant execute on function public.rattacher_par_numero() to authenticated;
+
+-- Rejoindre par lien : rattache aussi toutes les parts de la personne
+create or replace function public.join_group(g uuid) returns uuid
+language plpgsql security definer set search_path = public as $$
+declare p profiles; m_id uuid;
+begin
+  select * into p from profiles where id = auth.uid();
+  if p is null then raise exception 'profil manquant'; end if;
+  if not exists (select 1 from groups where id = g) then raise exception 'groupe introuvable'; end if;
+  update members set profile_id = auth.uid()
+   where group_id = g and profile_id is null
+     and right(regexp_replace(phone,'\D','','g'),10) = right(regexp_replace(p.phone,'\D','','g'),10);
+  select id into m_id from members where group_id = g and profile_id = auth.uid() order by turn_position limit 1;
+  if m_id is not null then return m_id; end if;
+  insert into members (group_id, profile_id, name, phone, role, turn_position)
+  values (g, auth.uid(), p.name, p.phone, 'membre',
+          coalesce((select max(turn_position) + 1 from members where group_id = g), 0))
+  returning id into m_id;
+  return m_id;
+end $$;

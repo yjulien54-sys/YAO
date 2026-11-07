@@ -1,5 +1,18 @@
 import type { Group, Member, MemberStatus, Payment } from "./types";
 
+/** Libellés des fréquences : choix dans le formulaire, et « par … » */
+export const FREQUENCES: { id: Group["frequency"]; label: string; par: string }[] = [
+  { id: "quotidienne", label: "Chaque jour", par: "jour" },
+  { id: "3jours", label: "Tous les 3 jours", par: "3 jours" },
+  { id: "hebdomadaire", label: "Chaque semaine", par: "semaine" },
+  { id: "2semaines", label: "Toutes les 2 semaines", par: "2 semaines" },
+  { id: "mensuelle", label: "Chaque mois", par: "mois" },
+  { id: "trimestrielle", label: "Tous les 3 mois", par: "3 mois" },
+  { id: "semestrielle", label: "Tous les 6 mois", par: "6 mois" },
+  { id: "annuelle", label: "Chaque année", par: "an" },
+];
+export const parFrequence = (f: Group["frequency"]) => FREQUENCES.find((x) => x.id === f)?.par ?? "tour";
+
 export const TYPE_LABEL: Record<Group["type"], string> = {
   tontine: "Tontine",
   association: "Association",
@@ -8,8 +21,11 @@ export const TYPE_LABEL: Record<Group["type"], string> = {
 
 export function dueDate(g: Group, round: number): Date {
   const d = new Date(g.startDate);
-  if (g.frequency === "hebdomadaire") d.setDate(d.getDate() + 7 * (round - 1));
-  else if (g.frequency === "mensuelle") d.setMonth(d.getMonth() + (round - 1));
+  const n = round - 1;
+  const JOURS: Partial<Record<Group["frequency"], number>> = { quotidienne: 1, "3jours": 3, hebdomadaire: 7, "2semaines": 14 };
+  const MOIS: Partial<Record<Group["frequency"], number>> = { mensuelle: 1, trimestrielle: 3, semestrielle: 6, annuelle: 12 };
+  if (JOURS[g.frequency]) d.setDate(d.getDate() + JOURS[g.frequency]! * n);
+  else if (MOIS[g.frequency]) d.setMonth(d.getMonth() + MOIS[g.frequency]! * n);
   d.setHours(23, 59, 59, 999);
   return d;
 }

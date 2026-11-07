@@ -54,6 +54,9 @@ export const mapGroup = (r: any): Group => {
     waveLink: r.wave_link ?? undefined,
     addPolicy: r.add_policy ?? "tresorier",
     createdBy: r.created_by ?? undefined,
+    tiragePrevu: r.tirage_prevu ?? undefined,
+    tirageFait: r.tirage_fait ?? undefined,
+    tiragePar: r.tirage_par ?? undefined,
     payouts: (r.payouts ?? []).map(mapPayout).sort((a: Payout, b: Payout) => a.date.localeCompare(b.date)),
     createdAt: r.created_at,
   };
