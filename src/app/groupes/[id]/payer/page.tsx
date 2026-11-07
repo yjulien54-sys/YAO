@@ -14,6 +14,17 @@ import type { PayMethod } from "@/lib/types";
 
 const RAPIDES = [2000, 5000, 10000, 25000];
 
+/** Ouverture de l'application de paiement du membre (mode paiement direct au trésorier) */
+const APPS: Record<string, { android?: string; store?: string; ussd?: string; label: string }> = {
+  wave: {
+    label: "Ouvrir Wave et payer",
+    android: "intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.wave.personal;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.wave.personal;end",
+  },
+  orange: { label: "Payer avec Orange Money (#144#)", ussd: "#144#" },
+  mtn: { label: "Payer avec MTN MoMo (*133#)", ussd: "*133#" },
+  moov: { label: "Payer avec Moov Money (*155#)", ussd: "*155#" },
+};
+
 export default function PayerPage() {
   return (
     <Suspense fallback={<Loading />}>
@@ -39,6 +50,7 @@ function Payer() {
   const [etat, setEtat] = useState<"form" | "attente" | "declare">("form");
   const [refWave, setRefWave] = useState("");
   const [copie, setCopie] = useState(false);
+  const [aide, setAide] = useState("");
   const [erreur, setErreur] = useState("");
 
   if (!ok || !loaded) return <Loading />;
@@ -234,25 +246,57 @@ function Payer() {
             </div>
             {MODE_PAIEMENT === "manuel" && !jeSuisTresorier && (
               <Card className="space-y-3 border-emerald-300 bg-emerald-50/50">
-                <p className="text-sm font-bold">1. Envoie {fcfa(total)} avec ton application {op.nom}</p>
-                <div className="flex items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 ring-1 ring-stone-200">
-                  <div>
-                    <p className="text-xs text-stone-500">Numéro du trésorier{tresorier ? ` (${tresorier.name})` : ""}</p>
-                    <p className="text-lg font-extrabold tracking-wide">{numeroCaisse ? telAffiche(numeroCaisse) : "—"}</p>
+                <p className="text-sm font-bold">1. Envoie l’argent à {tresorier ? prenom(tresorier.name) : "la caisse"}</p>
+                <div className="rounded-2xl bg-white p-3 ring-1 ring-stone-200">
+                  <div className="flex items-end justify-between gap-2">
+                    <div>
+                      <p className="text-xs text-stone-500">Montant à envoyer</p>
+                      <p className="text-3xl font-extrabold tracking-tight">{fcfa(total)}</p>
+                    </div>
                   </div>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      navigator.clipboard?.writeText(numeroCaisse.replace(/\D/g, "").slice(-10)).then(() => {
-                        setCopie(true);
-                        setTimeout(() => setCopie(false), 2000);
-                      });
-                    }}
-                    className="rounded-lg bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-700"
-                  >
-                    {copie ? "Copié ✓" : "Copier"}
-                  </button>
+                  <div className="mt-2 flex items-center justify-between gap-2 border-t border-stone-100 pt-2">
+                    <div>
+                      <p className="text-xs text-stone-500">Numéro {op.nom} du trésorier{tresorier ? ` (${tresorier.name})` : ""}</p>
+                      <p className="text-lg font-extrabold tracking-wide">{numeroCaisse ? telAffiche(numeroCaisse) : "—"}</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(numeroCaisse.replace(/\D/g, "").slice(-10)).then(() => {
+                          setCopie(true);
+                          setTimeout(() => setCopie(false), 2000);
+                        });
+                      }}
+                      className="rounded-xl bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-700"
+                    >
+                      {copie ? "Copié ✓" : "Copier"}
+                    </button>
+                  </div>
                 </div>
+                <button
+                  type="button"
+                  onClick={async () => {
+                    const num = numeroCaisse.replace(/\D/g, "").slice(-10);
+                    try {
+                      await navigator.clipboard?.writeText(num);
+                    } catch {}
+                    const app = APPS[method];
+                    const android = /android/i.test(navigator.userAgent);
+                    if (app.ussd) {
+                      setAide(`Numéro copié ✓ Dans le menu, choisis « Transfert », colle le numéro ${telAffiche(num)} et envoie ${fcfa(total)}.`);
+                      window.location.href = `tel:${encodeURIComponent(app.ussd)}`;
+                    } else if (android && app.android) {
+                      setAide(`Numéro copié ✓ Dans Wave, choisis « Envoyer », colle le numéro ${telAffiche(num)} et envoie ${fcfa(total)}.`);
+                      window.location.href = app.android;
+                    } else {
+                      setAide(`Numéro copié ✓ Ouvre ton application ${op.nom}, choisis « Envoyer », colle le numéro ${telAffiche(num)} et envoie ${fcfa(total)}.`);
+                    }
+                  }}
+                  className={btnClass(method === "wave" ? "primary" : "secondary", `w-full ${method === "wave" ? "!from-[#3dd0ff] !to-[#1aa9e6] !shadow-sky-900/20" : ""}`)}
+                >
+                  {APPS[method].label} →
+                </button>
+                {aide && <p className="rounded-xl bg-white px-3 py-2 text-xs font-medium text-stone-700 ring-1 ring-stone-200">{aide}</p>}
                 <p className="text-sm font-bold">2. Reviens ici et confirme</p>
                 <Field label="Référence de la transaction (facultatif)" hint="Elle se trouve dans le SMS ou l’historique de ton application. Elle aide le trésorier à vérifier.">
                   <input className={inputClass} value={refWave} onChange={(e) => setRefWave(e.target.value)} placeholder="ex : T_ABC123…" />
