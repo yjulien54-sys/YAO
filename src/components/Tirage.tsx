@@ -20,9 +20,13 @@ export function Tirage({ g, tresorier, onVoirOrdre }: { g: Group; tresorier: boo
   const noms = (ids: string[]) => ids.map((id) => g.members.find((m) => m.id === id)?.name ?? "—");
   const avantDate = g.tiragePrevu && new Date(g.tiragePrevu).getTime() > Date.now();
 
+  const modale = anim && <AnimationTirage anim={anim} onFermer={() => setAnim(null)} />;
+
   // Résultat déjà connu : visible par tous
   if (g.tirageFait)
     return (
+      <>
+      {modale}
       <div className="carte space-y-3 p-4">
         <div className="flex items-start gap-3">
           <IconBadge icon={Trophy} ton="vert" />
@@ -43,6 +47,7 @@ export function Tirage({ g, tresorier, onVoirOrdre }: { g: Group; tresorier: boo
         </ol>
         <button onClick={onVoirOrdre} className="text-sm font-semibold text-emerald-700 underline">Voir tout l’ordre de passage</button>
       </div>
+      </>
     );
 
   if (!tresorier && !g.tiragePrevu) return null;
@@ -112,7 +117,7 @@ export function Tirage({ g, tresorier, onVoirOrdre }: { g: Group; tresorier: boo
         {erreur && <p className="text-sm text-red-600">{erreur}</p>}
       </div>
 
-      {anim && <AnimationTirage anim={anim} onFermer={() => setAnim(null)} />}
+      {modale}
     </>
   );
 }

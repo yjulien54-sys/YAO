@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Gift, Settings2, ShieldCheck, Trash2, UserCog, Users } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 import { Avatar, Button, Card, Field, Header, Loading, Page, inputClass, useRequireUser } from "@/components/ui";
-import { fcfa, telAffiche } from "@/lib/format";
+import { dateLongue, fcfa, telAffiche } from "@/lib/format";
 import { ADD_POLICY_LABEL, FREQUENCES, ROLE_LABEL, droits } from "@/lib/logic";
 import { useMe, useStore } from "@/lib/store";
 import type { AddPolicy, Frequency, Member } from "@/lib/types";
@@ -165,7 +165,16 @@ export default function Parametres() {
         </Card>
 
         {/* Ordre des tours */}
-        {g.type === "tontine" && (
+        {g.type === "tontine" && g.tirageFait && (
+          <Card className="space-y-1">
+            <p className="flex items-center gap-2 font-bold"><IconBadge icon={Gift} taille="sm" />Ordre de passage</p>
+            <p className="text-xs text-stone-600">
+              L’ordre a été tiré au sort le {dateLongue(g.tirageFait)} par {g.tiragePar ?? "le trésorier"}. Pour la transparence, il ne peut plus être modifié.
+            </p>
+          </Card>
+        )}
+
+        {g.type === "tontine" && !g.tirageFait && (
           <Card className="space-y-3">
             <div>
               <p className="flex items-center gap-2 font-bold"><IconBadge icon={Gift} ton="orange" taille="sm" />Ordre de passage</p>
