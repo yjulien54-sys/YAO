@@ -76,13 +76,16 @@ export default function GroupeDetail() {
       <div className="space-y-4 p-4">
         {/* Résumé */}
         <Card className="overflow-hidden !p-0">
-          <div className="bg-gradient-to-br from-emerald-700 to-emerald-600 p-4 text-white">
+          <div className="degrade-vert relative overflow-hidden p-5 text-white">
+            <div className="motif pointer-events-none absolute inset-0" />
+            <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/20 blur-2xl" />
+            <div className="relative">
             <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-emerald-100">
               <span>{TYPE_LABEL[g.type]}</span>
               {g.type !== "collecte" && <span>Tour {g.currentRound}{g.type === "tontine" && ` sur ${g.order.length}`}</span>}
             </div>
             <p className="mt-2 text-sm text-emerald-100">{g.type === "collecte" ? "Collecté" : "Dans la caisse du tour"}</p>
-            <p className="text-3xl font-extrabold">{fcfa(st.collected)}</p>
+            <p className="text-4xl font-extrabold tracking-tight">{fcfa(st.collected)}</p>
             <p className="text-sm text-emerald-100">sur {fcfa(st.expected)} {g.type === "collecte" ? "d’objectif" : "attendus"}</p>
             <Progress value={st.progress} className="mt-3 bg-white/25" />
             {(g.type === "collecte" ? cs.frais : fraisTour) > 0 && (
@@ -93,6 +96,7 @@ export default function GroupeDetail() {
             {g.type !== "tontine" && cs.verse > 0 && (
               <p className="mt-1 text-xs text-emerald-100">Déjà versé : {fcfa(cs.verse)} · Solde de la caisse : <b className="text-white">{fcfa(cs.solde)}</b></p>
             )}
+            </div>
           </div>
           <div className="grid grid-cols-3 divide-x divide-stone-200 text-center">
             <Stat n={st.counts.paye} label="Payé" cls="text-emerald-700" />
@@ -236,9 +240,11 @@ export default function GroupeDetail() {
                     <p className="truncate font-semibold">
                       {m.name}
                       {m.id === me?.id && <span className="text-stone-400"> (toi)</span>}
-                      {m.role === "tresorier" && <span className="ml-1 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-orange-700">Trésorier</span>}
                     </p>
-                    <p className="text-xs text-stone-500">{telAffiche(m.phone)}{paid > 0 && g.type === "collecte" && ` · ${fcfa(paid)}`}</p>
+                    <p className="text-xs text-stone-500">
+                      {m.role === "tresorier" && <span className="mr-1.5 rounded-md bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-orange-700">Trésorier</span>}
+                      {telAffiche(m.phone)}{paid > 0 && g.type === "collecte" && ` · ${fcfa(paid)}`}
+                    </p>
                     {g.type !== "collecte" && paidUntil(g, m.id) > g.currentRound && (
                       <p className="text-[11px] font-semibold text-emerald-700">⏩ Payé jusqu’au tour {paidUntil(g, m.id)}</p>
                     )}

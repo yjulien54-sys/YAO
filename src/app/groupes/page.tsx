@@ -7,6 +7,11 @@ import { TYPE_LABEL, beneficiary, dueDate, isLate, roundStats } from "@/lib/logi
 import { useStore } from "@/lib/store";
 
 const TYPE_ICON = { tontine: "🔄", association: "🤝", collecte: "🕊️" };
+const TYPE_TUILE = {
+  tontine: "degrade-or",
+  association: "bg-gradient-to-br from-sky-400 to-indigo-500",
+  collecte: "bg-gradient-to-br from-violet-400 to-fuchsia-500",
+};
 
 export default function Groupes() {
   const ok = useRequireUser();
@@ -26,20 +31,21 @@ export default function Groupes() {
         }
       />
       <div className="space-y-5 p-4">
-        <div>
-          <p className="text-sm text-stone-500">Bonjour 👋</p>
-          <h2 className="text-2xl font-extrabold">{prenom(user!.name)}</h2>
-        </div>
-
-        <div className="grid grid-cols-2 gap-3">
-          <Card className="!p-3.5">
-            <p className="text-xs font-medium text-stone-500">Total collecté</p>
-            <p className="mt-1 text-lg font-extrabold text-emerald-700">{fcfa(totalCaisse)}</p>
-          </Card>
-          <Card className="!p-3.5">
-            <p className="text-xs font-medium text-stone-500">Retards à relancer</p>
-            <p className={`mt-1 text-lg font-extrabold ${enRetard ? "text-red-600" : "text-stone-800"}`}>{enRetard}</p>
-          </Card>
+        <div className="degrade-vert relative overflow-hidden rounded-3xl p-5 text-white shadow-xl shadow-emerald-900/20">
+          <div className="motif absolute inset-0" />
+          <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/20 blur-2xl" />
+          <p className="relative text-sm text-emerald-50/90">Bonjour 👋</p>
+          <h2 className="relative text-2xl font-extrabold tracking-tight">{prenom(user!.name)}</h2>
+          <div className="relative mt-4 grid grid-cols-2 gap-2">
+            <div className="rounded-2xl bg-white/15 p-3 backdrop-blur">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-50/80">Total collecté</p>
+              <p className="mt-0.5 text-lg font-extrabold">{fcfa(totalCaisse)}</p>
+            </div>
+            <div className="rounded-2xl bg-white/15 p-3 backdrop-blur">
+              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-50/80">À relancer</p>
+              <p className={`mt-0.5 text-lg font-extrabold ${enRetard ? "text-orange-200" : ""}`}>{enRetard} retard{enRetard > 1 ? "s" : ""}</p>
+            </div>
+          </div>
         </div>
 
         <div className="flex items-center justify-between">
@@ -60,9 +66,9 @@ export default function Groupes() {
             const late = isLate(g, g.currentRound);
             return (
               <Link key={g.id} href={`/groupes/${g.id}`} className="block">
-                <Card className="transition hover:border-emerald-300 hover:shadow-md">
+                <Card className="transition active:scale-[0.99] hover:border-emerald-300">
                   <div className="flex items-start gap-3">
-                    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-stone-100 text-xl">{TYPE_ICON[g.type]}</span>
+                    <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-xl shadow-md ${TYPE_TUILE[g.type]}`}>{TYPE_ICON[g.type]}</span>
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-bold text-stone-900">{g.name}</p>
                       <p className="text-xs text-stone-500">

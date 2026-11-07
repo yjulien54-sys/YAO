@@ -10,9 +10,8 @@ import type { MemberStatus } from "@/lib/types";
 export function Logo({ className = "" }: { className?: string }) {
   return (
     <span className={`inline-flex items-center gap-2 font-extrabold tracking-tight ${className}`}>
-      <span className="grid h-8 w-8 place-items-center rounded-xl bg-gradient-to-br from-orange-500 to-emerald-600 text-white">
-        C
-      </span>
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img src="/icons/logo.svg" alt="" width={32} height={32} className="h-8 w-8 rounded-[10px] shadow-sm" />
       Cotiz
     </span>
   );
@@ -20,7 +19,7 @@ export function Logo({ className = "" }: { className?: string }) {
 
 export function Header({ title, back, right }: { title?: string; back?: string; right?: React.ReactNode }) {
   return (
-    <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-stone-200 bg-white/90 px-4 py-3 backdrop-blur">
+    <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-stone-200/60 bg-[#f7f5f0]/85 px-4 py-3 backdrop-blur-md">
       {back ? (
         <Link href={back} aria-label="Retour" className="-ml-1 rounded-full p-1.5 text-stone-600 hover:bg-stone-100">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -38,18 +37,18 @@ export function Header({ title, back, right }: { title?: string; back?: string; 
 }
 
 export function Page({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto min-h-dvh max-w-md bg-stone-50 pb-24 shadow-sm">{children}</div>;
+  return <div className="mx-auto min-h-dvh max-w-md bg-[#f7f5f0] pb-24 shadow-xl shadow-stone-900/5">{children}</div>;
 }
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {
-  return <div className={`rounded-2xl border border-stone-200 bg-white p-4 ${className}`}>{children}</div>;
+  return <div className={`carte p-4 ${className}`}>{children}</div>;
 }
 
 export function Progress({ value, className = "" }: { value: number; className?: string }) {
   return (
     <div className={`h-2.5 w-full overflow-hidden rounded-full bg-stone-200 ${className}`}>
       <div
-        className="h-full rounded-full bg-gradient-to-r from-emerald-500 to-emerald-600 transition-all"
+        className="h-full rounded-full bg-gradient-to-r from-amber-300 via-orange-400 to-orange-500 transition-all duration-700"
         style={{ width: `${Math.round(value * 100)}%` }}
       />
     </div>
@@ -81,14 +80,14 @@ export function Avatar({ name, size = 40 }: { name: string; size?: number }) {
 type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "ghost" | "whatsapp" };
 
 const VARIANTS = {
-  primary: "bg-emerald-600 text-white hover:bg-emerald-700 disabled:bg-stone-300",
-  secondary: "bg-white text-stone-800 ring-1 ring-stone-300 hover:bg-stone-50",
+  primary: "bg-gradient-to-b from-emerald-500 to-emerald-700 text-white shadow-lg shadow-emerald-900/20 hover:from-emerald-600 hover:to-emerald-800 disabled:from-stone-300 disabled:to-stone-300 disabled:shadow-none",
+  secondary: "bg-white text-stone-800 ring-1 ring-stone-200 shadow-sm hover:bg-stone-50",
   ghost: "text-stone-600 hover:bg-stone-100",
-  whatsapp: "bg-[#25D366] text-white hover:bg-[#1fb857]",
+  whatsapp: "bg-gradient-to-b from-[#2fe076] to-[#1fb857] text-white shadow-lg shadow-green-900/15 hover:to-[#169e4a]",
 };
 
 export const btnClass = (variant: keyof typeof VARIANTS = "primary", extra = "") =>
-  `inline-flex items-center justify-center gap-2 rounded-xl px-4 py-3 text-sm font-semibold transition active:scale-[0.98] disabled:cursor-not-allowed ${VARIANTS[variant]} ${extra}`;
+  `inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-bold transition active:scale-[0.97] disabled:cursor-not-allowed ${VARIANTS[variant]} ${extra}`;
 
 export function Button({ variant = "primary", className = "", ...props }: BtnProps) {
   return <button className={btnClass(variant, className)} {...props} />;
@@ -103,7 +102,7 @@ export function WhatsAppIcon({ size = 18 }: { size?: number }) {
 }
 
 export const inputClass =
-  "w-full rounded-xl border border-stone-300 bg-white px-3.5 py-3 text-[15px] text-stone-900 outline-none placeholder:text-stone-400 focus:border-emerald-500 focus:ring-2 focus:ring-emerald-100";
+  "w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-[15px] text-stone-900 shadow-sm outline-none transition placeholder:text-stone-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100";
 
 export function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (

@@ -6,12 +6,14 @@ export const metadata: Metadata = {
   title: "Cotiz — Tontines & cotisations simplifiées",
   description:
     "Gérez vos tontines, associations et collectes en toute transparence. Paiement Wave, Orange Money, MTN, Moov et relances WhatsApp automatiques.",
+  icons: { icon: "/icons/logo.svg", apple: "/icons/apple-touch-icon.png" },
+  appleWebApp: { capable: true, title: "Cotiz", statusBarStyle: "default" },
 };
 
 export const viewport: Viewport = {
   width: "device-width",
   initialScale: 1,
-  themeColor: "#059669",
+  themeColor: "#009e60",
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

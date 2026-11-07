@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#00cc73"/>
+      <stop offset="0.55" stop-color="#009e60"/>
+      <stop offset="1" stop-color="#007a49"/>
+    </linearGradient>
+    <linearGradient id="or" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffc16e"/>
+      <stop offset="0.5" stop-color="#f77f00"/>
+      <stop offset="1" stop-color="#e06f00"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="0.3" cy="0.2" r="0.8">
+      <stop offset="0" stop-color="#fff" stop-opacity="0.22"/>
+      <stop offset="1" stop-color="#fff" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+  <rect width="512" height="512" rx="112" fill="url(#glow)"/>
+  <!-- le cercle de la tontine : un C qui tourne -->
+  <path d="M352 168 A120 120 0 1 0 352 344" fill="none" stroke="#fff" stroke-width="46" stroke-linecap="round"/>
+  <!-- la pièce qui passe de main en main -->
+  <circle cx="362" cy="174" r="32" fill="url(#or)"/>
+  <!-- la caisse commune au centre -->
+  <circle cx="270" cy="256" r="44" fill="url(#or)"/>
+  <circle cx="270" cy="256" r="28" fill="none" stroke="#fff" stroke-width="6" opacity="0.65"/>
+</svg>

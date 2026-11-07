@@ -7,9 +7,16 @@ export default function manifest(): MetadataRoute.Manifest {
     description: "Tontines, associations et collectes, en toute transparence.",
     start_url: "/groupes",
     display: "standalone",
-    background_color: "#fafaf9",
-    theme_color: "#059669",
+    background_color: "#f7f5f0",
+    id: "/",
+    theme_color: "#009e60",
     lang: "fr",
-    icons: [{ src: "/favicon.ico", sizes: "any", type: "image/x-icon" }],
+    icons: [
+      { src: "/icons/icon-192.png", sizes: "192x192", type: "image/png", purpose: "any" },
+      { src: "/icons/icon-512.png", sizes: "512x512", type: "image/png", purpose: "any" },
+      { src: "/icons/maskable-512.png", sizes: "512x512", type: "image/png", purpose: "maskable" },
+    ],
+    categories: ["finance", "productivity", "social"],
+    orientation: "portrait",
   };
 }
