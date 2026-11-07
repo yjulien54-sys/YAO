@@ -1,0 +1,44 @@
+plugins { id "com.android.application" }
+
+def props = new Properties()
+def f = rootProject.file("keystore.properties")
+if (f.exists()) props.load(new FileInputStream(f))
+
+android {
+    namespace "ci.cotiz.app"
+    compileSdk 36
+
+    defaultConfig {
+        applicationId "ci.cotiz.app"
+        minSdk 21
+        targetSdk 36
+        versionCode 1
+        versionName "1.0.0"
+    }
+
+    signingConfigs {
+        release {
+            if (f.exists()) {
+                storeFile rootProject.file(props["storeFile"])
+                storePassword props["storePassword"]
+                keyAlias props["keyAlias"]
+                keyPassword props["keyPassword"]
+            }
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation "com.google.androidbrowserhelper:androidbrowserhelper:2.6.2"
+}

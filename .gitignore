@@ -52,3 +52,11 @@ next-env.d.ts
 .env*
 
 
+
+# Android : clé de signature et fichiers générés
+android/*.jks
+android/keystore.properties
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
