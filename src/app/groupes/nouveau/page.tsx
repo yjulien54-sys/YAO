@@ -5,12 +5,14 @@ import { useState } from "react";
 import { Button, Card, Field, Header, Loading, Page, inputClass, useRequireUser } from "@/components/ui";
 import { fcfa } from "@/lib/format";
 import { useStore } from "@/lib/store";
+import { HandCoins, Repeat, Users, type LucideIcon } from "lucide-react";
+import { IconBadge } from "@/components/icons";
 import type { Frequency, GroupType } from "@/lib/types";
 
-const TYPES: { id: GroupType; icon: string; titre: string; desc: string }[] = [
-  { id: "tontine", icon: "🔄", titre: "Tontine", desc: "Chacun cotise, un membre ramasse à chaque tour" },
-  { id: "association", icon: "🤝", titre: "Association", desc: "Cotisation régulière pour une caisse commune" },
-  { id: "collecte", icon: "🕊️", titre: "Collecte", desc: "Funérailles, mariage, baptême, projet…" },
+const TYPES: { id: GroupType; icon: LucideIcon; ton: "orange" | "bleu" | "violet"; titre: string; desc: string }[] = [
+  { id: "tontine", icon: Repeat, ton: "orange", titre: "Tontine", desc: "Chacun cotise, un membre ramasse à chaque tour" },
+  { id: "association", icon: Users, ton: "bleu", titre: "Association", desc: "Cotisation régulière pour une caisse commune" },
+  { id: "collecte", icon: HandCoins, ton: "violet", titre: "Collecte", desc: "Funérailles, mariage, baptême, projet…" },
 ];
 
 const today = () => new Date().toISOString().slice(0, 10);
@@ -77,7 +79,7 @@ export default function NouveauGroupe() {
               onClick={() => setType(t.id)}
               className={`flex items-center gap-3 rounded-2xl border-2 bg-white p-3 text-left transition ${type === t.id ? "border-emerald-500 bg-emerald-50/50" : "border-stone-200"}`}
             >
-              <span className="text-2xl">{t.icon}</span>
+              <IconBadge icon={t.icon} ton={t.ton} />
               <span>
                 <span className="block font-bold">{t.titre}</span>
                 <span className="block text-xs text-stone-500">{t.desc}</span>

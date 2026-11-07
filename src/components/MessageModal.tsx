@@ -6,6 +6,7 @@ import { supabase } from "@/lib/supabase";
 import type { Group, Member } from "@/lib/types";
 import { waLink } from "@/lib/whatsapp";
 import { WhatsAppIcon, btnClass } from "./ui";
+import { RefreshCw, Sparkles } from "lucide-react";
 
 const MOMENT_LABEL = { avance: "Bien avant l’échéance", bientot: "Échéance proche", jour: "Jour J", retard: "En retard" };
 
@@ -45,8 +46,8 @@ export function MessageModal({ group, member, type, onClose }: { group: Group; m
             <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] font-semibold">
               <span className="rounded-full bg-stone-100 px-2 py-0.5 text-stone-600">{EVENEMENT_LABEL[ctx.evenement]}</span>
               {group.type !== "collecte" && <span className="rounded-full bg-stone-100 px-2 py-0.5 text-stone-600">{MOMENT_LABEL[ctx.moment]}</span>}
-              {source === "ia" && <span className="rounded-full bg-violet-100 px-2 py-0.5 text-violet-700">✨ Écrit par l’IA</span>}
-              {source === "chargement" && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-700">✨ L’IA écrit…</span>}
+              {source === "ia" && <span className="rounded-full bg-violet-100 px-2 py-0.5 text-violet-700"><Sparkles size={11} strokeWidth={2} className="mr-0.5 inline -mt-0.5" />Écrit par l’IA</span>}
+              {source === "chargement" && <span className="rounded-full bg-amber-50 px-2 py-0.5 text-amber-700"><Sparkles size={11} strokeWidth={2} className="mr-0.5 inline -mt-0.5" />L’IA écrit…</span>}
             </div>
           </div>
           <button onClick={onClose} aria-label="Fermer" className="rounded-full p-1 text-xl leading-none text-stone-400 hover:bg-stone-100">×</button>
@@ -60,7 +61,7 @@ export function MessageModal({ group, member, type, onClose }: { group: Group; m
         <p className="mb-3 mt-1 text-xs text-stone-500">Tu peux modifier le texte avant de l’envoyer.</p>
         <div className="grid grid-cols-[auto_1fr] gap-2">
           <button onClick={generer} disabled={source === "chargement"} className={btnClass("secondary", "!px-3")} title="Proposer un autre message">
-            ✨ Autre version
+            <RefreshCw size={15} strokeWidth={1.9} /> Autre version
           </button>
           <a href={waLink(texte, member?.phone)} target="_blank" rel="noreferrer" onClick={onClose} className={btnClass("whatsapp")}>
             <WhatsAppIcon /> Envoyer sur WhatsApp

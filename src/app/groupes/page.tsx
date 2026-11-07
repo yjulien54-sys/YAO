@@ -5,13 +5,11 @@ import { Card, Header, Loading, Page, Progress, btnClass, useRequireUser } from 
 import { dateCourte, fcfa, prenom } from "@/lib/format";
 import { TYPE_LABEL, beneficiary, dueDate, isLate, roundStats } from "@/lib/logic";
 import { useStore } from "@/lib/store";
+import { AlertCircle, CalendarDays, Gift, HandCoins, Plus, Repeat, Users } from "lucide-react";
+import { IconBadge } from "@/components/icons";
 
-const TYPE_ICON = { tontine: "🔄", association: "🤝", collecte: "🕊️" };
-const TYPE_TUILE = {
-  tontine: "degrade-or",
-  association: "bg-gradient-to-br from-sky-400 to-indigo-500",
-  collecte: "bg-gradient-to-br from-violet-400 to-fuchsia-500",
-};
+const TYPE_ICON = { tontine: Repeat, association: Users, collecte: HandCoins };
+const TYPE_TON = { tontine: "orange", association: "bleu", collecte: "violet" } as const;
 
 export default function Groupes() {
   const ok = useRequireUser();
@@ -31,17 +29,16 @@ export default function Groupes() {
         }
       />
       <div className="space-y-5 p-4">
-        <div className="degrade-vert relative overflow-hidden rounded-3xl p-5 text-white shadow-xl shadow-emerald-900/20">
-          <div className="motif absolute inset-0" />
-          <div className="absolute -right-10 -top-10 h-36 w-36 rounded-full bg-white/20 blur-2xl" />
-          <p className="relative text-sm text-emerald-50/90">Bonjour 👋</p>
+        <div className="degrade-vert relative overflow-hidden rounded-3xl p-5 text-white shadow-lg shadow-emerald-900/15">
+          <div className="motif absolute inset-0 opacity-60" />
+          <p className="relative text-sm text-emerald-50/90">Bonjour,</p>
           <h2 className="relative text-2xl font-extrabold tracking-tight">{prenom(user!.name)}</h2>
           <div className="relative mt-4 grid grid-cols-2 gap-2">
-            <div className="rounded-2xl bg-white/15 p-3 backdrop-blur">
+            <div className="rounded-2xl bg-white/[0.12] p-3 ring-1 ring-white/15">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-50/80">Total collecté</p>
               <p className="mt-0.5 text-lg font-extrabold">{fcfa(totalCaisse)}</p>
             </div>
-            <div className="rounded-2xl bg-white/15 p-3 backdrop-blur">
+            <div className="rounded-2xl bg-white/[0.12] p-3 ring-1 ring-white/15">
               <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-50/80">À relancer</p>
               <p className={`mt-0.5 text-lg font-extrabold ${enRetard ? "text-orange-200" : ""}`}>{enRetard} retard{enRetard > 1 ? "s" : ""}</p>
             </div>
@@ -68,7 +65,7 @@ export default function Groupes() {
               <Link key={g.id} href={`/groupes/${g.id}`} className="block">
                 <Card className="transition active:scale-[0.99] hover:border-emerald-300">
                   <div className="flex items-start gap-3">
-                    <span className={`grid h-12 w-12 shrink-0 place-items-center rounded-2xl text-xl shadow-md ${TYPE_TUILE[g.type]}`}>{TYPE_ICON[g.type]}</span>
+                    <IconBadge icon={TYPE_ICON[g.type]} ton={TYPE_TON[g.type]} taille="lg" />
                     <div className="min-w-0 flex-1">
                       <p className="truncate font-bold text-stone-900">{g.name}</p>
                       <p className="text-xs text-stone-500">
@@ -88,9 +85,10 @@ export default function Groupes() {
                     ) : (
                       <>
                         <span>Tour {g.currentRound}{g.type === "tontine" && `/${g.order.length}`}</span>
-                        {ben && <span>🎁 {prenom(ben.name)}</span>}
-                        <span className={late ? "font-semibold text-red-600" : ""}>
-                          {late ? "⏰ Échéance passée" : `📅 ${dateCourte(dueDate(g, g.currentRound).toISOString())}`}
+                        {ben && <span className="inline-flex items-center gap-1"><Gift size={13} strokeWidth={1.75} />{prenom(ben.name)}</span>}
+                        <span className={`inline-flex items-center gap-1 ${late ? "font-semibold text-red-600" : ""}`}>
+                          {late ? <AlertCircle size={13} strokeWidth={1.75} /> : <CalendarDays size={13} strokeWidth={1.75} />}
+                          {late ? "Échéance passée" : dateCourte(dueDate(g, g.currentRound).toISOString())}
                         </span>
                         {st.counts.retard > 0 && <span className="font-semibold text-red-600">{st.counts.retard} en retard</span>}
                       </>
@@ -104,9 +102,9 @@ export default function Groupes() {
 
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 mx-auto max-w-md bg-gradient-to-t from-stone-50 via-stone-50 to-transparent p-4 pt-8">
+      <div className="fixed inset-x-0 bottom-0 mx-auto max-w-md bg-gradient-to-t from-[#f7f5f0] via-[#f7f5f0] to-transparent p-4 pt-8">
         <Link href="/groupes/nouveau" className={btnClass("primary", "w-full shadow-lg shadow-emerald-900/20")}>
-          + Créer un groupe
+          <Plus size={18} strokeWidth={2} /> Créer un groupe
         </Link>
       </div>
     </Page>

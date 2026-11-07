@@ -8,6 +8,8 @@ import { dateLongue, fcfa } from "@/lib/format";
 import { METHOD_LABEL } from "@/lib/payments";
 import { useStore } from "@/lib/store";
 import { partageRecu } from "@/lib/whatsapp";
+import { BadgeCheck } from "lucide-react";
+import { IconBadge } from "@/components/icons";
 
 export default function RecuPage() {
   return (
@@ -54,10 +56,10 @@ function Recu() {
       <div className="space-y-4 p-4">
         {nouveau && (
           <div className="text-center">
-            <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-100 text-3xl">✅</div>
+            <IconBadge icon={BadgeCheck} taille="xl" className="mx-auto" />
             <h2 className="mt-3 text-xl font-extrabold">Paiement réussi !</h2>
             <p className="text-sm text-stone-600">Le groupe a été mis à jour pour tout le monde.</p>
-            {nbTours > 1 && <p className="mt-2 text-sm font-semibold text-emerald-700">⏩ {nbTours} tours payés d’un coup (un reçu par tour, visibles dans l’historique)</p>}
+            {nbTours > 1 && <p className="mt-2 text-sm font-semibold text-emerald-700">{nbTours} tours payés d’un coup (un reçu par tour, visibles dans l’historique)</p>}
           </div>
         )}
         <div className="relative rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">

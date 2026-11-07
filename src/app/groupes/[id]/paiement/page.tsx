@@ -6,6 +6,8 @@ import { Suspense, useEffect, useState } from "react";
 import { Loading, Page, btnClass, useRequireUser } from "@/components/ui";
 import { useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { Clock, XCircle } from "lucide-react";
+import { IconBadge } from "@/components/icons";
 
 export default function SuiviPaiementPage() {
   return (
@@ -69,7 +71,7 @@ function Suivi() {
           )}
           {etat === "echec" && (
             <>
-              <div className="text-5xl">❌</div>
+              <IconBadge icon={XCircle} ton="rouge" taille="xl" className="mx-auto" />
               <h2 className="text-xl font-bold">Paiement non abouti</h2>
               <p className="text-sm text-stone-600">Aucun argent n’a été prélevé. Tu peux réessayer.</p>
               <Link href={`/groupes/${id}/payer`} className={btnClass("primary", "w-full")}>Réessayer</Link>
@@ -77,7 +79,7 @@ function Suivi() {
           )}
           {etat === "long" && (
             <>
-              <div className="text-5xl">⏳</div>
+              <IconBadge icon={Clock} ton="ambre" taille="xl" className="mx-auto" />
               <h2 className="text-xl font-bold">Confirmation en cours</h2>
               <p className="text-sm text-stone-600">L’opérateur n’a pas encore confirmé. Le groupe sera mis à jour automatiquement dès que ce sera fait.</p>
             </>

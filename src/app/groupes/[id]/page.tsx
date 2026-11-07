@@ -12,6 +12,8 @@ import { METHOD_LABEL, MODE_PAIEMENT } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
 import { invitation } from "@/lib/whatsapp";
 import { MessageModal } from "@/components/MessageModal";
+import { ArrowUpRight, CalendarDays, Check, CheckCircle2, Clock, Gift, HeartHandshake, PartyPopper, Smartphone, UserPlus, X } from "lucide-react";
+import { IconBadge } from "@/components/icons";
 import type { Member } from "@/lib/types";
 
 type Tab = "membres" | "historique" | "tours";
@@ -119,11 +121,11 @@ export default function GroupeDetail() {
             )}
             {versementTour && (
               <div className="rounded-xl bg-emerald-50 px-3 py-2 text-emerald-800 ring-1 ring-emerald-200">
-                ✅ Caisse versée à <b>{versementTour.beneficiaryName}</b> : {fcfa(versementTour.amount)} ({METHOD_LABEL[versementTour.method]}, {dateCourte(versementTour.date)})
+                <CheckCircle2 size={16} strokeWidth={2} className="mr-1 inline -mt-0.5" />Caisse versée à <b>{versementTour.beneficiaryName}</b> : {fcfa(versementTour.amount)} ({METHOD_LABEL[versementTour.method]}, {dateCourte(versementTour.date)})
               </div>
             )}
             <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${late ? "bg-red-50 text-red-700" : "bg-stone-100 text-stone-700"}`}>
-              <span>📅 Échéance : <b>{dateCourte(dueDate(g, g.currentRound).toISOString())}</b></span>
+              <span className="inline-flex items-center gap-1.5"><CalendarDays size={16} strokeWidth={1.75} />Échéance : <b>{dateCourte(dueDate(g, g.currentRound).toISOString())}</b></span>
               {late && g.penalty > 0 && <span className="text-xs font-semibold">+{fcfa(g.penalty)} de pénalité</span>}
             </div>
           </Card>
@@ -140,7 +142,7 @@ export default function GroupeDetail() {
           )}
           {me && mesDeclarations.length > 0 && (
             <div className="rounded-xl bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-800 ring-1 ring-amber-200">
-              ⏳ Ton paiement de {fcfa(sum(mesDeclarations))} est en attente de confirmation{tresorier ? ` par ${prenom(tresorier.name)}` : ""}
+              <Clock size={16} strokeWidth={2} className="mr-1 inline -mt-0.5" />Ton paiement de {fcfa(sum(mesDeclarations))} est en attente de confirmation{tresorier ? ` par ${prenom(tresorier.name)}` : ""}
             </div>
           )}
           {me && mesArrieres.length === 0 && myStatus !== "paye" && !(tourEnAttente && g.type !== "collecte") && (
@@ -150,7 +152,7 @@ export default function GroupeDetail() {
           )}
           {me && myStatus === "paye" && g.type !== "collecte" && (
             <div className="rounded-xl bg-emerald-50 px-4 py-3 text-center text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200">
-              ✅ {paidUntil(g, me.id) > g.currentRound ? `Tu as payé jusqu’au tour ${paidUntil(g, me.id)}` : "Tu as payé ta part pour ce tour"}
+              <CheckCircle2 size={16} strokeWidth={2} className="mr-1 inline -mt-0.5" />{paidUntil(g, me.id) > g.currentRound ? `Tu as payé jusqu’au tour ${paidUntil(g, me.id)}` : "Tu as payé ta part pour ce tour"}
               {peutAvancer && mesArrieres.length === 0 && (
                 <Link href={`/groupes/${g.id}/payer`} className="mt-1 block text-xs font-semibold text-emerald-800 underline">Payer des tours en avance</Link>
               )}
@@ -164,7 +166,7 @@ export default function GroupeDetail() {
               <WhatsAppIcon /> {g.type === "collecte" ? "Partager l’appel" : `Relancer (${unpaid.length})`}
             </button>
             <a href={invitation(g)} target="_blank" rel="noreferrer" className={btnClass("secondary")}>
-              Inviter
+              <UserPlus size={17} strokeWidth={1.9} /> Inviter
             </a>
           </div>
         </div>
@@ -172,7 +174,7 @@ export default function GroupeDetail() {
         {isTreasurer && declarations.length > 0 && (
           <Card className="space-y-3 border-amber-300 bg-amber-50/60">
             <div>
-              <p className="text-sm font-bold">⏳ Paiements à confirmer ({declarations.length})</p>
+              <p className="flex items-center gap-2 text-sm font-bold"><IconBadge icon={Clock} ton="ambre" taille="sm" />Paiements à confirmer ({declarations.length})</p>
               <p className="text-xs text-stone-600">Vérifie sur ton téléphone que tu as bien reçu l’argent avant de confirmer.</p>
             </div>
             {declarations.map((d) => {
@@ -200,17 +202,17 @@ export default function GroupeDetail() {
                           confirmPayments(d.map((p) => p.id), false).then(() => flash("Paiement refusé")).catch((e) => flash("Erreur : " + e.message));
                       }}
                     >
-                      Pas reçu
+                      <X size={16} strokeWidth={2} /> Pas reçu
                     </Button>
                     <Button
                       className="!py-2"
                       onClick={() =>
                         confirmPayments(d.map((p) => p.id), true)
-                          .then(() => flash(`Paiement de ${prenom(m?.name ?? "")} confirmé ✅`))
+                          .then(() => flash(`Paiement de ${prenom(m?.name ?? "")} confirmé`))
                           .catch((e) => flash("Erreur : " + e.message))
                       }
                     >
-                      Reçu ✓
+                      <Check size={16} strokeWidth={2.25} /> Reçu
                     </Button>
                   </div>
                 </div>
@@ -249,7 +251,7 @@ export default function GroupeDetail() {
                       <p className="text-[11px] font-semibold text-emerald-700">⏩ Payé jusqu’au tour {paidUntil(g, m.id)}</p>
                     )}
                     {g.pending.some((p) => p.memberId === m.id) && (
-                      <p className="text-[11px] font-semibold text-amber-700">⏳ Paiement déclaré, à confirmer</p>
+                      <p className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700"><Clock size={12} strokeWidth={2} />Paiement déclaré, à confirmer</p>
                     )}
                     {arrears(g, m.id).length > 0 && (
                       <p className="text-[11px] font-semibold text-red-600">Doit : tour{arrears(g, m.id).length > 1 ? "s" : ""} {arrears(g, m.id).join(", ")}</p>
@@ -310,7 +312,7 @@ export default function GroupeDetail() {
             {g.payments.length === 0 && <p className="p-4 text-center text-sm text-stone-500">Aucun paiement pour l’instant.</p>}
             {[...g.payouts].reverse().map((v) => (
               <div key={v.id} className="flex items-center gap-3 bg-amber-50/50 px-4 py-3">
-                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-amber-100 text-base">📤</span>
+                <IconBadge icon={ArrowUpRight} ton="ambre" taille="sm" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">Versé à {v.beneficiaryName}</p>
                   <p className="text-xs text-stone-500">
@@ -357,7 +359,7 @@ export default function GroupeDetail() {
                     <p className="text-xs text-stone-500">{dateCourte(dueDate(g, r).toISOString())}</p>
                   </div>
                   <span className="text-xs font-semibold text-stone-500">
-                    {etat === "passe" ? "✓ A reçu" : etat === "actuel" ? "🎁 Ce tour" : fcfa(g.amount * g.members.length)}
+                    {etat === "passe" ? <span className="inline-flex items-center gap-1"><Check size={13} strokeWidth={2.25} />A reçu</span> : etat === "actuel" ? <span className="inline-flex items-center gap-1 text-emerald-700"><Gift size={13} strokeWidth={2} />Ce tour</span> : fcfa(g.amount * g.members.length)}
                   </span>
                 </div>
               );
@@ -367,7 +369,7 @@ export default function GroupeDetail() {
 
         {isTreasurer && MODE_PAIEMENT === "manuel" && (
           <Card className="space-y-2">
-            <p className="text-sm font-bold">📲 Numéro qui reçoit les cotisations</p>
+            <p className="flex items-center gap-2 text-sm font-bold"><IconBadge icon={Smartphone} taille="sm" />Numéro qui reçoit les cotisations</p>
             {numero === null ? (
               <div className="flex items-center justify-between gap-2">
                 <p className="text-sm text-stone-700">
@@ -387,7 +389,7 @@ export default function GroupeDetail() {
                   setPaymentPhone(g.id, numero)
                     .then(() => {
                       setNumero(null);
-                      flash("Numéro enregistré ✅");
+                      flash("Numéro enregistré");
                     })
                     .catch((err) => flash("Erreur : " + err.message));
                 }}
@@ -401,7 +403,7 @@ export default function GroupeDetail() {
 
         {isTreasurer && g.type === "tontine" && !versementTour && ben && netTour > 0 && (
           <Card className={`space-y-2 ${unpaid.length === 0 ? "border-emerald-300 bg-emerald-50/60" : ""}`}>
-            <p className="text-sm font-bold">{unpaid.length === 0 ? "🎉 Tout le monde a payé !" : "Verser la caisse"}</p>
+            <p className="flex items-center gap-2 text-sm font-bold"><IconBadge icon={unpaid.length === 0 ? PartyPopper : ArrowUpRight} ton={unpaid.length === 0 ? "vert" : "gris"} taille="sm" />{unpaid.length === 0 ? "Tout le monde a payé" : "Verser la caisse"}</p>
             <p className="text-xs text-stone-600">
               {unpaid.length === 0
                 ? `La caisse du tour ${g.currentRound} est complète. Verse ${fcfa(netTour)} à ${ben.name}.`
@@ -431,7 +433,7 @@ export default function GroupeDetail() {
             <p className="text-sm font-bold">Espace trésorier</p>
             <p className="text-xs text-stone-500">
               {finished
-                ? "C’est le dernier tour du cycle. Tout le monde aura reçu sa part 🎉"
+                ? "C’est le dernier tour du cycle. Tout le monde aura reçu sa part."
                 : unpaid.length > 0
                   ? `Il reste ${unpaid.length} paiement(s) avant de clôturer ce tour.`
                   : "Tout le monde a payé. Tu peux clôturer le tour."}
@@ -467,7 +469,7 @@ export default function GroupeDetail() {
           onClose={() => setVersement(false)}
           onConfirm={async (v) => {
             await recordPayout(g.id, { ...v, round: g.currentRound, memberId: g.type === "tontine" ? ben?.id : null });
-            flash("Versement enregistré ✅");
+            flash("Versement enregistré");
           }}
         />
       )}
@@ -516,7 +518,7 @@ function Invitation({ id, onJoin }: { id: string; onJoin: () => Promise<void> })
     <Page>
       <Header back="/groupes" title="Invitation" />
       <div className="space-y-5 p-6 text-center">
-        <div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-emerald-100 text-4xl">🤝</div>
+        <IconBadge icon={HeartHandshake} taille="xl" className="mx-auto" />
         <div>
           <p className="text-sm text-stone-500">Tu es invité(e) à rejoindre {TYPE_NOM[info.type] ?? "le groupe"}</p>
           <h2 className="mt-1 text-2xl font-extrabold">{info.name}</h2>

@@ -1,7 +1,7 @@
 "use client";
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
-import { Suspense, useState } from "react";
+import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button, Card, Field, Header, Loading, Page, WhatsAppIcon, btnClass, inputClass, useRequireUser } from "@/components/ui";
 import { dateCourte, fcfa, prenom, telAffiche } from "@/lib/format";
@@ -10,6 +10,8 @@ import { FRAIS_TAUX, MODE_PAIEMENT, OPERATEURS, initierPaiement } from "@/lib/pa
 import { useMe, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { waLink } from "@/lib/whatsapp";
+import { ArrowUpRight, CheckCircle2, Clock, Copy, Check, Lock } from "lucide-react";
+import { IconBadge } from "@/components/icons";
 import type { PayMethod } from "@/lib/types";
 
 const RAPIDES = [2000, 5000, 10000, 25000];
@@ -18,7 +20,8 @@ const RAPIDES = [2000, 5000, 10000, 25000];
 const APPS: Record<string, { android?: string; store?: string; ussd?: string; label: string }> = {
   wave: {
     label: "Ouvrir Wave et payer",
-    android: "intent://#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.wave.personal;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.wave.personal;end",
+    // Format officiel Android (Intent.toUri) ; si l'app ne s'ouvre pas, la page Wave du Play Store s'affiche (bouton « Ouvrir »)
+    android: "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.wave.personal;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.wave.personal;end",
   },
   orange: { label: "Payer avec Orange Money (#144#)", ussd: "#144#" },
   mtn: { label: "Payer avec MTN MoMo (*133#)", ussd: "*133#" },
@@ -51,6 +54,8 @@ function Payer() {
   const [refWave, setRefWave] = useState("");
   const [copie, setCopie] = useState(false);
   const [aide, setAide] = useState("");
+  const [android, setAndroid] = useState(false);
+  useEffect(() => setAndroid(/android/i.test(navigator.userAgent)), []);
   const [erreur, setErreur] = useState("");
 
   if (!ok || !loaded) return <Loading />;
@@ -122,7 +127,7 @@ function Payer() {
       <Page>
         <div className="grid min-h-dvh place-items-center p-6 text-center">
           <div className="w-full space-y-4">
-            <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-amber-100 text-3xl">⏳</div>
+            <IconBadge icon={Clock} ton="ambre" taille="xl" className="mx-auto" />
             <h2 className="text-xl font-extrabold">Paiement déclaré !</h2>
             <p className="text-sm leading-relaxed text-stone-600">
               {tresorier ? prenom(tresorier.name) : "Le trésorier"} va vérifier qu’il a bien reçu <b>{fcfa(total)}</b>, puis confirmer.
@@ -174,7 +179,7 @@ function Payer() {
         )}
         {enAttente.length > 0 && (
           <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-amber-200">
-            ⏳ {enAttente.length} paiement(s) déjà déclaré(s), en attente de confirmation du trésorier.
+            <Clock size={15} strokeWidth={2} className="mr-1 inline -mt-0.5" />{enAttente.length} paiement(s) déjà déclaré(s), en attente de confirmation du trésorier.
           </p>
         )}
         <Card>
@@ -194,7 +199,7 @@ function Payer() {
               </div>
             </div>
           ) : rienAPayer ? (
-            <p className="mt-2 text-sm font-semibold text-emerald-700">✅ Tout est payé jusqu’au dernier tour possible.</p>
+            <p className="mt-2 inline-flex items-center gap-1.5 text-sm font-semibold text-emerald-700"><CheckCircle2 size={16} strokeWidth={2} />Tout est payé jusqu’au dernier tour possible.</p>
           ) : (
             <div className="mt-3 space-y-3">
               {choix.length > 1 && (
@@ -267,35 +272,36 @@ function Payer() {
                           setTimeout(() => setCopie(false), 2000);
                         });
                       }}
-                      className="rounded-xl bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-700"
+                      className="inline-flex items-center gap-1.5 rounded-xl bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-700"
                     >
-                      {copie ? "Copié ✓" : "Copier"}
+                      {copie ? <><Check size={15} strokeWidth={2.25} /> Copié</> : <><Copy size={15} strokeWidth={1.9} /> Copier</>}
                     </button>
                   </div>
                 </div>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    const num = numeroCaisse.replace(/\D/g, "").slice(-10);
-                    try {
-                      await navigator.clipboard?.writeText(num);
-                    } catch {}
-                    const app = APPS[method];
-                    const android = /android/i.test(navigator.userAgent);
-                    if (app.ussd) {
-                      setAide(`Numéro copié ✓ Dans le menu, choisis « Transfert », colle le numéro ${telAffiche(num)} et envoie ${fcfa(total)}.`);
-                      window.location.href = `tel:${encodeURIComponent(app.ussd)}`;
-                    } else if (android && app.android) {
-                      setAide(`Numéro copié ✓ Dans Wave, choisis « Envoyer », colle le numéro ${telAffiche(num)} et envoie ${fcfa(total)}.`);
-                      window.location.href = app.android;
-                    } else {
-                      setAide(`Numéro copié ✓ Ouvre ton application ${op.nom}, choisis « Envoyer », colle le numéro ${telAffiche(num)} et envoie ${fcfa(total)}.`);
-                    }
-                  }}
-                  className={btnClass(method === "wave" ? "primary" : "secondary", `w-full ${method === "wave" ? "!from-[#3dd0ff] !to-[#1aa9e6] !shadow-sky-900/20" : ""}`)}
-                >
-                  {APPS[method].label} →
-                </button>
+                {(() => {
+                  const num = numeroCaisse.replace(/\D/g, "").slice(-10);
+                  const app = APPS[method];
+                  // Lien direct (pas d'attente avant l'ouverture, sinon Android bloque)
+                  const href = app.ussd ? `tel:${encodeURIComponent(app.ussd)}` : android && app.android ? app.android : undefined;
+                  const consigne = app.ussd
+                    ? `Numéro copié. Dans le menu, choisis « Transfert », colle le numéro ${telAffiche(num)} et envoie ${fcfa(total)}.`
+                    : `Numéro copié. Dans ${op.nom}, choisis « Envoyer », colle le numéro ${telAffiche(num)} et envoie ${fcfa(total)}.${href ? "" : " Ouvre ton application " + op.nom + " maintenant."}`;
+                  return (
+                    <a
+                      href={href}
+                      onClick={() => {
+                        navigator.clipboard?.writeText(num).catch(() => {});
+                        setAide(consigne);
+                      }}
+                      className={btnClass(method === "wave" ? "primary" : "secondary", `w-full cursor-pointer ${method === "wave" ? "!from-[#3dd0ff] !to-[#1aa9e6] !shadow-sky-900/20" : ""}`)}
+                    >
+                      {app.label} <ArrowUpRight size={17} strokeWidth={2} />
+                    </a>
+                  );
+                })()}
+                <p className="text-[11px] leading-snug text-stone-500">
+                  Astuce : si l’application ne s’ouvre pas, ouvre ce lien dans <b>Chrome</b> (et non dans WhatsApp), ou ouvre {op.nom} toi-même : le numéro est déjà copié.
+                </p>
                 {aide && <p className="rounded-xl bg-white px-3 py-2 text-xs font-medium text-stone-700 ring-1 ring-stone-200">{aide}</p>}
                 <p className="text-sm font-bold">2. Reviens ici et confirme</p>
                 <Field label="Référence de la transaction (facultatif)" hint="Elle se trouve dans le SMS ou l’historique de ton application. Elle aide le trésorier à vérifier.">
@@ -319,9 +325,10 @@ function Payer() {
                 : `Payer ${fcfa(total)} avec ${op.nom}`}
             </Button>
             <p className="text-center text-xs leading-relaxed text-stone-500">
+              <Lock size={12} strokeWidth={2} className="mr-1 inline -mt-0.5" />
               {MODE_PAIEMENT === "manuel"
-                ? "🔒 Ton paiement sera validé par le trésorier après vérification. Tout le groupe verra le reçu."
-                : `🔒 Tu paies exactement ${fcfa(total)}. Les frais (≈${Math.round(FRAIS_TAUX * 100)} %) sont pris sur la caisse du groupe.`}
+                ? "Ton paiement sera validé par le trésorier après vérification. Tout le groupe verra le reçu."
+                : `Tu paies exactement ${fcfa(total)}. Les frais (≈${Math.round(FRAIS_TAUX * 100)} %) sont pris sur la caisse du groupe.`}
               {MODE_PAIEMENT !== "manuel" && !pourAutrui ? ` Reçu visible par tout le groupe.` : ""}
             </p>
           </>
