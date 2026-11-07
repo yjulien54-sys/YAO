@@ -41,6 +41,7 @@ interface Ctx {
   /** Le trésorier confirme (ok = true) ou refuse un paiement déclaré. */
   confirmPayments: (paymentIds: string[], ok: boolean) => Promise<void>;
   setPaymentPhone: (groupId: string, phone: string) => Promise<void>;
+  setWaveLink: (groupId: string, link: string) => Promise<void>;
   recordPayout: (groupId: string, p: { round: number; memberId?: string | null; beneficiaryName: string; amount: number; method: PayoutMethod; note?: string }) => Promise<void>;
   nextRound: (groupId: string) => Promise<void>;
   joinGroup: (groupId: string) => Promise<void>;
@@ -291,6 +292,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [reload]
   );
 
+  const setWaveLink = useCallback(
+    async (groupId: string, link: string) => {
+      const { error } = await supabase.from("groups").update({ wave_link: link.trim() || null }).eq("id", groupId);
+      fail(error);
+      await reload();
+    },
+    [reload]
+  );
+
   const recordPayment = useCallback(
     async (groupId: string, memberId: string, method: PayMethod, amount?: number) =>
       (await recordPayments(groupId, memberId, method, { amount }))[0],
@@ -336,7 +346,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider
-      value={{ ready, loaded, user, userId, groups, login, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, recordPayout, nextRound, joinGroup }}
+      value={{ ready, loaded, user, userId, groups, login, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, setWaveLink, recordPayout, nextRound, joinGroup }}
     >
       {children}
     </StoreContext.Provider>

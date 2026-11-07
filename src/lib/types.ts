@@ -62,5 +62,6 @@ export interface Group {
   pending: Payment[]; // paiements déclarés, en attente de confirmation du trésorier
   payouts: Payout[];
   paymentPhone?: string; // numéro Wave qui reçoit les cotisations
+  waveLink?: string; // lien de paiement Wave Business (montant pré-rempli)
   createdAt: string;
 }

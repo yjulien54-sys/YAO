@@ -51,6 +51,7 @@ export const mapGroup = (r: any): Group => {
       .sort((a: Payment, b: Payment) => a.date.localeCompare(b.date)),
     pending: (r.payments ?? []).map(mapPayment).filter((p: Payment) => p.status === "en_attente"),
     paymentPhone: r.payment_phone ?? undefined,
+    waveLink: r.wave_link ?? undefined,
     payouts: (r.payouts ?? []).map(mapPayout).sort((a: Payout, b: Payout) => a.date.localeCompare(b.date)),
     createdAt: r.created_at,
   };

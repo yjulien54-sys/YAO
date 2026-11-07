@@ -8,11 +8,11 @@ import { Avatar, Button, Card, Header, Loading, Page, Progress, StatusBadge, Wha
 import { dateCourte, dateLongue, fcfa, prenom, telAffiche } from "@/lib/format";
 import { TYPE_LABEL, amountDue, arrears, beneficiary, caisse, dueDate, isLate, memberStatus, netDuTour, paidUntil, payoutFor, paymentsOf, roundStats, roundsToPay, sum, unpaidMembers } from "@/lib/logic";
 import { PayoutModal } from "@/components/PayoutModal";
-import { METHOD_LABEL, MODE_PAIEMENT } from "@/lib/payments";
+import { METHOD_LABEL, MODE_PAIEMENT, lienWaveValide } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
 import { invitation } from "@/lib/whatsapp";
 import { MessageModal } from "@/components/MessageModal";
-import { ArrowUpRight, CalendarDays, Check, CheckCircle2, Clock, Gift, HeartHandshake, PartyPopper, Smartphone, UserPlus, X } from "lucide-react";
+import { ArrowUpRight, CalendarDays, Link2, Check, CheckCircle2, Clock, Gift, HeartHandshake, PartyPopper, Smartphone, UserPlus, X } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 import type { Member } from "@/lib/types";
 
@@ -21,7 +21,7 @@ type Tab = "membres" | "historique" | "tours";
 export default function GroupeDetail() {
   const ok = useRequireUser();
   const { id } = useParams<{ id: string }>();
-  const { getGroup, recordPayment, recordPayout, confirmPayments, setPaymentPhone, addMember, nextRound, joinGroup, loaded } = useStore();
+  const { getGroup, recordPayment, recordPayout, confirmPayments, setPaymentPhone, setWaveLink, addMember, nextRound, joinGroup, loaded } = useStore();
   const g = getGroup(id);
   const me = useMe(g);
   const [tab, setTab] = useState<Tab>("membres");
@@ -31,6 +31,7 @@ export default function GroupeDetail() {
   const [msg, setMsg] = useState<{ type: "relance" | "groupe"; member?: Member } | null>(null);
   const [versement, setVersement] = useState(false);
   const [numero, setNumero] = useState<string | null>(null);
+  const [lienWave, setLienWave] = useState<string | null>(null);
 
   if (!ok || !loaded) return <Loading />;
   if (!g) return <Invitation id={id} onJoin={() => joinGroup(id)} />;
@@ -396,6 +397,46 @@ export default function GroupeDetail() {
               >
                 <input className={inputClass} inputMode="tel" value={numero} onChange={(e) => setNumero(e.target.value)} placeholder="07 07 12 34 56" />
                 <Button type="submit" className="shrink-0 !px-4">OK</Button>
+              </form>
+            )}
+          </Card>
+        )}
+
+        {isTreasurer && MODE_PAIEMENT === "manuel" && (
+          <Card className="space-y-2">
+            <p className="flex items-center gap-2 text-sm font-bold"><IconBadge icon={Link2} ton="bleu" taille="sm" />Lien de paiement Wave Business <span className="font-normal text-stone-400">(facultatif)</span></p>
+            {lienWave === null ? (
+              <div className="flex items-center justify-between gap-2">
+                <p className="min-w-0 text-xs text-stone-600">
+                  {lienWaveValide(g.waveLink) ? (
+                    <><b className="block truncate text-stone-800">{g.waveLink}</b>Wave s’ouvre avec le montant déjà rempli pour les membres.</>
+                  ) : (
+                    "Avec ton lien Wave Business, Wave s’ouvre chez le membre avec le montant déjà rempli. Tu le trouves dans l’app Wave Business."
+                  )}
+                </p>
+                <button onClick={() => setLienWave(g.waveLink ?? "")} className="shrink-0 rounded-lg bg-stone-100 px-3 py-1.5 text-sm font-semibold text-stone-700">
+                  {g.waveLink ? "Modifier" : "Ajouter"}
+                </button>
+              </div>
+            ) : (
+              <form
+                className="space-y-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (lienWave.trim() && !lienWaveValide(lienWave)) return flash("Le lien doit commencer par https://pay.wave.com/");
+                  setWaveLink(g.id, lienWave)
+                    .then(() => {
+                      setLienWave(null);
+                      flash(lienWave.trim() ? "Lien Wave enregistré" : "Lien Wave retiré");
+                    })
+                    .catch((err) => flash("Erreur : " + err.message));
+                }}
+              >
+                <input className={inputClass} value={lienWave} onChange={(e) => setLienWave(e.target.value)} placeholder="https://pay.wave.com/m/…" inputMode="url" />
+                <div className="grid grid-cols-2 gap-2">
+                  <Button type="button" variant="secondary" className="!py-2.5" onClick={() => setLienWave(null)}>Annuler</Button>
+                  <Button type="submit" className="!py-2.5">Enregistrer</Button>
+                </div>
               </form>
             )}
           </Card>

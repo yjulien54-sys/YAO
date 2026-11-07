@@ -51,3 +51,6 @@ create policy "paiements: ajout" on public.payments for insert with check (
 drop policy if exists "paiements: validation" on public.payments;
 create policy "paiements: validation" on public.payments for update
   using (public.can_manage(group_id)) with check (public.can_manage(group_id));
+
+-- Lien de paiement Wave Business du trésorier (ouvre Wave avec le montant pré-rempli)
+alter table public.groups add column if not exists wave_link text;

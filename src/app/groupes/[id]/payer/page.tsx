@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button, Card, Field, Header, Loading, Page, WhatsAppIcon, btnClass, inputClass, useRequireUser } from "@/components/ui";
 import { dateCourte, fcfa, prenom, telAffiche } from "@/lib/format";
 import { dueDate, roundAmount, roundsToPay } from "@/lib/logic";
-import { FRAIS_TAUX, MODE_PAIEMENT, OPERATEURS, initierPaiement } from "@/lib/payments";
+import { FRAIS_TAUX, MODE_PAIEMENT, OPERATEURS, initierPaiement, lienWaveAvecMontant, lienWaveValide } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { waLink } from "@/lib/whatsapp";
@@ -291,8 +291,11 @@ function Payer() {
                   const num = numeroCaisse.replace(/\D/g, "").slice(-10);
                   const app = APPS[method];
                   // Lien direct (pas d'attente avant l'ouverture, sinon Android bloque)
-                  const href = app.ussd ? `tel:${encodeURIComponent(app.ussd)}` : android && app.android ? app.android : undefined;
-                  const consigne = app.ussd
+                  const lienBusiness = method === "wave" && lienWaveValide(g.waveLink) ? lienWaveAvecMontant(g.waveLink!, total) : undefined;
+                  const href = lienBusiness ?? (app.ussd ? `tel:${encodeURIComponent(app.ussd)}` : android && app.android ? app.android : undefined);
+                  const consigne = lienBusiness
+                    ? `Wave s’ouvre avec ${fcfa(total)} déjà rempli. Vérifie le nom ${tresorier ? tresorier.name : "du trésorier"} et valide avec ton code.`
+                    : app.ussd
                     ? `Numéro copié. Dans le menu, choisis « Transfert », colle le numéro ${telAffiche(num)}${tresorier ? ` (${tresorier.name})` : ""} et envoie ${fcfa(total)}.`
                     : `Numéro copié. Dans ${op.nom}, choisis « Envoyer », colle le numéro ${telAffiche(num)}${tresorier ? ` (${tresorier.name})` : ""} et envoie ${fcfa(total)}.${href ? "" : " Ouvre ton application " + op.nom + " maintenant."}`;
                   return (
@@ -304,7 +307,7 @@ function Payer() {
                       }}
                       className={btnClass(method === "wave" ? "primary" : "secondary", `w-full cursor-pointer ${method === "wave" ? "!from-[#3dd0ff] !to-[#1aa9e6] !shadow-sky-900/20" : ""}`)}
                     >
-                      {app.label} <ArrowUpRight size={17} strokeWidth={2} />
+                      {lienBusiness ? `Payer ${fcfa(total)} avec Wave` : app.label} <ArrowUpRight size={17} strokeWidth={2} />
                     </a>
                   );
                 })()}

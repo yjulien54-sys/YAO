@@ -25,6 +25,16 @@ export const fraisMobileMoney = (montant: number, method: PayMethod) =>
   method === "especes" || MODE_PAIEMENT === "manuel" ? 0 : Math.round(montant * FRAIS_TAUX);
 
 
+/** Lien de paiement Wave Business valide ? (ex : https://pay.wave.com/m/M_xxx/c/ci/) */
+export const lienWaveValide = (l?: string) => !!l && /^https:\/\/pay\.wave\.com\//i.test(l.trim());
+
+/** Ajoute le montant au lien de paiement Wave Business */
+export function lienWaveAvecMontant(lien: string, montant: number) {
+  const u = new URL(lien.trim());
+  u.searchParams.set("amount", String(Math.round(montant)));
+  return u.toString();
+}
+
 export const METHOD_LABEL: Record<PayMethod | "virement" | "cinetpay", string> = {
   wave: "Wave",
   orange: "Orange Money",
