@@ -20,7 +20,9 @@ export default function RecuPage() {
 function Recu() {
   const ok = useRequireUser();
   const { id, pid } = useParams<{ id: string; pid: string }>();
-  const nouveau = useSearchParams().get("nouveau") === "1";
+  const sp = useSearchParams();
+  const nouveau = sp.get("nouveau") === "1";
+  const nbTours = Number(sp.get("n") ?? "1");
   const { getGroup, loaded } = useStore();
   const g = getGroup(id);
   const p = g?.payments.find((x) => x.id === pid);
@@ -55,6 +57,7 @@ function Recu() {
             <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-emerald-100 text-3xl">✅</div>
             <h2 className="mt-3 text-xl font-extrabold">Paiement réussi !</h2>
             <p className="text-sm text-stone-600">Le groupe a été mis à jour pour tout le monde.</p>
+            {nbTours > 1 && <p className="mt-2 text-sm font-semibold text-emerald-700">⏩ {nbTours} tours payés d’un coup (un reçu par tour, visibles dans l’historique)</p>}
           </div>
         )}
         <div className="relative rounded-2xl border border-stone-200 bg-white p-5 shadow-sm">

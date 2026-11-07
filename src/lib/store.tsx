@@ -2,9 +2,11 @@
 
 import { createContext, useCallback, useContext, useEffect, useRef, useState } from "react";
 import { reference } from "./format";
-import { amountDue } from "./logic";
+import { roundAmount } from "./logic";
+import { fraisMobileMoney } from "./payments";
+import { mapGroup, mapPayment } from "./mappers";
 import { supabase } from "./supabase";
-import type { Frequency, Group, GroupType, Member, Payment, PayMethod, User } from "./types";
+import type { Frequency, Group, GroupType, Payment, PayoutMethod, PayMethod, User } from "./types";
 
 export interface NewGroupInput {
   name: string;
@@ -32,46 +34,16 @@ interface Ctx {
   createGroup: (input: NewGroupInput) => Promise<string>;
   addMember: (groupId: string, name: string, phone: string) => Promise<void>;
   recordPayment: (groupId: string, memberId: string, method: PayMethod, amount?: number) => Promise<Payment>;
+  /** Paie un ou plusieurs tours (paiement en avance / arriérés). Pour une collecte, utiliser `amount`. */
+  recordPayments: (groupId: string, memberId: string, method: PayMethod, opts: { rounds?: number[]; amount?: number }) => Promise<Payment[]>;
+  recordPayout: (groupId: string, p: { round: number; memberId?: string | null; beneficiaryName: string; amount: number; method: PayoutMethod; note?: string }) => Promise<void>;
   nextRound: (groupId: string) => Promise<void>;
   joinGroup: (groupId: string) => Promise<void>;
 }
 
 const StoreContext = createContext<Ctx | null>(null);
 
-/* eslint-disable @typescript-eslint/no-explicit-any */
-const mapPayment = (p: any): Payment => ({
-  id: p.id,
-  memberId: p.member_id,
-  amount: p.amount,
-  penalty: p.penalty,
-  method: p.method,
-  round: p.round,
-  date: p.created_at,
-  reference: p.reference,
-});
 
-const mapGroup = (r: any): Group => {
-  const members: (Member & { pos: number })[] = (r.members ?? [])
-    .map((m: any) => ({ id: m.id, profileId: m.profile_id, name: m.name, phone: m.phone, role: m.role, pos: m.turn_position }))
-    .sort((a: any, b: any) => a.pos - b.pos);
-  return {
-    id: r.id,
-    name: r.name,
-    type: r.type,
-    description: r.description ?? undefined,
-    amount: r.amount,
-    frequency: r.frequency,
-    startDate: r.start_date,
-    penalty: r.penalty,
-    target: r.target ?? undefined,
-    members: members.map(({ pos: _pos, ...m }) => m), // eslint-disable-line @typescript-eslint/no-unused-vars
-    order: members.map((m) => m.id),
-    currentRound: r.current_round,
-    payments: (r.payments ?? []).map(mapPayment).sort((a: Payment, b: Payment) => a.date.localeCompare(b.date)),
-    createdAt: r.created_at,
-  };
-};
-/* eslint-enable @typescript-eslint/no-explicit-any */
 
 const fail = (error: { message: string } | null) => {
   if (error) throw new Error(error.message);
@@ -86,10 +58,14 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const reload = useCallback(async () => {
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from("groups")
-      .select("*, members(*), payments(*)")
+      .select("*, members(*), payments(*), payouts(*)")
       .order("created_at", { ascending: false });
+    if (error) {
+      // base pas encore mise à jour (table payouts absente)
+      ({ data, error } = await supabase.from("groups").select("*, members(*), payments(*)").order("created_at", { ascending: false }));
+    }
     if (!error && data) setGroups(data.map(mapGroup));
     setLoaded(true);
   }, []);
@@ -123,6 +99,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       .on("postgres_changes", { event: "*", schema: "public", table: "payments" }, schedule)
       .on("postgres_changes", { event: "*", schema: "public", table: "members" }, schedule)
       .on("postgres_changes", { event: "*", schema: "public", table: "groups" }, schedule)
+      .on("postgres_changes", { event: "*", schema: "public", table: "payouts" }, schedule)
       .subscribe();
     const onFocus = () => schedule();
     window.addEventListener("focus", onFocus);
@@ -217,30 +194,62 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [groups, reload]
   );
 
-  const recordPayment = useCallback(
-    async (groupId: string, memberId: string, method: PayMethod, amount?: number) => {
+  const recordPayments = useCallback(
+    async (groupId: string, memberId: string, method: PayMethod, opts: { rounds?: number[]; amount?: number }) => {
       const g = groups.find((x) => x.id === groupId)!;
-      const due = amountDue(g);
+      const rows =
+        g.type === "collecte"
+          ? [{ round: 1, amount: opts.amount ?? 0, penalty: 0 }]
+          : (opts.rounds?.length ? opts.rounds : [g.currentRound]).map((r) => {
+              const due = roundAmount(g, r);
+              return { round: r, amount: due.base, penalty: due.penalty };
+            });
       const { data, error } = await supabase
         .from("payments")
-        .insert({
-          group_id: groupId,
-          member_id: memberId,
-          round: g.currentRound,
-          amount: g.type === "collecte" ? amount ?? 0 : due.base,
-          penalty: g.type === "collecte" ? 0 : due.penalty,
-          method,
-          reference: reference(),
-        })
-        .select()
-        .single();
+        .insert(
+          rows.map((r) => ({
+            group_id: groupId,
+            member_id: memberId,
+            round: r.round,
+            amount: r.amount,
+            penalty: r.penalty,
+            fees: fraisMobileMoney(r.amount + r.penalty, method),
+            method,
+            reference: reference(),
+          }))
+        )
+        .select();
       fail(error);
-      const p = mapPayment(data);
-      setGroups((gs) => gs.map((x) => (x.id === groupId ? { ...x, payments: [...x.payments, p] } : x)));
+      const ps = (data ?? []).map(mapPayment);
+      setGroups((gs) => gs.map((x) => (x.id === groupId ? { ...x, payments: [...x.payments, ...ps] } : x)));
       reload();
-      return p;
+      return ps;
     },
     [groups, reload]
+  );
+
+  const recordPayment = useCallback(
+    async (groupId: string, memberId: string, method: PayMethod, amount?: number) =>
+      (await recordPayments(groupId, memberId, method, { amount }))[0],
+    [recordPayments]
+  );
+
+  const recordPayout = useCallback(
+    async (groupId: string, p: { round: number; memberId?: string | null; beneficiaryName: string; amount: number; method: PayoutMethod; note?: string }) => {
+      const { error } = await supabase.from("payouts").insert({
+        group_id: groupId,
+        round: p.round,
+        member_id: p.memberId ?? null,
+        beneficiary_name: p.beneficiaryName.trim(),
+        amount: Math.round(p.amount),
+        method: p.method,
+        note: p.note?.trim() || null,
+        reference: reference().replace("CTZ-", "VRS-"),
+      });
+      fail(error);
+      await reload();
+    },
+    [reload]
   );
 
   const nextRound = useCallback(
@@ -264,7 +273,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider
-      value={{ ready, loaded, user, userId, groups, login, logout, reload, getGroup, createGroup, addMember, recordPayment, nextRound, joinGroup }}
+      value={{ ready, loaded, user, userId, groups, login, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, recordPayout, nextRound, joinGroup }}
     >
       {children}
     </StoreContext.Provider>

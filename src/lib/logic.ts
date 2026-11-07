@@ -55,3 +55,56 @@ export const totalRounds = (g: Group) => (g.type === "tontine" ? g.order.length 
 
 export const unpaidMembers = (g: Group) =>
   g.members.filter((m) => memberStatus(g, m.id) !== "paye");
+
+/* ---------- Paiements en avance, arriérés, frais, versements ---------- */
+
+/** Dernier tour qu'on peut payer d'avance */
+export const maxRound = (g: Group) => (g.type === "tontine" ? g.order.length : g.currentRound + 11);
+
+export const isPaid = (g: Group, memberId: string, round: number) =>
+  g.payments.some((p) => p.memberId === memberId && p.round === round);
+
+export const roundAmount = (g: Group, round: number) => {
+  const penalty = isLate(g, round) ? g.penalty : 0;
+  return { base: g.amount, penalty, total: g.amount + penalty };
+};
+
+/** Tours que ce membre peut payer, dans l'ordre (arriérés d'abord pour une tontine). */
+export function roundsToPay(g: Group, memberId: string): number[] {
+  if (g.type === "collecte") return [];
+  const start = g.type === "tontine" ? 1 : g.currentRound;
+  const out: number[] = [];
+  for (let r = start; r <= maxRound(g); r++) if (!isPaid(g, memberId, r)) out.push(r);
+  return out;
+}
+
+/** Tours passés non payés (tontine) */
+export const arrears = (g: Group, memberId: string) =>
+  g.type === "tontine" ? roundsToPay(g, memberId).filter((r) => r < g.currentRound) : [];
+
+/** Dernier tour payé d'affilée à partir du tour en cours (0 si le tour en cours n'est pas payé). */
+export function paidUntil(g: Group, memberId: string) {
+  let r = g.currentRound;
+  if (!isPaid(g, memberId, r)) return 0;
+  while (isPaid(g, memberId, r + 1)) r++;
+  return r;
+}
+
+export const feesOf = (ps: Payment[]) => ps.reduce((s, p) => s + (p.fees ?? 0), 0);
+
+export const payoutFor = (g: Group, round = g.currentRound) =>
+  g.payouts.find((p) => p.round === round && p.status !== "echoue");
+
+/** Caisse : entrées nettes (après frais) moins les versements. */
+export function caisse(g: Group) {
+  const brut = sum(g.payments);
+  const frais = feesOf(g.payments);
+  const verse = g.payouts.filter((p) => p.status !== "echoue").reduce((s, p) => s + p.amount, 0);
+  return { brut, frais, net: brut - frais, verse, solde: brut - frais - verse };
+}
+
+/** Montant net à verser pour le tour en cours (tontine) */
+export function netDuTour(g: Group, round = g.currentRound) {
+  const ps = g.payments.filter((p) => p.round === round);
+  return sum(ps) - feesOf(ps);
+}

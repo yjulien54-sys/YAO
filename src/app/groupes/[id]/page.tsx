@@ -6,23 +6,28 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Avatar, Button, Card, Header, Loading, Page, Progress, StatusBadge, WhatsAppIcon, btnClass, inputClass, useRequireUser } from "@/components/ui";
 import { dateCourte, dateLongue, fcfa, prenom, telAffiche } from "@/lib/format";
-import { TYPE_LABEL, amountDue, beneficiary, dueDate, isLate, memberStatus, paymentsOf, roundStats, sum, unpaidMembers } from "@/lib/logic";
+import { TYPE_LABEL, amountDue, arrears, beneficiary, caisse, dueDate, isLate, memberStatus, netDuTour, paidUntil, payoutFor, paymentsOf, roundStats, roundsToPay, sum, unpaidMembers } from "@/lib/logic";
+import { PayoutModal } from "@/components/PayoutModal";
 import { METHOD_LABEL } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
-import { invitation, relanceGroupe, relanceMembre } from "@/lib/whatsapp";
+import { invitation } from "@/lib/whatsapp";
+import { MessageModal } from "@/components/MessageModal";
+import type { Member } from "@/lib/types";
 
 type Tab = "membres" | "historique" | "tours";
 
 export default function GroupeDetail() {
   const ok = useRequireUser();
   const { id } = useParams<{ id: string }>();
-  const { getGroup, recordPayment, addMember, nextRound, joinGroup, loaded } = useStore();
+  const { getGroup, recordPayment, recordPayout, addMember, nextRound, joinGroup, loaded } = useStore();
   const g = getGroup(id);
   const me = useMe(g);
   const [tab, setTab] = useState<Tab>("membres");
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [toast, setToast] = useState("");
+  const [msg, setMsg] = useState<{ type: "relance" | "groupe"; member?: Member } | null>(null);
+  const [versement, setVersement] = useState(false);
 
   if (!ok || !loaded) return <Loading />;
   if (!g) return <Invitation id={id} onJoin={() => joinGroup(id)} />;
@@ -35,6 +40,12 @@ export default function GroupeDetail() {
   const myStatus = me ? memberStatus(g, me.id) : undefined;
   const unpaid = unpaidMembers(g);
   const finished = g.type === "tontine" && g.currentRound >= g.order.length;
+  const cs = caisse(g);
+  const netTour = netDuTour(g);
+  const versementTour = g.type === "tontine" ? payoutFor(g) : undefined;
+  const mesArrieres = me ? arrears(g, me.id) : [];
+  const peutAvancer = me && g.type !== "collecte" && roundsToPay(g, me.id).length > 0;
+  const fraisTour = st.collected - netTour;
 
   const flash = (t: string) => {
     setToast(t);
@@ -62,6 +73,14 @@ export default function GroupeDetail() {
             <p className="text-3xl font-extrabold">{fcfa(st.collected)}</p>
             <p className="text-sm text-emerald-100">sur {fcfa(st.expected)} {g.type === "collecte" ? "d’objectif" : "attendus"}</p>
             <Progress value={st.progress} className="mt-3 bg-white/25" />
+            {(g.type === "collecte" ? cs.frais : fraisTour) > 0 && (
+              <p className="mt-2 text-xs text-emerald-100">
+                Frais Mobile Money : −{fcfa(g.type === "collecte" ? cs.frais : fraisTour)} · Net : <b className="text-white">{fcfa(g.type === "collecte" ? cs.net : netTour)}</b>
+              </p>
+            )}
+            {g.type !== "tontine" && cs.verse > 0 && (
+              <p className="mt-1 text-xs text-emerald-100">Déjà versé : {fcfa(cs.verse)} · Solde de la caisse : <b className="text-white">{fcfa(cs.solde)}</b></p>
+            )}
           </div>
           <div className="grid grid-cols-3 divide-x divide-stone-200 text-center">
             <Stat n={st.counts.paye} label="Payé" cls="text-emerald-700" />
@@ -82,6 +101,11 @@ export default function GroupeDetail() {
                 <span className="font-bold text-emerald-700">{fcfa(st.expected)}</span>
               </div>
             )}
+            {versementTour && (
+              <div className="rounded-xl bg-emerald-50 px-3 py-2 text-emerald-800 ring-1 ring-emerald-200">
+                ✅ Caisse versée à <b>{versementTour.beneficiaryName}</b> : {fcfa(versementTour.amount)} ({METHOD_LABEL[versementTour.method]}, {dateCourte(versementTour.date)})
+              </div>
+            )}
             <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${late ? "bg-red-50 text-red-700" : "bg-stone-100 text-stone-700"}`}>
               <span>📅 Échéance : <b>{dateCourte(dueDate(g, g.currentRound).toISOString())}</b></span>
               {late && g.penalty > 0 && <span className="text-xs font-semibold">+{fcfa(g.penalty)} de pénalité</span>}
@@ -93,23 +117,31 @@ export default function GroupeDetail() {
 
         {/* Actions */}
         <div className="space-y-2">
-          {me && myStatus !== "paye" && (
+          {me && mesArrieres.length > 0 && (
+            <Link href={`/groupes/${g.id}/payer`} className={btnClass("primary", "w-full text-base !bg-red-600 hover:!bg-red-700")}>
+              Régler mes arriérés ({mesArrieres.length} tour{mesArrieres.length > 1 ? "s" : ""})
+            </Link>
+          )}
+          {me && mesArrieres.length === 0 && myStatus !== "paye" && (
             <Link href={`/groupes/${g.id}/payer`} className={btnClass("primary", "w-full text-base")}>
               {g.type === "collecte" ? "Participer" : `Payer ma part · ${fcfa(due.total)}`}
             </Link>
           )}
           {me && myStatus === "paye" && g.type !== "collecte" && (
             <div className="rounded-xl bg-emerald-50 px-4 py-3 text-center text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200">
-              ✅ Tu as payé ta part pour ce tour
+              ✅ {paidUntil(g, me.id) > g.currentRound ? `Tu as payé jusqu’au tour ${paidUntil(g, me.id)}` : "Tu as payé ta part pour ce tour"}
+              {peutAvancer && mesArrieres.length === 0 && (
+                <Link href={`/groupes/${g.id}/payer`} className="mt-1 block text-xs font-semibold text-emerald-800 underline">Payer des tours en avance</Link>
+              )}
             </div>
           )}
           {me && myStatus === "paye" && g.type === "collecte" && (
             <Link href={`/groupes/${g.id}/payer`} className={btnClass("secondary", "w-full")}>Ajouter une participation</Link>
           )}
           <div className="grid grid-cols-2 gap-2">
-            <a href={relanceGroupe(g)} target="_blank" rel="noreferrer" className={btnClass("whatsapp", unpaid.length === 0 ? "pointer-events-none opacity-50" : "")}>
-              <WhatsAppIcon /> Relancer ({unpaid.length})
-            </a>
+            <button onClick={() => setMsg({ type: "groupe" })} disabled={g.type !== "collecte" && unpaid.length === 0} className={btnClass("whatsapp", "disabled:opacity-50")}>
+              <WhatsAppIcon /> {g.type === "collecte" ? "Partager l’appel" : `Relancer (${unpaid.length})`}
+            </button>
             <a href={invitation(g)} target="_blank" rel="noreferrer" className={btnClass("secondary")}>
               Inviter
             </a>
@@ -140,14 +172,20 @@ export default function GroupeDetail() {
                       {m.role === "tresorier" && <span className="ml-1 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-orange-700">Trésorier</span>}
                     </p>
                     <p className="text-xs text-stone-500">{telAffiche(m.phone)}{paid > 0 && g.type === "collecte" && ` · ${fcfa(paid)}`}</p>
+                    {g.type !== "collecte" && paidUntil(g, m.id) > g.currentRound && (
+                      <p className="text-[11px] font-semibold text-emerald-700">⏩ Payé jusqu’au tour {paidUntil(g, m.id)}</p>
+                    )}
+                    {arrears(g, m.id).length > 0 && (
+                      <p className="text-[11px] font-semibold text-red-600">Doit : tour{arrears(g, m.id).length > 1 ? "s" : ""} {arrears(g, m.id).join(", ")}</p>
+                    )}
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
                     <StatusBadge status={s} />
                     {s !== "paye" && m.id !== me?.id && (
                       <div className="flex gap-1">
-                        <a href={relanceMembre(g, m)} target="_blank" rel="noreferrer" title="Relancer sur WhatsApp" className="rounded-lg bg-[#25D366]/10 p-1.5 text-[#128C7E] hover:bg-[#25D366]/20">
+                        <button onClick={() => setMsg({ type: "relance", member: m })} title="Relancer sur WhatsApp" className="rounded-lg bg-[#25D366]/10 p-1.5 text-[#128C7E] hover:bg-[#25D366]/20">
                           <WhatsAppIcon size={16} />
-                        </a>
+                        </button>
                         {isTreasurer && g.type !== "collecte" && (
                           <button
                             onClick={() => {
@@ -194,6 +232,18 @@ export default function GroupeDetail() {
         {tab === "historique" && (
           <Card className="divide-y divide-stone-100 !p-0">
             {g.payments.length === 0 && <p className="p-4 text-center text-sm text-stone-500">Aucun paiement pour l’instant.</p>}
+            {[...g.payouts].reverse().map((v) => (
+              <div key={v.id} className="flex items-center gap-3 bg-amber-50/50 px-4 py-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-amber-100 text-base">📤</span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-semibold">Versé à {v.beneficiaryName}</p>
+                  <p className="text-xs text-stone-500">
+                    {dateLongue(v.date)} · {METHOD_LABEL[v.method]}{g.type === "tontine" && ` · Tour ${v.round}`}{v.note && ` · ${v.note}`}
+                  </p>
+                </div>
+                <p className="text-sm font-bold text-amber-700">−{fcfa(v.amount)}</p>
+              </div>
+            ))}
             {[...g.payments].reverse().map((p) => {
               const m = g.members.find((x) => x.id === p.memberId);
               return (
@@ -239,6 +289,33 @@ export default function GroupeDetail() {
           </Card>
         )}
 
+        {isTreasurer && g.type === "tontine" && !versementTour && ben && netTour > 0 && (
+          <Card className={`space-y-2 ${unpaid.length === 0 ? "border-emerald-300 bg-emerald-50/60" : ""}`}>
+            <p className="text-sm font-bold">{unpaid.length === 0 ? "🎉 Tout le monde a payé !" : "Verser la caisse"}</p>
+            <p className="text-xs text-stone-600">
+              {unpaid.length === 0
+                ? `La caisse du tour ${g.currentRound} est complète. Verse ${fcfa(netTour)} à ${ben.name}.`
+                : `Il manque encore ${unpaid.length} paiement(s). Tu peux attendre, ou verser dès maintenant ce qui a été reçu (${fcfa(netTour)}).`}
+            </p>
+            <Button variant={unpaid.length === 0 ? "primary" : "secondary"} className="w-full" onClick={() => setVersement(true)}>
+              Verser {fcfa(netTour)} à {prenom(ben.name)}
+            </Button>
+          </Card>
+        )}
+
+        {isTreasurer && g.type !== "tontine" && cs.solde > 0 && (
+          <Card className="space-y-2">
+            <p className="text-sm font-bold">{g.type === "collecte" ? "Remettre les fonds" : "Sortie de caisse"}</p>
+            <p className="text-xs text-stone-600">
+              Solde disponible : <b>{fcfa(cs.solde)}</b> (frais Mobile Money déduits).
+              {g.type === "collecte" ? " Remets l’argent à la personne désignée, puis enregistre-le ici." : " Enregistre chaque dépense de l’association pour que tout le monde la voie."}
+            </p>
+            <Button variant="secondary" className="w-full" onClick={() => setVersement(true)}>
+              {g.type === "collecte" ? "Enregistrer la remise des fonds" : "Enregistrer une sortie"}
+            </Button>
+          </Card>
+        )}
+
         {isTreasurer && g.type !== "collecte" && (
           <Card className="space-y-2 border-dashed">
             <p className="text-sm font-bold">Espace trésorier</p>
@@ -269,6 +346,23 @@ export default function GroupeDetail() {
           </Card>
         )}
       </div>
+
+      {versement && (
+        <PayoutModal
+          titre={g.type === "tontine" ? `Versement du tour ${g.currentRound}` : g.type === "collecte" ? "Remise des fonds" : "Sortie de caisse"}
+          beneficiaire={g.type === "tontine" ? ben?.name ?? "" : ""}
+          nomModifiable={g.type !== "tontine"}
+          montant={g.type === "tontine" ? netTour : cs.solde}
+          max={g.type === "tontine" ? Math.min(netTour, cs.solde) : cs.solde}
+          onClose={() => setVersement(false)}
+          onConfirm={async (v) => {
+            await recordPayout(g.id, { ...v, round: g.currentRound, memberId: g.type === "tontine" ? ben?.id : null });
+            flash("Versement enregistré ✅");
+          }}
+        />
+      )}
+
+      {msg && <MessageModal group={g} member={msg.member} type={msg.type} onClose={() => setMsg(null)} />}
 
       {toast && (
         <div className="fixed inset-x-0 bottom-6 z-20 mx-auto w-fit max-w-[90%] rounded-full bg-stone-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg">

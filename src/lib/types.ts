@@ -25,6 +25,23 @@ export interface Payment {
   round: number;
   date: string; // ISO
   reference: string;
+  fees: number; // frais Mobile Money (pris sur la caisse)
+  status: "en_attente" | "reussi" | "echoue";
+}
+
+export type PayoutMethod = PayMethod | "virement" | "cinetpay";
+
+export interface Payout {
+  id: string;
+  round: number;
+  memberId?: string | null;
+  beneficiaryName: string;
+  amount: number;
+  method: PayoutMethod;
+  status: "en_cours" | "verse" | "echoue";
+  note?: string;
+  reference: string;
+  date: string;
 }
 
 export interface Group {
@@ -40,6 +57,7 @@ export interface Group {
   members: Member[];
   order: string[]; // ordre de passage (tontine)
   currentRound: number;
-  payments: Payment[];
+  payments: Payment[]; // paiements réussis uniquement
+  payouts: Payout[];
   createdAt: string;
 }

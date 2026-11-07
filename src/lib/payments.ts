@@ -7,12 +7,22 @@ export const OPERATEURS: { id: Exclude<PayMethod, "especes">; nom: string; bg: s
   { id: "moov", nom: "Moov Money", bg: "#0066B3", fg: "#ffffff" },
 ];
 
-export const METHOD_LABEL: Record<PayMethod, string> = {
+/** Frais Mobile Money estimés (pris sur la caisse du groupe) */
+export const FRAIS_TAUX = Number(process.env.NEXT_PUBLIC_FRAIS_TAUX ?? "0.03");
+export const fraisMobileMoney = (montant: number, method: PayMethod) =>
+  method === "especes" ? 0 : Math.round(montant * FRAIS_TAUX);
+
+/** Mode de paiement : "simulation" (par défaut) ou "cinetpay" (vrais paiements) */
+export const MODE_PAIEMENT = process.env.NEXT_PUBLIC_PAIEMENT_MODE === "cinetpay" ? "cinetpay" : "simulation";
+
+export const METHOD_LABEL: Record<PayMethod | "virement" | "cinetpay", string> = {
   wave: "Wave",
   orange: "Orange Money",
   mtn: "MTN MoMo",
   moov: "Moov Money",
   especes: "Espèces",
+  virement: "Virement",
+  cinetpay: "Mobile Money (CinetPay)",
 };
 
 /**
