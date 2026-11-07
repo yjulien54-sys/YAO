@@ -127,6 +127,9 @@ function Accueil() {
         <p className="mt-6 text-center text-xs leading-relaxed text-stone-500">
           Cotiz ne garde jamais ton argent : les paiements passent par un opérateur agréé BCEAO et arrivent directement sur le compte du groupe.
         </p>
+        <p className="mt-4 text-center text-xs text-stone-400">
+          <a href="/confidentialite" className="underline">Confidentialité</a> · <a href="/suppression-compte" className="underline">Supprimer mon compte</a>
+        </p>
       </div>
     </div>
   );

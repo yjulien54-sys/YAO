@@ -100,6 +100,9 @@ export default function Groupes() {
           })}
         </div>
 
+        <p className="pb-4 text-center text-xs text-stone-400">
+          <Link href="/confidentialite" className="underline">Confidentialité</Link> · <Link href="/suppression-compte" className="underline">Supprimer mon compte</Link>
+        </p>
       </div>
 
       <div className="fixed inset-x-0 bottom-0 mx-auto max-w-md bg-gradient-to-t from-[#f7f5f0] via-[#f7f5f0] to-transparent p-4 pt-8">

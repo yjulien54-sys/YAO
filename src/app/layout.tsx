@@ -1,5 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { StoreProvider } from "@/lib/store";
+import { ServiceWorker } from "@/components/ServiceWorker";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fr">
       <body className="antialiased">
         <StoreProvider>{children}</StoreProvider>
+        <ServiceWorker />
       </body>
     </html>
   );
