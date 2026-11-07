@@ -58,7 +58,13 @@ function Payer() {
   const [copie, setCopie] = useState(false);
   const [aide, setAide] = useState("");
   const [ios, setIos] = useState(false);
-  useEffect(() => setIos(/iphone|ipad|ipod/i.test(navigator.userAgent)), []);
+  const [enApp, setEnApp] = useState(false);
+  useEffect(() => {
+    setIos(/iphone|ipad|ipod/i.test(navigator.userAgent));
+    try {
+      setEnApp(sessionStorage.getItem("cotiz-app") === "1");
+    } catch {}
+  }, []);
   const [erreur, setErreur] = useState("");
 
   if (!ok || !loaded) return <Loading />;
@@ -294,7 +300,13 @@ function Payer() {
                   const app = APPS[method];
                   // Lien direct (pas d'attente avant l'ouverture, sinon Android bloque)
                   const lienBusiness = method === "wave" && lienWaveValide(g.waveLink) ? lienWaveAvecMontant(g.waveLink!, total) : undefined;
-                  const href = lienBusiness ?? (app.ussd ? `tel:${encodeURIComponent(app.ussd)}` : ios && app.ios ? app.ios : app.android);
+                  const href = lienBusiness ?? (app.ussd
+                      ? `tel:${encodeURIComponent(app.ussd)}`
+                      : enApp && method === "wave"
+                        ? "cotiz://ouvrir?app=wave" // application Cotiz : ouverture native de Wave
+                        : ios && app.ios
+                          ? app.ios
+                          : app.android);
                   const consigne = lienBusiness
                     ? `Wave s’ouvre avec ${fcfa(total)} déjà rempli. Vérifie le nom ${tresorier ? tresorier.name : "du trésorier"} et valide avec ton code.`
                     : app.ussd
@@ -312,7 +324,7 @@ function Payer() {
                     >
                       {lienBusiness ? `Payer ${fcfa(total)} avec Wave` : app.label} <ArrowUpRight size={17} strokeWidth={2} />
                     </a>
-                    {method === "wave" && !ios && (
+                    {method === "wave" && !ios && !enApp && (
                       <a
                         href="market://launch?id=com.wave.personal"
                         onClick={() => {

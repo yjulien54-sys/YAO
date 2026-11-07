@@ -47,6 +47,21 @@
             </intent-filter>
         </activity>
 
+        <!-- Ouverture de Wave depuis Cotiz : lien cotiz://ouvrir?app=wave -->
+        <activity
+            android:name=".OuvrirAppActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@android:style/Theme.Translucent.NoTitleBar">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="cotiz" android:host="ouvrir" />
+            </intent-filter>
+        </activity>
+
         <activity android:name="com.google.androidbrowserhelper.trusted.FocusActivity" />
         <activity android:name="com.google.androidbrowserhelper.trusted.WebViewFallbackActivity"
             android:configChanges="orientation|screenSize" />
