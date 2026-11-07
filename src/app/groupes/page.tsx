@@ -34,7 +34,7 @@ export default function Groupes() {
         <div className="grid grid-cols-2 gap-3">
           <Card className="!p-3.5">
             <p className="text-xs font-medium text-stone-500">Total collecté</p>
-            <p className="mt-1 text-lg font-extrabold text-emerald-700">{fcfa(totalCaisse)}</p>
+            <p className="mt-1 text-lg font-extrabold text-blue-700">{fcfa(totalCaisse)}</p>
           </Card>
           <Card className="!p-3.5">
             <p className="text-xs font-medium text-stone-500">Retards à relancer</p>
@@ -60,7 +60,7 @@ export default function Groupes() {
             const late = isLate(g, g.currentRound);
             return (
               <Link key={g.id} href={`/groupes/${g.id}`} className="block">
-                <Card className="transition hover:border-emerald-300 hover:shadow-md">
+                <Card className="transition hover:border-blue-300 hover:shadow-md">
                   <div className="flex items-start gap-3">
                     <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-stone-100 text-xl">{TYPE_ICON[g.type]}</span>
                     <div className="min-w-0 flex-1">
@@ -99,7 +99,7 @@ export default function Groupes() {
       </div>
 
       <div className="fixed inset-x-0 bottom-0 mx-auto max-w-md bg-gradient-to-t from-stone-50 via-stone-50 to-transparent p-4 pt-8">
-        <Link href="/groupes/nouveau" className={btnClass("primary", "w-full shadow-lg shadow-emerald-900/20")}>
+        <Link href="/groupes/nouveau" className={btnClass("primary", "w-full shadow-lg shadow-blue-900/20")}>
           + Créer un groupe
         </Link>
       </div>

@@ -48,13 +48,13 @@ function Accueil() {
 
   return (
     <div className="mx-auto min-h-dvh max-w-md bg-stone-50">
-      <section className="relative overflow-hidden bg-gradient-to-br from-emerald-700 via-emerald-600 to-emerald-500 px-6 pb-16 pt-8 text-white">
-        <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-orange-400/30 blur-2xl" />
+      <section className="relative overflow-hidden bg-gradient-to-br from-blue-700 via-blue-600 to-blue-500 px-6 pb-16 pt-8 text-white">
+        <div className="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-sky-300/30 blur-2xl" />
         <Logo className="relative text-xl" />
         <h1 className="relative mt-10 text-[28px] font-extrabold leading-tight">
           Tes tontines et cotisations, <span className="text-orange-200">sans palabres.</span>
         </h1>
-        <p className="relative mt-3 text-[15px] leading-relaxed text-emerald-50">
+        <p className="relative mt-3 text-[15px] leading-relaxed text-blue-50">
           Tontine, association, mutuelle, collecte pour des funérailles… Tout le monde voit qui a payé. Les relances
           partent toutes seules sur WhatsApp.
         </p>

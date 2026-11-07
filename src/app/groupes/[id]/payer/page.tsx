@@ -75,7 +75,7 @@ function Payer() {
               <br />Valide avec ton code secret.
             </p>
             <div className="mx-auto mt-6 h-1.5 w-40 overflow-hidden rounded-full bg-stone-200">
-              <div className="h-full w-1/2 animate-[pulse_1s_ease-in-out_infinite] rounded-full bg-emerald-500" />
+              <div className="h-full w-1/2 animate-[pulse_1s_ease-in-out_infinite] rounded-full bg-blue-500" />
             </div>
             <p className="mt-6 text-xs text-stone-400">Démo : le paiement est simulé</p>
           </div>
@@ -97,7 +97,7 @@ function Payer() {
               </Field>
               <div className="flex flex-wrap gap-2">
                 {RAPIDES.map((r) => (
-                  <button key={r} type="button" onClick={() => setMontant(String(r))} className={`rounded-full px-3 py-1.5 text-sm font-semibold ring-1 ${Number(montant) === r ? "bg-emerald-600 text-white ring-emerald-600" : "bg-white text-stone-700 ring-stone-300"}`}>
+                  <button key={r} type="button" onClick={() => setMontant(String(r))} className={`rounded-full px-3 py-1.5 text-sm font-semibold ring-1 ${Number(montant) === r ? "bg-blue-600 text-white ring-blue-600" : "bg-white text-stone-700 ring-stone-300"}`}>
                     {fcfa(r)}
                   </button>
                 ))}
@@ -123,7 +123,7 @@ function Payer() {
               <div className="grid grid-cols-2 gap-2">
                 {OPERATEURS.map((o) => (
                   <button key={o.id} type="button" onClick={() => setMethod(o.id)}
-                    className={`flex items-center gap-2.5 rounded-2xl border-2 bg-white p-3 text-left text-sm font-bold transition ${method === o.id ? "border-emerald-500" : "border-stone-200"}`}>
+                    className={`flex items-center gap-2.5 rounded-2xl border-2 bg-white p-3 text-left text-sm font-bold transition ${method === o.id ? "border-blue-500" : "border-stone-200"}`}>
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-base font-extrabold" style={{ background: o.bg, color: o.fg }}>{o.nom[0]}</span>
                     {o.nom}
                   </button>

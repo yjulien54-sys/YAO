@@ -53,14 +53,14 @@ export default function GroupeDetail() {
       <div className="space-y-4 p-4">
         {/* Résumé */}
         <Card className="overflow-hidden !p-0">
-          <div className="bg-gradient-to-br from-emerald-700 to-emerald-600 p-4 text-white">
-            <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-emerald-100">
+          <div className="bg-gradient-to-br from-blue-700 to-blue-600 p-4 text-white">
+            <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-blue-100">
               <span>{TYPE_LABEL[g.type]}</span>
               {g.type !== "collecte" && <span>Tour {g.currentRound}{g.type === "tontine" && ` sur ${g.order.length}`}</span>}
             </div>
-            <p className="mt-2 text-sm text-emerald-100">{g.type === "collecte" ? "Collecté" : "Dans la caisse du tour"}</p>
+            <p className="mt-2 text-sm text-blue-100">{g.type === "collecte" ? "Collecté" : "Dans la caisse du tour"}</p>
             <p className="text-3xl font-extrabold">{fcfa(st.collected)}</p>
-            <p className="text-sm text-emerald-100">sur {fcfa(st.expected)} {g.type === "collecte" ? "d’objectif" : "attendus"}</p>
+            <p className="text-sm text-blue-100">sur {fcfa(st.expected)} {g.type === "collecte" ? "d’objectif" : "attendus"}</p>
             <Progress value={st.progress} className="mt-3 bg-white/25" />
           </div>
           <div className="grid grid-cols-3 divide-x divide-stone-200 text-center">
@@ -79,7 +79,7 @@ export default function GroupeDetail() {
                   <p className="text-xs text-stone-500">Bénéficiaire de ce tour</p>
                   <p className="font-bold">{ben.name}{ben.id === me?.id && " (toi)"}</p>
                 </div>
-                <span className="font-bold text-emerald-700">{fcfa(st.expected)}</span>
+                <span className="font-bold text-blue-700">{fcfa(st.expected)}</span>
               </div>
             )}
             <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${late ? "bg-red-50 text-red-700" : "bg-stone-100 text-stone-700"}`}>
@@ -206,7 +206,7 @@ export default function GroupeDetail() {
                     </p>
                   </div>
                   <div className="text-right">
-                    <p className="text-sm font-bold text-emerald-700">+{fcfa(p.amount + p.penalty)}</p>
+                    <p className="text-sm font-bold text-blue-700">+{fcfa(p.amount + p.penalty)}</p>
                     {p.penalty > 0 && <p className="text-[11px] text-red-600">dont {fcfa(p.penalty)} pénalité</p>}
                   </div>
                 </Link>
@@ -222,8 +222,8 @@ export default function GroupeDetail() {
               const r = i + 1;
               const etat = r < g.currentRound ? "passe" : r === g.currentRound ? "actuel" : "futur";
               return (
-                <div key={mid} className={`flex items-center gap-3 px-4 py-3 ${etat === "actuel" ? "bg-emerald-50" : ""}`}>
-                  <span className={`grid h-8 w-8 place-items-center rounded-full text-sm font-bold ${etat === "passe" ? "bg-stone-200 text-stone-500" : etat === "actuel" ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-600"}`}>
+                <div key={mid} className={`flex items-center gap-3 px-4 py-3 ${etat === "actuel" ? "bg-blue-50" : ""}`}>
+                  <span className={`grid h-8 w-8 place-items-center rounded-full text-sm font-bold ${etat === "passe" ? "bg-stone-200 text-stone-500" : etat === "actuel" ? "bg-blue-600 text-white" : "bg-stone-100 text-stone-600"}`}>
                     {r}
                   </span>
                   <div className="flex-1">
@@ -312,7 +312,7 @@ function Invitation({ id, onJoin }: { id: string; onJoin: () => Promise<void> })
     <Page>
       <Header back="/groupes" title="Invitation" />
       <div className="space-y-5 p-6 text-center">
-        <div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-emerald-100 text-4xl">🤝</div>
+        <div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-blue-100 text-4xl">🤝</div>
         <div>
           <p className="text-sm text-stone-500">Tu es invité(e) à rejoindre {TYPE_NOM[info.type] ?? "le groupe"}</p>
           <h2 className="mt-1 text-2xl font-extrabold">{info.name}</h2>

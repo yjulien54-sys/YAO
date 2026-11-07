@@ -75,7 +75,7 @@ export default function NouveauGroupe() {
               type="button"
               key={t.id}
               onClick={() => setType(t.id)}
-              className={`flex items-center gap-3 rounded-2xl border-2 bg-white p-3 text-left transition ${type === t.id ? "border-emerald-500 bg-emerald-50/50" : "border-stone-200"}`}
+              className={`flex items-center gap-3 rounded-2xl border-2 bg-white p-3 text-left transition ${type === t.id ? "border-blue-500 bg-blue-50/50" : "border-stone-200"}`}
             >
               <span className="text-2xl">{t.icon}</span>
               <span>
@@ -140,19 +140,19 @@ export default function NouveauGroupe() {
               <input className={inputClass} placeholder="07 00 00 00 00" inputMode="tel" value={m.phone} onChange={(e) => setMember(i, "phone", e.target.value)} />
             </div>
           ))}
-          <button type="button" onClick={() => setMembers((ms) => [...ms, { name: "", phone: "" }])} className="text-sm font-semibold text-emerald-700">
+          <button type="button" onClick={() => setMembers((ms) => [...ms, { name: "", phone: "" }])} className="text-sm font-semibold text-blue-700">
             + Ajouter un membre
           </button>
           {type === "tontine" && (
             <label className="flex items-center gap-2 pt-1 text-sm">
-              <input type="checkbox" checked={shuffle} onChange={(e) => setShuffle(e.target.checked)} className="h-4 w-4 accent-emerald-600" />
+              <input type="checkbox" checked={shuffle} onChange={(e) => setShuffle(e.target.checked)} className="h-4 w-4 accent-blue-600" />
               Tirer au sort l’ordre de passage
             </label>
           )}
         </Card>
 
         {type !== "collecte" && Number(amount) > 0 && (
-          <p className="rounded-xl bg-emerald-50 px-4 py-3 text-sm text-emerald-800 ring-1 ring-emerald-200">
+          <p className="rounded-xl bg-blue-50 px-4 py-3 text-sm text-blue-800 ring-1 ring-blue-200">
             {type === "tontine"
               ? <>Avec {nbMembres} membres, chaque bénéficiaire recevra <b>{fcfa(Number(amount) * nbMembres)}</b> par tour, sur {nbMembres} tours.</>
               : <>Avec {nbMembres} membres, la caisse recevra <b>{fcfa(Number(amount) * nbMembres)}</b> par {frequency === "mensuelle" ? "mois" : "semaine"}.</>}
