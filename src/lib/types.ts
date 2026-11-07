@@ -26,6 +26,7 @@ export interface Payment {
   date: string; // ISO
   reference: string;
   fees: number; // frais Mobile Money (pris sur la caisse)
+  transactionId?: string; // référence de transaction (opérateur ou déclaration)
   status: "en_attente" | "reussi" | "echoue";
 }
 
@@ -58,6 +59,8 @@ export interface Group {
   order: string[]; // ordre de passage (tontine)
   currentRound: number;
   payments: Payment[]; // paiements réussis uniquement
+  pending: Payment[]; // paiements déclarés, en attente de confirmation du trésorier
   payouts: Payout[];
+  paymentPhone?: string; // numéro Wave qui reçoit les cotisations
   createdAt: string;
 }

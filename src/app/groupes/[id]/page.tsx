@@ -8,7 +8,7 @@ import { Avatar, Button, Card, Header, Loading, Page, Progress, StatusBadge, Wha
 import { dateCourte, dateLongue, fcfa, prenom, telAffiche } from "@/lib/format";
 import { TYPE_LABEL, amountDue, arrears, beneficiary, caisse, dueDate, isLate, memberStatus, netDuTour, paidUntil, payoutFor, paymentsOf, roundStats, roundsToPay, sum, unpaidMembers } from "@/lib/logic";
 import { PayoutModal } from "@/components/PayoutModal";
-import { METHOD_LABEL } from "@/lib/payments";
+import { METHOD_LABEL, MODE_PAIEMENT } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
 import { invitation } from "@/lib/whatsapp";
 import { MessageModal } from "@/components/MessageModal";
@@ -19,7 +19,7 @@ type Tab = "membres" | "historique" | "tours";
 export default function GroupeDetail() {
   const ok = useRequireUser();
   const { id } = useParams<{ id: string }>();
-  const { getGroup, recordPayment, recordPayout, addMember, nextRound, joinGroup, loaded } = useStore();
+  const { getGroup, recordPayment, recordPayout, confirmPayments, setPaymentPhone, addMember, nextRound, joinGroup, loaded } = useStore();
   const g = getGroup(id);
   const me = useMe(g);
   const [tab, setTab] = useState<Tab>("membres");
@@ -28,6 +28,7 @@ export default function GroupeDetail() {
   const [toast, setToast] = useState("");
   const [msg, setMsg] = useState<{ type: "relance" | "groupe"; member?: Member } | null>(null);
   const [versement, setVersement] = useState(false);
+  const [numero, setNumero] = useState<string | null>(null);
 
   if (!ok || !loaded) return <Loading />;
   if (!g) return <Invitation id={id} onJoin={() => joinGroup(id)} />;
@@ -46,6 +47,17 @@ export default function GroupeDetail() {
   const mesArrieres = me ? arrears(g, me.id) : [];
   const peutAvancer = me && g.type !== "collecte" && roundsToPay(g, me.id).length > 0;
   const fraisTour = st.collected - netTour;
+  // Paiements déclarés, regroupés par déclaration (même membre + même référence)
+  const declarations = Object.values(
+    g.pending.reduce<Record<string, typeof g.pending>>((acc, p) => {
+      const k = `${p.memberId}|${p.transactionId ?? p.id}`;
+      (acc[k] ??= []).push(p);
+      return acc;
+    }, {})
+  );
+  const mesDeclarations = me ? g.pending.filter((p) => p.memberId === me.id) : [];
+  const tourEnAttente = me ? mesDeclarations.some((p) => p.round === g.currentRound || g.type === "collecte") : false;
+  const tresorier = g.members.find((m) => m.role === "tresorier");
 
   const flash = (t: string) => {
     setToast(t);
@@ -122,7 +134,12 @@ export default function GroupeDetail() {
               Régler mes arriérés ({mesArrieres.length} tour{mesArrieres.length > 1 ? "s" : ""})
             </Link>
           )}
-          {me && mesArrieres.length === 0 && myStatus !== "paye" && (
+          {me && mesDeclarations.length > 0 && (
+            <div className="rounded-xl bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-800 ring-1 ring-amber-200">
+              ⏳ Ton paiement de {fcfa(sum(mesDeclarations))} est en attente de confirmation{tresorier ? ` par ${prenom(tresorier.name)}` : ""}
+            </div>
+          )}
+          {me && mesArrieres.length === 0 && myStatus !== "paye" && !(tourEnAttente && g.type !== "collecte") && (
             <Link href={`/groupes/${g.id}/payer`} className={btnClass("primary", "w-full text-base")}>
               {g.type === "collecte" ? "Participer" : `Payer ma part · ${fcfa(due.total)}`}
             </Link>
@@ -147,6 +164,56 @@ export default function GroupeDetail() {
             </a>
           </div>
         </div>
+
+        {isTreasurer && declarations.length > 0 && (
+          <Card className="space-y-3 border-amber-300 bg-amber-50/60">
+            <div>
+              <p className="text-sm font-bold">⏳ Paiements à confirmer ({declarations.length})</p>
+              <p className="text-xs text-stone-600">Vérifie sur ton téléphone que tu as bien reçu l’argent avant de confirmer.</p>
+            </div>
+            {declarations.map((d) => {
+              const m = g.members.find((x) => x.id === d[0].memberId);
+              const refOperateur = d[0].transactionId && !d[0].transactionId.startsWith("DECL-") ? d[0].transactionId : null;
+              return (
+                <div key={d[0].id} className="rounded-xl bg-white p-3 ring-1 ring-stone-200">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">{m?.name ?? "Membre"}</p>
+                      <p className="text-xs text-stone-500">
+                        {METHOD_LABEL[d[0].method]} · {dateLongue(d[0].date)}
+                        {g.type !== "collecte" && ` · Tour${d.length > 1 ? "s" : ""} ${d.map((p) => p.round).join(", ")}`}
+                      </p>
+                      {refOperateur && <p className="text-xs font-semibold text-stone-700">Réf. : {refOperateur}</p>}
+                    </div>
+                    <p className="shrink-0 font-extrabold">{fcfa(sum(d))}</p>
+                  </div>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <Button
+                      variant="secondary"
+                      className="!py-2"
+                      onClick={() => {
+                        if (confirm(`Refuser ce paiement de ${m?.name} ? (argent non reçu)`))
+                          confirmPayments(d.map((p) => p.id), false).then(() => flash("Paiement refusé")).catch((e) => flash("Erreur : " + e.message));
+                      }}
+                    >
+                      Pas reçu
+                    </Button>
+                    <Button
+                      className="!py-2"
+                      onClick={() =>
+                        confirmPayments(d.map((p) => p.id), true)
+                          .then(() => flash(`Paiement de ${prenom(m?.name ?? "")} confirmé ✅`))
+                          .catch((e) => flash("Erreur : " + e.message))
+                      }
+                    >
+                      Reçu ✓
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </Card>
+        )}
 
         {/* Onglets */}
         <div className="flex gap-1 rounded-xl bg-stone-200/70 p-1 text-sm font-semibold">
@@ -174,6 +241,9 @@ export default function GroupeDetail() {
                     <p className="text-xs text-stone-500">{telAffiche(m.phone)}{paid > 0 && g.type === "collecte" && ` · ${fcfa(paid)}`}</p>
                     {g.type !== "collecte" && paidUntil(g, m.id) > g.currentRound && (
                       <p className="text-[11px] font-semibold text-emerald-700">⏩ Payé jusqu’au tour {paidUntil(g, m.id)}</p>
+                    )}
+                    {g.pending.some((p) => p.memberId === m.id) && (
+                      <p className="text-[11px] font-semibold text-amber-700">⏳ Paiement déclaré, à confirmer</p>
                     )}
                     {arrears(g, m.id).length > 0 && (
                       <p className="text-[11px] font-semibold text-red-600">Doit : tour{arrears(g, m.id).length > 1 ? "s" : ""} {arrears(g, m.id).join(", ")}</p>
@@ -286,6 +356,40 @@ export default function GroupeDetail() {
                 </div>
               );
             })}
+          </Card>
+        )}
+
+        {isTreasurer && MODE_PAIEMENT === "manuel" && (
+          <Card className="space-y-2">
+            <p className="text-sm font-bold">📲 Numéro qui reçoit les cotisations</p>
+            {numero === null ? (
+              <div className="flex items-center justify-between gap-2">
+                <p className="text-sm text-stone-700">
+                  <b>{telAffiche(g.paymentPhone || tresorier?.phone || "")}</b>
+                  <span className="block text-xs text-stone-500">Les membres envoient leur argent à ce numéro (Wave, Orange Money…).</span>
+                </p>
+                <button onClick={() => setNumero(telAffiche(g.paymentPhone || tresorier?.phone || ""))} className="rounded-lg bg-stone-100 px-3 py-1.5 text-sm font-semibold text-stone-700">
+                  Modifier
+                </button>
+              </div>
+            ) : (
+              <form
+                className="flex gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (numero.replace(/\D/g, "").length < 10) return flash("Le numéro doit avoir 10 chiffres");
+                  setPaymentPhone(g.id, numero)
+                    .then(() => {
+                      setNumero(null);
+                      flash("Numéro enregistré ✅");
+                    })
+                    .catch((err) => flash("Erreur : " + err.message));
+                }}
+              >
+                <input className={inputClass} inputMode="tel" value={numero} onChange={(e) => setNumero(e.target.value)} placeholder="07 07 12 34 56" />
+                <Button type="submit" className="shrink-0 !px-4">OK</Button>
+              </form>
+            )}
           </Card>
         )}
 
@@ -432,3 +536,4 @@ function Invitation({ id, onJoin }: { id: string; onJoin: () => Promise<void> })
     </Page>
   );
 }
+

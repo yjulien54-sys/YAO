@@ -2,12 +2,14 @@
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useState } from "react";
-import { Button, Card, Field, Header, Loading, Page, inputClass, useRequireUser } from "@/components/ui";
+import Link from "next/link";
+import { Button, Card, Field, Header, Loading, Page, WhatsAppIcon, btnClass, inputClass, useRequireUser } from "@/components/ui";
 import { dateCourte, fcfa, prenom, telAffiche } from "@/lib/format";
 import { dueDate, roundAmount, roundsToPay } from "@/lib/logic";
 import { FRAIS_TAUX, MODE_PAIEMENT, OPERATEURS, initierPaiement } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
+import { waLink } from "@/lib/whatsapp";
 import type { PayMethod } from "@/lib/types";
 
 const RAPIDES = [2000, 5000, 10000, 25000];
@@ -25,7 +27,7 @@ function Payer() {
   const { id } = useParams<{ id: string }>();
   const search = useSearchParams();
   const router = useRouter();
-  const { getGroup, recordPayments, loaded } = useStore();
+  const { getGroup, recordPayments, declarePayments, loaded } = useStore();
   const g = getGroup(id);
   const me = useMe(g);
   const member = g?.members.find((m) => m.id === search.get("membre")) ?? me;
@@ -34,7 +36,9 @@ function Payer() {
   const [phone, setPhone] = useState(member ? telAffiche(member.phone) : "");
   const [montant, setMontant] = useState("10000");
   const [nb, setNb] = useState(1);
-  const [etat, setEtat] = useState<"form" | "attente">("form");
+  const [etat, setEtat] = useState<"form" | "attente" | "declare">("form");
+  const [refWave, setRefWave] = useState("");
+  const [copie, setCopie] = useState(false);
   const [erreur, setErreur] = useState("");
 
   if (!ok || !loaded) return <Loading />;
@@ -47,7 +51,11 @@ function Payer() {
     );
 
   const isCollecte = g.type === "collecte";
-  const aPayer = roundsToPay(g, member.id);
+  const enAttente = g.pending.filter((p) => p.memberId === member.id);
+  const aPayer = roundsToPay(g, member.id).filter((r) => !enAttente.some((p) => p.round === r));
+  const tresorier = g.members.find((m) => m.role === "tresorier");
+  const numeroCaisse = g.paymentPhone || tresorier?.phone || "";
+  const jeSuisTresorier = me?.role === "tresorier";
   const choix = aPayer.slice(0, Math.min(aPayer.length, 6));
   const tours = choix.slice(0, nb);
   const lignes = tours.map((r) => ({ r, ...roundAmount(g, r) }));
@@ -59,6 +67,21 @@ function Payer() {
 
   async function payer() {
     setErreur("");
+    if (MODE_PAIEMENT === "manuel") {
+      try {
+        if (jeSuisTresorier) {
+          // le trésorier enregistre un paiement qu'il a lui-même reçu
+          const ps = await recordPayments(g!.id, member!.id, method, isCollecte ? { amount: total } : { rounds: tours });
+          router.replace(`/groupes/${g!.id}/recu/${ps[0].id}?nouveau=1${ps.length > 1 ? `&n=${ps.length}` : ""}`);
+        } else {
+          await declarePayments(g!.id, member!.id, method, isCollecte ? { amount: total, ref: refWave } : { rounds: tours, ref: refWave });
+          setEtat("declare");
+        }
+      } catch (err) {
+        setErreur("Impossible d’enregistrer : " + (err as Error).message);
+      }
+      return;
+    }
     setEtat("attente");
     try {
       if (MODE_PAIEMENT !== "simulation") {
@@ -81,6 +104,33 @@ function Payer() {
       setEtat("form");
     }
   }
+
+  if (etat === "declare")
+    return (
+      <Page>
+        <div className="grid min-h-dvh place-items-center p-6 text-center">
+          <div className="w-full space-y-4">
+            <div className="mx-auto grid h-16 w-16 place-items-center rounded-full bg-amber-100 text-3xl">⏳</div>
+            <h2 className="text-xl font-extrabold">Paiement déclaré !</h2>
+            <p className="text-sm leading-relaxed text-stone-600">
+              {tresorier ? prenom(tresorier.name) : "Le trésorier"} va vérifier qu’il a bien reçu <b>{fcfa(total)}</b>, puis confirmer.
+              Tu passeras alors en « Payé » et tu recevras ton reçu.
+            </p>
+            {tresorier && (
+              <a
+                href={waLink(`Bonjour ${prenom(tresorier.name)} 👋\n\nJe viens d’envoyer ${fcfa(total)} par ${op.nom} pour « ${g.name} »${refWave ? ` (réf. ${refWave})` : ""}.\n\nMerci de confirmer dans Cotiz 🙏\n${typeof window !== "undefined" ? window.location.origin : ""}/groupes/${g.id}`, tresorier.phone)}
+                target="_blank"
+                rel="noreferrer"
+                className={btnClass("whatsapp", "w-full")}
+              >
+                <WhatsAppIcon /> Prévenir {prenom(tresorier.name)} sur WhatsApp
+              </a>
+            )}
+            <Link href={`/groupes/${g.id}`} className={btnClass("secondary", "w-full")}>Retour au groupe</Link>
+          </div>
+        </div>
+      </Page>
+    );
 
   if (etat === "attente")
     return (
@@ -108,6 +158,11 @@ function Payer() {
         {MODE_PAIEMENT === "simulation" && (
           <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
             Mode test : les paiements sont simulés, aucun argent n’est prélevé.
+          </p>
+        )}
+        {enAttente.length > 0 && (
+          <p className="rounded-xl bg-amber-50 px-3 py-2 text-sm text-amber-800 ring-1 ring-amber-200">
+            ⏳ {enAttente.length} paiement(s) déjà déclaré(s), en attente de confirmation du trésorier.
           </p>
         )}
         <Card>
@@ -167,7 +222,7 @@ function Payer() {
         {!rienAPayer && (
           <>
             <div>
-              <p className="mb-2 px-1 text-sm font-semibold text-stone-700">Moyen de paiement</p>
+              <p className="mb-2 px-1 text-sm font-semibold text-stone-700">{MODE_PAIEMENT === "manuel" ? "Avec quelle application paies-tu ?" : "Moyen de paiement"}</p>
               <div className="grid grid-cols-2 gap-2">
                 {operateurs.map((o) => (
                   <button key={o.id} type="button" onClick={() => setMethod(o.id)} className={`flex items-center gap-2.5 rounded-2xl border-2 bg-white p-3 text-left text-sm font-bold transition ${method === o.id ? "border-emerald-500" : "border-stone-200"}`}>
@@ -177,7 +232,34 @@ function Payer() {
                 ))}
               </div>
             </div>
-            {MODE_PAIEMENT === "wave" ? (
+            {MODE_PAIEMENT === "manuel" && !jeSuisTresorier && (
+              <Card className="space-y-3 border-emerald-300 bg-emerald-50/50">
+                <p className="text-sm font-bold">1. Envoie {fcfa(total)} avec ton application {op.nom}</p>
+                <div className="flex items-center justify-between gap-2 rounded-xl bg-white px-3 py-2 ring-1 ring-stone-200">
+                  <div>
+                    <p className="text-xs text-stone-500">Numéro du trésorier{tresorier ? ` (${tresorier.name})` : ""}</p>
+                    <p className="text-lg font-extrabold tracking-wide">{numeroCaisse ? telAffiche(numeroCaisse) : "—"}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard?.writeText(numeroCaisse.replace(/\D/g, "").slice(-10)).then(() => {
+                        setCopie(true);
+                        setTimeout(() => setCopie(false), 2000);
+                      });
+                    }}
+                    className="rounded-lg bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-700"
+                  >
+                    {copie ? "Copié ✓" : "Copier"}
+                  </button>
+                </div>
+                <p className="text-sm font-bold">2. Reviens ici et confirme</p>
+                <Field label="Référence de la transaction (facultatif)" hint="Elle se trouve dans le SMS ou l’historique de ton application. Elle aide le trésorier à vérifier.">
+                  <input className={inputClass} value={refWave} onChange={(e) => setRefWave(e.target.value)} placeholder="ex : T_ABC123…" />
+                </Field>
+              </Card>
+            )}
+            {MODE_PAIEMENT === "manuel" ? null : MODE_PAIEMENT === "wave" ? (
               <p className="px-1 text-sm text-stone-600">Tu vas être redirigé vers <b>Wave</b> pour valider le paiement, puis tu reviendras automatiquement sur Cotiz.</p>
             ) : (
               <Field label={`Numéro ${op.nom}`}>
@@ -185,12 +267,18 @@ function Payer() {
               </Field>
             )}
             {erreur && <p className="text-sm font-medium text-red-600">{erreur}</p>}
-            <Button className="w-full text-base" disabled={total <= 0 || (MODE_PAIEMENT !== "wave" && phone.replace(/\D/g, "").length < 10)} onClick={payer}>
-              Payer {fcfa(total)} avec {op.nom}
+            <Button className="w-full text-base" disabled={total <= 0 || (MODE_PAIEMENT !== "wave" && MODE_PAIEMENT !== "manuel" && phone.replace(/\D/g, "").length < 10)} onClick={payer}>
+              {MODE_PAIEMENT === "manuel"
+                ? jeSuisTresorier
+                  ? `Enregistrer le paiement de ${fcfa(total)} (reçu par ${op.nom})`
+                  : `J’ai envoyé ${fcfa(total)} par ${op.nom}`
+                : `Payer ${fcfa(total)} avec ${op.nom}`}
             </Button>
             <p className="text-center text-xs leading-relaxed text-stone-500">
-              🔒 Tu paies exactement {fcfa(total)}. Les frais Mobile Money (≈{Math.round(FRAIS_TAUX * 100)} %) sont pris sur la caisse du groupe.
-              {pourAutrui ? "" : ` Reçu envoyé à ${prenom(member.name)} et visible par tout le groupe.`}
+              {MODE_PAIEMENT === "manuel"
+                ? "🔒 Ton paiement sera validé par le trésorier après vérification. Tout le groupe verra le reçu."
+                : `🔒 Tu paies exactement ${fcfa(total)}. Les frais (≈${Math.round(FRAIS_TAUX * 100)} %) sont pris sur la caisse du groupe.`}
+              {MODE_PAIEMENT !== "manuel" && !pourAutrui ? ` Reçu visible par tout le groupe.` : ""}
             </p>
           </>
         )}

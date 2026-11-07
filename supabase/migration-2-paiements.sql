@@ -38,3 +38,16 @@ create policy "versements: ajout"   on public.payouts for insert with check (pub
 do $$ begin
   begin alter publication supabase_realtime add table public.payouts; exception when others then null; end;
 end $$;
+
+-- Paiement direct au trésorier (mode « manuel »)
+alter table public.groups add column if not exists payment_phone text;
+
+-- Un membre ne peut que DÉCLARER un paiement (en attente) ; seul le trésorier valide
+drop policy if exists "paiements: ajout" on public.payments;
+create policy "paiements: ajout" on public.payments for insert with check (
+  public.can_manage(group_id)
+  or (public.is_member(group_id) and status = 'en_attente' and method <> 'especes')
+);
+drop policy if exists "paiements: validation" on public.payments;
+create policy "paiements: validation" on public.payments for update
+  using (public.can_manage(group_id)) with check (public.can_manage(group_id));

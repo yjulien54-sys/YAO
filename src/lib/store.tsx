@@ -36,6 +36,11 @@ interface Ctx {
   recordPayment: (groupId: string, memberId: string, method: PayMethod, amount?: number) => Promise<Payment>;
   /** Paie un ou plusieurs tours (paiement en avance / arriérés). Pour une collecte, utiliser `amount`. */
   recordPayments: (groupId: string, memberId: string, method: PayMethod, opts: { rounds?: number[]; amount?: number }) => Promise<Payment[]>;
+  /** Le membre déclare avoir envoyé l'argent au trésorier (en attente de confirmation). */
+  declarePayments: (groupId: string, memberId: string, method: PayMethod, opts: { rounds?: number[]; amount?: number; ref?: string }) => Promise<Payment[]>;
+  /** Le trésorier confirme (ok = true) ou refuse un paiement déclaré. */
+  confirmPayments: (paymentIds: string[], ok: boolean) => Promise<void>;
+  setPaymentPhone: (groupId: string, phone: string) => Promise<void>;
   recordPayout: (groupId: string, p: { round: number; memberId?: string | null; beneficiaryName: string; amount: number; method: PayoutMethod; note?: string }) => Promise<void>;
   nextRound: (groupId: string) => Promise<void>;
   joinGroup: (groupId: string) => Promise<void>;
@@ -215,6 +220,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             penalty: r.penalty,
             fees: fraisMobileMoney(r.amount + r.penalty, method),
             method,
+            status: "reussi",
             reference: reference(),
           }))
         )
@@ -226,6 +232,63 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       return ps;
     },
     [groups, reload]
+  );
+
+  const declarePayments = useCallback(
+    async (groupId: string, memberId: string, method: PayMethod, opts: { rounds?: number[]; amount?: number; ref?: string }) => {
+      const g = groups.find((x) => x.id === groupId)!;
+      const rows =
+        g.type === "collecte"
+          ? [{ round: 1, amount: opts.amount ?? 0, penalty: 0 }]
+          : (opts.rounds?.length ? opts.rounds : [g.currentRound]).map((r) => {
+              const due = roundAmount(g, r);
+              return { round: r, amount: due.base, penalty: due.penalty };
+            });
+      const tx = (opts.ref?.trim() || `DECL-${reference().slice(4)}`).slice(0, 80);
+      const { data, error } = await supabase
+        .from("payments")
+        .insert(
+          rows.map((r) => ({
+            group_id: groupId,
+            member_id: memberId,
+            round: r.round,
+            amount: r.amount,
+            penalty: r.penalty,
+            fees: 0,
+            method,
+            status: "en_attente",
+            transaction_id: tx,
+            reference: reference(),
+          }))
+        )
+        .select();
+      fail(error);
+      await reload();
+      return (data ?? []).map(mapPayment);
+    },
+    [groups, reload]
+  );
+
+  const confirmPayments = useCallback(
+    async (paymentIds: string[], ok: boolean) => {
+      const { error } = await supabase
+        .from("payments")
+        .update({ status: ok ? "reussi" : "echoue" })
+        .in("id", paymentIds)
+        .eq("status", "en_attente");
+      fail(error);
+      await reload();
+    },
+    [reload]
+  );
+
+  const setPaymentPhone = useCallback(
+    async (groupId: string, phone: string) => {
+      const { error } = await supabase.from("groups").update({ payment_phone: phone.replace(/\D/g, "") || null }).eq("id", groupId);
+      fail(error);
+      await reload();
+    },
+    [reload]
   );
 
   const recordPayment = useCallback(
@@ -273,7 +336,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider
-      value={{ ready, loaded, user, userId, groups, login, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, recordPayout, nextRound, joinGroup }}
+      value={{ ready, loaded, user, userId, groups, login, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, recordPayout, nextRound, joinGroup }}
     >
       {children}
     </StoreContext.Provider>
