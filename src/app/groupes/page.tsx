@@ -5,6 +5,7 @@ import { Card, Header, Loading, Page, Progress, btnClass, useRequireUser } from 
 import { dateCourte, fcfa, prenom } from "@/lib/format";
 import { TYPE_LABEL, beneficiary, dueDate, isLate, roundStats } from "@/lib/logic";
 import { useStore } from "@/lib/store";
+import { BottomNav } from "@/components/BottomNav";
 import { AlertCircle, CalendarDays, Gift, HandCoins, Plus, Repeat, Users } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 
@@ -13,7 +14,7 @@ const TYPE_TON = { tontine: "orange", association: "bleu", collecte: "violet" } 
 
 export default function Groupes() {
   const ok = useRequireUser();
-  const { user, groups, logout, loaded } = useStore();
+  const { user, groups, loaded } = useStore();
   if (!ok || !loaded) return <Loading />;
 
   const enRetard = groups.reduce((n, g) => n + roundStats(g).counts.retard, 0);
@@ -21,14 +22,8 @@ export default function Groupes() {
 
   return (
     <Page>
-      <Header
-        right={
-          <button onClick={() => confirm("Te déconnecter ? En phase de test, tu devras rejoindre à nouveau tes groupes avec leur lien d’invitation.") && logout()} className="rounded-lg px-2 py-1 text-sm font-medium text-stone-500 hover:bg-stone-100">
-            Déconnexion
-          </button>
-        }
-      />
-      <div className="space-y-5 p-4">
+      <Header />
+      <div className="space-y-5 p-4 pb-40">
         <div className="degrade-vert relative overflow-hidden rounded-3xl p-5 text-white shadow-lg shadow-emerald-900/15">
           <div className="motif absolute inset-0 opacity-60" />
           <p className="relative text-sm text-emerald-50/90">Bonjour,</p>
@@ -100,16 +95,14 @@ export default function Groupes() {
           })}
         </div>
 
-        <p className="pb-4 text-center text-xs text-stone-400">
-          <Link href="/confidentialite" className="underline">Confidentialité</Link> · <Link href="/suppression-compte" className="underline">Supprimer mon compte</Link>
-        </p>
       </div>
 
-      <div className="fixed inset-x-0 bottom-0 mx-auto max-w-md bg-gradient-to-t from-[#f7f5f0] via-[#f7f5f0] to-transparent p-4 pt-8">
+      <div className="fixed inset-x-0 bottom-[60px] z-10 mx-auto max-w-md bg-gradient-to-t from-[#f7f5f0] via-[#f7f5f0] to-transparent p-4 pt-8">
         <Link href="/groupes/nouveau" className={btnClass("primary", "w-full shadow-lg shadow-emerald-900/20")}>
           <Plus size={18} strokeWidth={2} /> Créer un groupe
         </Link>
       </div>
+      <BottomNav />
     </Page>
   );
 }

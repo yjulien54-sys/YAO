@@ -6,13 +6,13 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Avatar, Button, Card, Header, Loading, Page, Progress, StatusBadge, WhatsAppIcon, btnClass, inputClass, useRequireUser } from "@/components/ui";
 import { dateCourte, dateLongue, fcfa, prenom, telAffiche } from "@/lib/format";
-import { TYPE_LABEL, amountDue, arrears, beneficiary, caisse, dueDate, isLate, memberStatus, netDuTour, paidUntil, payoutFor, paymentsOf, roundStats, roundsToPay, sum, unpaidMembers } from "@/lib/logic";
+import { ROLE_LABEL, TYPE_LABEL, amountDue, droits, arrears, beneficiary, caisse, dueDate, isLate, memberStatus, netDuTour, paidUntil, payoutFor, paymentsOf, roundStats, roundsToPay, sum, unpaidMembers } from "@/lib/logic";
 import { PayoutModal } from "@/components/PayoutModal";
 import { METHOD_LABEL, MODE_PAIEMENT } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
-import { invitation } from "@/lib/whatsapp";
+import { invitation, waLink } from "@/lib/whatsapp";
 import { MessageModal } from "@/components/MessageModal";
-import { ArrowUpRight, CalendarDays, Check, CheckCircle2, Clock, Gift, HeartHandshake, PartyPopper, Smartphone, UserPlus, X } from "lucide-react";
+import { ArrowUpRight, CalendarDays, ChevronsRight, MessageCircle, Phone, Settings, Check, CheckCircle2, Clock, Gift, HeartHandshake, PartyPopper, Smartphone, UserPlus, X } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 import type { Member } from "@/lib/types";
 
@@ -21,7 +21,7 @@ type Tab = "membres" | "historique" | "tours";
 export default function GroupeDetail() {
   const ok = useRequireUser();
   const { id } = useParams<{ id: string }>();
-  const { getGroup, recordPayment, recordPayout, confirmPayments, setPaymentPhone, addMember, nextRound, joinGroup, loaded } = useStore();
+  const { getGroup, recordPayment, recordPayout, confirmPayments, setPaymentPhone, addMember, nextRound, joinGroup, loaded, userId } = useStore();
   const g = getGroup(id);
   const me = useMe(g);
   const [tab, setTab] = useState<Tab>("membres");
@@ -39,7 +39,8 @@ export default function GroupeDetail() {
   const ben = beneficiary(g);
   const late = isLate(g, g.currentRound);
   const due = amountDue(g);
-  const isTreasurer = me?.role === "tresorier";
+  const dr = droits(g, me, userId);
+  const isTreasurer = dr.tresorier;
   const myStatus = me ? memberStatus(g, me.id) : undefined;
   const unpaid = unpaidMembers(g);
   const finished = g.type === "tontine" && g.currentRound >= g.order.length;
@@ -73,7 +74,17 @@ export default function GroupeDetail() {
 
   return (
     <Page>
-      <Header back="/groupes" title={g.name} />
+      <Header
+        back="/groupes"
+        title={g.name}
+        right={
+          dr.gestionnaire ? (
+            <Link href={`/groupes/${g.id}/parametres`} aria-label="Paramètres du groupe" className="rounded-full p-2 text-stone-600 hover:bg-stone-100">
+              <Settings size={20} strokeWidth={1.9} />
+            </Link>
+          ) : undefined
+        }
+      />
 
       <div className="space-y-4 p-4">
         {/* Résumé */}
@@ -244,17 +255,31 @@ export default function GroupeDetail() {
                       {m.id === me?.id && <span className="text-stone-400"> (toi)</span>}
                     </p>
                     <p className="text-xs text-stone-500">
-                      {m.role === "tresorier" && <span className="mr-1.5 rounded-md bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-orange-700">Trésorier</span>}
+                      {m.role !== "membre" && (
+                        <span className={`mr-1.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase ${m.role === "tresorier" ? "bg-orange-100 text-orange-700" : "bg-sky-100 text-sky-700"}`}>
+                          {ROLE_LABEL[m.role]}
+                        </span>
+                      )}
                       {telAffiche(m.phone)}{paid > 0 && g.type === "collecte" && ` · ${fcfa(paid)}`}
                     </p>
                     {g.type !== "collecte" && paidUntil(g, m.id) > g.currentRound && (
-                      <p className="text-[11px] font-semibold text-emerald-700">⏩ Payé jusqu’au tour {paidUntil(g, m.id)}</p>
+                      <p className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700"><ChevronsRight size={12} strokeWidth={2.25} />Payé jusqu’au tour {paidUntil(g, m.id)}</p>
                     )}
                     {g.pending.some((p) => p.memberId === m.id) && (
                       <p className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700"><Clock size={12} strokeWidth={2} />Paiement déclaré, à confirmer</p>
                     )}
                     {arrears(g, m.id).length > 0 && (
                       <p className="text-[11px] font-semibold text-red-600">Doit : tour{arrears(g, m.id).length > 1 ? "s" : ""} {arrears(g, m.id).join(", ")}</p>
+                    )}
+                    {m.id !== me?.id && m.phone && (
+                      <div className="mt-1.5 flex gap-1.5">
+                        <a href={`tel:${m.phone.replace(/\D/g, "").slice(-10)}`} className="inline-flex items-center gap-1 rounded-lg bg-stone-100 px-2 py-1 text-[11px] font-semibold text-stone-700">
+                          <Phone size={12} strokeWidth={2} /> Appeler
+                        </a>
+                        <a href={waLink("", m.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg bg-stone-100 px-2 py-1 text-[11px] font-semibold text-stone-700">
+                          <MessageCircle size={12} strokeWidth={2} /> Écrire
+                        </a>
+                      </div>
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
@@ -284,6 +309,12 @@ export default function GroupeDetail() {
                 </div>
               );
             })}
+            {!dr.peutAjouter && (
+              <p className="bg-stone-50/60 p-4 text-xs text-stone-500">
+                Seul{g.addPolicy === "gestionnaires" ? "s le trésorier et les co-gestionnaires peuvent" : " le trésorier peut"} ajouter des membres. Utilise « Inviter » pour partager le lien du groupe.
+              </p>
+            )}
+            {dr.peutAjouter && (
             <form
               className="space-y-2 bg-stone-50/60 p-4"
               onSubmit={(e) => {
@@ -304,6 +335,7 @@ export default function GroupeDetail() {
               </div>
               <Button type="submit" variant="secondary" className="w-full !py-2.5">Ajouter</Button>
             </form>
+            )}
           </Card>
         )}
 

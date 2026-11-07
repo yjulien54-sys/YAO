@@ -108,3 +108,20 @@ export function netDuTour(g: Group, round = g.currentRound) {
   const ps = g.payments.filter((p) => p.round === round);
   return sum(ps) - feesOf(ps);
 }
+
+/* ---------- Droits ---------- */
+export const ADD_POLICY_LABEL = {
+  tresorier: "Seulement le trésorier",
+  gestionnaires: "Le trésorier et les co-gestionnaires",
+  tous: "Tous les membres",
+} as const;
+
+export const ROLE_LABEL = { tresorier: "Trésorier", gestionnaire: "Co-gestionnaire", membre: "Membre" } as const;
+
+export function droits(g: Group, me?: Member, userId?: string | null) {
+  const tresorier = me?.role === "tresorier" || (!!userId && g.createdBy === userId);
+  const gestionnaire = tresorier || me?.role === "gestionnaire";
+  const peutAjouter =
+    tresorier || (gestionnaire && g.addPolicy !== "tresorier") || (!!me && g.addPolicy === "tous");
+  return { tresorier, gestionnaire, peutAjouter, peutModifier: gestionnaire };
+}

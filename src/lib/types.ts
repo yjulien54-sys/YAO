@@ -1,6 +1,7 @@
 export type GroupType = "tontine" | "association" | "collecte";
 export type Frequency = "hebdomadaire" | "mensuelle" | "unique";
 export type PayMethod = "wave" | "orange" | "mtn" | "moov" | "especes";
+export type AddPolicy = "tresorier" | "gestionnaires" | "tous";
 export type MemberStatus = "paye" | "attente" | "retard";
 
 export interface User {
@@ -13,7 +14,7 @@ export interface Member {
   profileId?: string | null;
   name: string;
   phone: string;
-  role: "tresorier" | "membre";
+  role: "tresorier" | "gestionnaire" | "membre";
 }
 
 export interface Payment {
@@ -63,5 +64,7 @@ export interface Group {
   payouts: Payout[];
   paymentPhone?: string; // numéro Wave qui reçoit les cotisations
   waveLink?: string; // lien de paiement Wave Business (montant pré-rempli)
+  addPolicy: AddPolicy; // qui peut ajouter des membres
+  createdBy?: string;
   createdAt: string;
 }

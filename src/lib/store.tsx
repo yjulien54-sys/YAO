@@ -6,7 +6,7 @@ import { roundAmount } from "./logic";
 import { fraisMobileMoney } from "./payments";
 import { mapGroup, mapPayment } from "./mappers";
 import { supabase } from "./supabase";
-import type { Frequency, Group, GroupType, Payment, PayoutMethod, PayMethod, User } from "./types";
+import type { AddPolicy, Frequency, Group, GroupType, Member, Payment, PayoutMethod, PayMethod, User } from "./types";
 
 export interface NewGroupInput {
   name: string;
@@ -17,8 +17,19 @@ export interface NewGroupInput {
   startDate: string;
   penalty: number;
   target?: number;
-  members: { name: string; phone: string }[];
+  members: { name: string; phone: string; gestionnaire?: boolean }[];
   shuffle: boolean;
+  addPolicy: AddPolicy;
+}
+
+export interface GroupUpdate {
+  name?: string;
+  description?: string | null;
+  amount?: number;
+  startDate?: string;
+  penalty?: number;
+  target?: number | null;
+  addPolicy?: AddPolicy;
 }
 
 interface Ctx {
@@ -41,6 +52,12 @@ interface Ctx {
   /** Le trésorier confirme (ok = true) ou refuse un paiement déclaré. */
   confirmPayments: (paymentIds: string[], ok: boolean) => Promise<void>;
   setPaymentPhone: (groupId: string, phone: string) => Promise<void>;
+  updateGroup: (groupId: string, u: GroupUpdate) => Promise<void>;
+  updateMember: (memberId: string, u: { name?: string; phone?: string; role?: Member["role"] }) => Promise<void>;
+  removeMember: (memberId: string) => Promise<void>;
+  setOrder: (groupId: string, memberIds: string[]) => Promise<void>;
+  deleteGroup: (groupId: string) => Promise<void>;
+  updateProfile: (u: User) => Promise<void>;
   setWaveLink: (groupId: string, link: string) => Promise<void>;
   recordPayout: (groupId: string, p: { round: number; memberId?: string | null; beneficiaryName: string; amount: number; method: PayoutMethod; note?: string }) => Promise<void>;
   nextRound: (groupId: string) => Promise<void>;
@@ -157,6 +174,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           start_date: new Date(input.startDate).toISOString(),
           penalty: isCollecte ? 0 : input.penalty,
           target: isCollecte ? input.target ?? null : null,
+          add_policy: input.addPolicy,
         })
         .select("id")
         .single();
@@ -166,7 +184,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         { name: user!.name, phone: user!.phone, role: "tresorier", profile_id: userId },
         ...input.members
           .filter((m) => m.name.trim())
-          .map((m) => ({ name: m.name.trim(), phone: m.phone.replace(/\D/g, ""), role: "membre", profile_id: null })),
+          .map((m) => ({
+            name: m.name.trim(),
+            phone: m.phone.replace(/\D/g, ""),
+            role: m.gestionnaire && input.addPolicy !== "tresorier" ? "gestionnaire" : "membre",
+            profile_id: null,
+          })),
       ];
       const positions = people.map((_, i) => i);
       if (input.shuffle) {
@@ -292,6 +315,76 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [reload]
   );
 
+  const updateGroup = useCallback(
+    async (groupId: string, u: GroupUpdate) => {
+      const row: Record<string, unknown> = {};
+      if (u.name !== undefined) row.name = u.name.trim();
+      if (u.description !== undefined) row.description = u.description?.trim() || null;
+      if (u.amount !== undefined) row.amount = Math.round(u.amount);
+      if (u.startDate !== undefined) row.start_date = new Date(u.startDate).toISOString();
+      if (u.penalty !== undefined) row.penalty = Math.round(u.penalty);
+      if (u.target !== undefined) row.target = u.target;
+      if (u.addPolicy !== undefined) row.add_policy = u.addPolicy;
+      const { error } = await supabase.from("groups").update(row).eq("id", groupId);
+      fail(error);
+      await reload();
+    },
+    [reload]
+  );
+
+  const updateMember = useCallback(
+    async (memberId: string, u: { name?: string; phone?: string; role?: Member["role"] }) => {
+      const row: Record<string, unknown> = {};
+      if (u.name !== undefined) row.name = u.name.trim();
+      if (u.phone !== undefined) row.phone = u.phone.replace(/\D/g, "");
+      if (u.role !== undefined) row.role = u.role;
+      const { error } = await supabase.from("members").update(row).eq("id", memberId);
+      fail(error);
+      await reload();
+    },
+    [reload]
+  );
+
+  const removeMember = useCallback(
+    async (memberId: string) => {
+      const { error } = await supabase.from("members").delete().eq("id", memberId);
+      fail(error);
+      await reload();
+    },
+    [reload]
+  );
+
+  const setOrder = useCallback(
+    async (groupId: string, memberIds: string[]) => {
+      // une mise à jour par membre (positions 0, 1, 2…)
+      for (let i = 0; i < memberIds.length; i++) {
+        const { error } = await supabase.from("members").update({ turn_position: i }).eq("id", memberIds[i]).eq("group_id", groupId);
+        fail(error);
+      }
+      await reload();
+    },
+    [reload]
+  );
+
+  const deleteGroup = useCallback(
+    async (groupId: string) => {
+      const { error } = await supabase.from("groups").delete().eq("id", groupId);
+      fail(error);
+      await reload();
+    },
+    [reload]
+  );
+
+  const updateProfile = useCallback(
+    async (u: User) => {
+      const phone = u.phone.replace(/\D/g, "");
+      const { error } = await supabase.from("profiles").update({ name: u.name.trim(), phone }).eq("id", userId!);
+      fail(error);
+      setUser({ name: u.name.trim(), phone });
+    },
+    [userId]
+  );
+
   const setWaveLink = useCallback(
     async (groupId: string, link: string) => {
       const { error } = await supabase.from("groups").update({ wave_link: link.trim() || null }).eq("id", groupId);
@@ -346,7 +439,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider
-      value={{ ready, loaded, user, userId, groups, login, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, setWaveLink, recordPayout, nextRound, joinGroup }}
+      value={{ ready, loaded, user, userId, groups, login, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, setWaveLink, updateGroup, updateMember, removeMember, setOrder, deleteGroup, updateProfile, recordPayout, nextRound, joinGroup }}
     >
       {children}
     </StoreContext.Provider>

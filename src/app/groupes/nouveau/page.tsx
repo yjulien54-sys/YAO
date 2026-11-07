@@ -7,7 +7,7 @@ import { fcfa } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { HandCoins, Repeat, Users, type LucideIcon } from "lucide-react";
 import { IconBadge } from "@/components/icons";
-import type { Frequency, GroupType } from "@/lib/types";
+import type { AddPolicy, Frequency, GroupType } from "@/lib/types";
 
 const TYPES: { id: GroupType; icon: LucideIcon; ton: "orange" | "bleu" | "violet"; titre: string; desc: string }[] = [
   { id: "tontine", icon: Repeat, ton: "orange", titre: "Tontine", desc: "Chacun cotise, un membre ramasse à chaque tour" },
@@ -30,7 +30,8 @@ export default function NouveauGroupe() {
   const [penalty, setPenalty] = useState("500");
   const [target, setTarget] = useState("300000");
   const [shuffle, setShuffle] = useState(true);
-  const [members, setMembers] = useState([{ name: "", phone: "" }, { name: "", phone: "" }]);
+  const [members, setMembers] = useState<{ name: string; phone: string; gestionnaire?: boolean }[]>([{ name: "", phone: "" }, { name: "", phone: "" }]);
+  const [addPolicy, setAddPolicy] = useState<AddPolicy>("tresorier");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -59,6 +60,7 @@ export default function NouveauGroupe() {
       target: Number(target) || undefined,
       members,
       shuffle,
+      addPolicy,
     });
     router.replace(`/groupes/${id}`);
     } catch (err) {
@@ -150,6 +152,47 @@ export default function NouveauGroupe() {
               <input type="checkbox" checked={shuffle} onChange={(e) => setShuffle(e.target.checked)} className="h-4 w-4 accent-emerald-600" />
               Tirer au sort l’ordre de passage
             </label>
+          )}
+        </Card>
+
+        <Card className="space-y-3">
+          <div>
+            <h3 className="font-bold">Qui peut ajouter des membres ?</h3>
+            <p className="text-xs text-stone-500">Tu pourras changer ce réglage plus tard dans les paramètres du groupe.</p>
+          </div>
+          {([
+            ["tresorier", "Seulement moi", "Tu es le seul à ajouter, modifier ou retirer des membres."],
+            ["gestionnaires", "Moi et des co-gestionnaires", "Tu choisis 1 ou 2 personnes de confiance qui peuvent ajouter et modifier les membres."],
+            ["tous", "Tous les membres", "Chaque membre peut inviter et ajouter de nouvelles personnes."],
+          ] as const).map(([v, titre, desc]) => (
+            <label key={v} className={`flex cursor-pointer gap-3 rounded-2xl border-2 p-3 transition ${addPolicy === v ? "border-emerald-500 bg-emerald-50/50" : "border-stone-200 bg-white"}`}>
+              <input type="radio" name="addPolicy" checked={addPolicy === v} onChange={() => setAddPolicy(v)} className="mt-1 h-4 w-4 accent-emerald-600" />
+              <span>
+                <span className="block text-sm font-bold">{titre}</span>
+                <span className="block text-xs text-stone-500">{desc}</span>
+              </span>
+            </label>
+          ))}
+          {addPolicy !== "tresorier" && members.some((m) => m.name.trim()) && (
+            <div className="rounded-2xl bg-stone-50 p-3 ring-1 ring-stone-200">
+              <p className="mb-2 text-sm font-semibold">Co-gestionnaires {addPolicy === "gestionnaires" ? "(1 ou 2 conseillé)" : "(facultatif)"}</p>
+              <div className="space-y-1.5">
+                {members.map((m, i) =>
+                  m.name.trim() ? (
+                    <label key={i} className="flex items-center gap-2 text-sm">
+                      <input
+                        type="checkbox"
+                        checked={!!m.gestionnaire}
+                        onChange={(e) => setMembers((ms) => ms.map((x, j) => (j === i ? { ...x, gestionnaire: e.target.checked } : x)))}
+                        className="h-4 w-4 accent-emerald-600"
+                      />
+                      {m.name}
+                    </label>
+                  ) : null
+                )}
+              </div>
+              <p className="mt-2 text-xs text-stone-500">Ils peuvent ajouter et modifier les membres et l’ordre des tours. Seul toi confirmes les paiements et verses la caisse.</p>
+            </div>
           )}
         </Card>
 
