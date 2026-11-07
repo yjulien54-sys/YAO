@@ -1,0 +1,340 @@
+"use client";
+
+import Link from "next/link";
+import { useParams } from "next/navigation";
+import { useEffect, useState } from "react";
+import { supabase } from "@/lib/supabase";
+import { Avatar, Button, Card, Header, Loading, Page, Progress, StatusBadge, WhatsAppIcon, btnClass, inputClass, useRequireUser } from "@/components/ui";
+import { dateCourte, dateLongue, fcfa, prenom, telAffiche } from "@/lib/format";
+import { TYPE_LABEL, amountDue, beneficiary, dueDate, isLate, memberStatus, paymentsOf, roundStats, sum, unpaidMembers } from "@/lib/logic";
+import { METHOD_LABEL } from "@/lib/payments";
+import { useMe, useStore } from "@/lib/store";
+import { invitation, relanceGroupe, relanceMembre } from "@/lib/whatsapp";
+
+type Tab = "membres" | "historique" | "tours";
+
+export default function GroupeDetail() {
+  const ok = useRequireUser();
+  const { id } = useParams<{ id: string }>();
+  const { getGroup, recordPayment, addMember, nextRound, joinGroup, loaded } = useStore();
+  const g = getGroup(id);
+  const me = useMe(g);
+  const [tab, setTab] = useState<Tab>("membres");
+  const [newName, setNewName] = useState("");
+  const [newPhone, setNewPhone] = useState("");
+  const [toast, setToast] = useState("");
+
+  if (!ok || !loaded) return <Loading />;
+  if (!g) return <Invitation id={id} onJoin={() => joinGroup(id)} />;
+
+  const st = roundStats(g);
+  const ben = beneficiary(g);
+  const late = isLate(g, g.currentRound);
+  const due = amountDue(g);
+  const isTreasurer = me?.role === "tresorier";
+  const myStatus = me ? memberStatus(g, me.id) : undefined;
+  const unpaid = unpaidMembers(g);
+  const finished = g.type === "tontine" && g.currentRound >= g.order.length;
+
+  const flash = (t: string) => {
+    setToast(t);
+    setTimeout(() => setToast(""), 2500);
+  };
+
+  const sortedMembers = [...g.members].sort((a, b) => {
+    const rank = { retard: 0, attente: 1, paye: 2 };
+    return rank[memberStatus(g, a.id)] - rank[memberStatus(g, b.id)];
+  });
+
+  return (
+    <Page>
+      <Header back="/groupes" title={g.name} />
+
+      <div className="space-y-4 p-4">
+        {/* Résumé */}
+        <Card className="overflow-hidden !p-0">
+          <div className="bg-gradient-to-br from-emerald-700 to-emerald-600 p-4 text-white">
+            <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-emerald-100">
+              <span>{TYPE_LABEL[g.type]}</span>
+              {g.type !== "collecte" && <span>Tour {g.currentRound}{g.type === "tontine" && ` sur ${g.order.length}`}</span>}
+            </div>
+            <p className="mt-2 text-sm text-emerald-100">{g.type === "collecte" ? "Collecté" : "Dans la caisse du tour"}</p>
+            <p className="text-3xl font-extrabold">{fcfa(st.collected)}</p>
+            <p className="text-sm text-emerald-100">sur {fcfa(st.expected)} {g.type === "collecte" ? "d’objectif" : "attendus"}</p>
+            <Progress value={st.progress} className="mt-3 bg-white/25" />
+          </div>
+          <div className="grid grid-cols-3 divide-x divide-stone-200 text-center">
+            <Stat n={st.counts.paye} label="Payé" cls="text-emerald-700" />
+            <Stat n={st.counts.attente} label="En attente" cls="text-amber-600" />
+            <Stat n={st.counts.retard} label="En retard" cls="text-red-600" />
+          </div>
+        </Card>
+
+        {g.type !== "collecte" && (
+          <Card className="space-y-2 text-sm">
+            {ben && (
+              <div className="flex items-center gap-3">
+                <Avatar name={ben.name} size={36} />
+                <div className="flex-1">
+                  <p className="text-xs text-stone-500">Bénéficiaire de ce tour</p>
+                  <p className="font-bold">{ben.name}{ben.id === me?.id && " (toi)"}</p>
+                </div>
+                <span className="font-bold text-emerald-700">{fcfa(st.expected)}</span>
+              </div>
+            )}
+            <div className={`flex items-center justify-between rounded-xl px-3 py-2 ${late ? "bg-red-50 text-red-700" : "bg-stone-100 text-stone-700"}`}>
+              <span>📅 Échéance : <b>{dateCourte(dueDate(g, g.currentRound).toISOString())}</b></span>
+              {late && g.penalty > 0 && <span className="text-xs font-semibold">+{fcfa(g.penalty)} de pénalité</span>}
+            </div>
+          </Card>
+        )}
+
+        {g.description && <p className="px-1 text-sm leading-relaxed text-stone-600">{g.description}</p>}
+
+        {/* Actions */}
+        <div className="space-y-2">
+          {me && myStatus !== "paye" && (
+            <Link href={`/groupes/${g.id}/payer`} className={btnClass("primary", "w-full text-base")}>
+              {g.type === "collecte" ? "Participer" : `Payer ma part · ${fcfa(due.total)}`}
+            </Link>
+          )}
+          {me && myStatus === "paye" && g.type !== "collecte" && (
+            <div className="rounded-xl bg-emerald-50 px-4 py-3 text-center text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200">
+              ✅ Tu as payé ta part pour ce tour
+            </div>
+          )}
+          {me && myStatus === "paye" && g.type === "collecte" && (
+            <Link href={`/groupes/${g.id}/payer`} className={btnClass("secondary", "w-full")}>Ajouter une participation</Link>
+          )}
+          <div className="grid grid-cols-2 gap-2">
+            <a href={relanceGroupe(g)} target="_blank" rel="noreferrer" className={btnClass("whatsapp", unpaid.length === 0 ? "pointer-events-none opacity-50" : "")}>
+              <WhatsAppIcon /> Relancer ({unpaid.length})
+            </a>
+            <a href={invitation(g)} target="_blank" rel="noreferrer" className={btnClass("secondary")}>
+              Inviter
+            </a>
+          </div>
+        </div>
+
+        {/* Onglets */}
+        <div className="flex gap-1 rounded-xl bg-stone-200/70 p-1 text-sm font-semibold">
+          {(["membres", "historique", ...(g.type === "tontine" ? ["tours"] : [])] as Tab[]).map((t) => (
+            <button key={t} onClick={() => setTab(t)} className={`flex-1 rounded-lg py-2 capitalize transition ${tab === t ? "bg-white text-stone-900 shadow-sm" : "text-stone-500"}`}>
+              {t === "membres" ? `Membres (${g.members.length})` : t}
+            </button>
+          ))}
+        </div>
+
+        {tab === "membres" && (
+          <Card className="divide-y divide-stone-100 !p-0">
+            {sortedMembers.map((m) => {
+              const s = memberStatus(g, m.id);
+              const paid = sum(paymentsOf(g, m.id));
+              return (
+                <div key={m.id} className="flex items-center gap-3 px-4 py-3">
+                  <Avatar name={m.name} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-semibold">
+                      {m.name}
+                      {m.id === me?.id && <span className="text-stone-400"> (toi)</span>}
+                      {m.role === "tresorier" && <span className="ml-1 rounded bg-orange-100 px-1.5 py-0.5 text-[10px] font-bold uppercase text-orange-700">Trésorier</span>}
+                    </p>
+                    <p className="text-xs text-stone-500">{telAffiche(m.phone)}{paid > 0 && g.type === "collecte" && ` · ${fcfa(paid)}`}</p>
+                  </div>
+                  <div className="flex flex-col items-end gap-1.5">
+                    <StatusBadge status={s} />
+                    {s !== "paye" && m.id !== me?.id && (
+                      <div className="flex gap-1">
+                        <a href={relanceMembre(g, m)} target="_blank" rel="noreferrer" title="Relancer sur WhatsApp" className="rounded-lg bg-[#25D366]/10 p-1.5 text-[#128C7E] hover:bg-[#25D366]/20">
+                          <WhatsAppIcon size={16} />
+                        </a>
+                        {isTreasurer && g.type !== "collecte" && (
+                          <button
+                            onClick={() => {
+                              if (confirm(`Confirmer que ${m.name} a payé ${fcfa(due.total)} en espèces ?`)) {
+                                recordPayment(g.id, m.id, "especes")
+                                  .then(() => flash(`Paiement de ${prenom(m.name)} enregistré`))
+                                  .catch((e) => flash("Erreur : " + e.message));
+                              }
+                            }}
+                            className="rounded-lg bg-stone-100 px-2 py-1 text-xs font-semibold text-stone-700 hover:bg-stone-200"
+                          >
+                            Espèces
+                          </button>
+                        )}
+                      </div>
+                    )}
+                  </div>
+                </div>
+              );
+            })}
+            <form
+              className="space-y-2 bg-stone-50/60 p-4"
+              onSubmit={(e) => {
+                e.preventDefault();
+                if (!newName.trim()) return;
+                const n = newName;
+                addMember(g.id, newName, newPhone)
+                  .then(() => flash(`${prenom(n)} ajouté(e) au groupe`))
+                  .catch((err) => flash("Erreur : " + err.message));
+                setNewName("");
+                setNewPhone("");
+              }}
+            >
+              <p className="text-sm font-semibold text-stone-700">Ajouter un membre</p>
+              <div className="grid grid-cols-[1fr_8.5rem] gap-2">
+                <input className={inputClass} placeholder="Nom" value={newName} onChange={(e) => setNewName(e.target.value)} />
+                <input className={inputClass} placeholder="Téléphone" inputMode="tel" value={newPhone} onChange={(e) => setNewPhone(e.target.value)} />
+              </div>
+              <Button type="submit" variant="secondary" className="w-full !py-2.5">Ajouter</Button>
+            </form>
+          </Card>
+        )}
+
+        {tab === "historique" && (
+          <Card className="divide-y divide-stone-100 !p-0">
+            {g.payments.length === 0 && <p className="p-4 text-center text-sm text-stone-500">Aucun paiement pour l’instant.</p>}
+            {[...g.payments].reverse().map((p) => {
+              const m = g.members.find((x) => x.id === p.memberId);
+              return (
+                <Link key={p.id} href={`/groupes/${g.id}/recu/${p.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50">
+                  <Avatar name={m?.name ?? "?"} size={36} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{m?.name ?? "Ancien membre"}</p>
+                    <p className="text-xs text-stone-500">
+                      {dateLongue(p.date)} · {METHOD_LABEL[p.method]}{g.type !== "collecte" && ` · Tour ${p.round}`}
+                    </p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm font-bold text-emerald-700">+{fcfa(p.amount + p.penalty)}</p>
+                    {p.penalty > 0 && <p className="text-[11px] text-red-600">dont {fcfa(p.penalty)} pénalité</p>}
+                  </div>
+                </Link>
+              );
+            })}
+          </Card>
+        )}
+
+        {tab === "tours" && g.type === "tontine" && (
+          <Card className="divide-y divide-stone-100 !p-0">
+            {g.order.map((mid, i) => {
+              const m = g.members.find((x) => x.id === mid);
+              const r = i + 1;
+              const etat = r < g.currentRound ? "passe" : r === g.currentRound ? "actuel" : "futur";
+              return (
+                <div key={mid} className={`flex items-center gap-3 px-4 py-3 ${etat === "actuel" ? "bg-emerald-50" : ""}`}>
+                  <span className={`grid h-8 w-8 place-items-center rounded-full text-sm font-bold ${etat === "passe" ? "bg-stone-200 text-stone-500" : etat === "actuel" ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-600"}`}>
+                    {r}
+                  </span>
+                  <div className="flex-1">
+                    <p className={`font-semibold ${etat === "passe" ? "text-stone-400" : ""}`}>{m?.name ?? "—"}</p>
+                    <p className="text-xs text-stone-500">{dateCourte(dueDate(g, r).toISOString())}</p>
+                  </div>
+                  <span className="text-xs font-semibold text-stone-500">
+                    {etat === "passe" ? "✓ A reçu" : etat === "actuel" ? "🎁 Ce tour" : fcfa(g.amount * g.members.length)}
+                  </span>
+                </div>
+              );
+            })}
+          </Card>
+        )}
+
+        {isTreasurer && g.type !== "collecte" && (
+          <Card className="space-y-2 border-dashed">
+            <p className="text-sm font-bold">Espace trésorier</p>
+            <p className="text-xs text-stone-500">
+              {finished
+                ? "C’est le dernier tour du cycle. Tout le monde aura reçu sa part 🎉"
+                : unpaid.length > 0
+                  ? `Il reste ${unpaid.length} paiement(s) avant de clôturer ce tour.`
+                  : "Tout le monde a payé. Tu peux clôturer le tour."}
+            </p>
+            {!finished && (
+              <Button
+                variant="secondary"
+                className="w-full"
+                onClick={() => {
+                  if (unpaid.length === 0 || confirm(`${unpaid.length} membre(s) n’ont pas encore payé. Clôturer quand même ?`)) {
+                    const next = g.currentRound + 1;
+                    nextRound(g.id)
+                      .then(() => flash(`Tour ${next} ouvert`))
+                      .catch((err) => flash("Erreur : " + err.message));
+                    setTab("membres");
+                  }
+                }}
+              >
+                Clôturer le tour {g.currentRound} et passer au suivant
+              </Button>
+            )}
+          </Card>
+        )}
+      </div>
+
+      {toast && (
+        <div className="fixed inset-x-0 bottom-6 z-20 mx-auto w-fit max-w-[90%] rounded-full bg-stone-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg">
+          {toast}
+        </div>
+      )}
+    </Page>
+  );
+}
+
+function Stat({ n, label, cls }: { n: number; label: string; cls: string }) {
+  return (
+    <div className="py-3">
+      <p className={`text-xl font-extrabold ${cls}`}>{n}</p>
+      <p className="text-[11px] font-medium text-stone-500">{label}</p>
+    </div>
+  );
+}
+
+const TYPE_NOM: Record<string, string> = { tontine: "la tontine", association: "l’association", collecte: "la collecte" };
+
+function Invitation({ id, onJoin }: { id: string; onJoin: () => Promise<void> }) {
+  const [info, setInfo] = useState<{ name: string; type: string; members_count: number } | null | undefined>(undefined);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    supabase.rpc("group_preview", { g: id }).then(({ data }) => setInfo(data?.[0] ?? null));
+  }, [id]);
+
+  if (info === undefined) return <Loading />;
+  if (info === null)
+    return (
+      <Page>
+        <Header back="/groupes" title="Groupe introuvable" />
+        <p className="p-6 text-center text-stone-500">Ce groupe n’existe pas ou a été supprimé.</p>
+      </Page>
+    );
+
+  return (
+    <Page>
+      <Header back="/groupes" title="Invitation" />
+      <div className="space-y-5 p-6 text-center">
+        <div className="mx-auto grid h-20 w-20 place-items-center rounded-3xl bg-emerald-100 text-4xl">🤝</div>
+        <div>
+          <p className="text-sm text-stone-500">Tu es invité(e) à rejoindre {TYPE_NOM[info.type] ?? "le groupe"}</p>
+          <h2 className="mt-1 text-2xl font-extrabold">{info.name}</h2>
+          <p className="mt-1 text-sm text-stone-500">{info.members_count} membre(s)</p>
+        </div>
+        {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+        <Button
+          className="w-full text-base"
+          disabled={busy}
+          onClick={async () => {
+            setBusy(true);
+            try {
+              await onJoin();
+            } catch (e) {
+              setError("Impossible de rejoindre : " + (e as Error).message);
+              setBusy(false);
+            }
+          }}
+        >
+          {busy ? "Un instant…" : "Rejoindre le groupe"}
+        </Button>
+      </div>
+    </Page>
+  );
+}
