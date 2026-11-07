@@ -1,14 +1,14 @@
 import { NextResponse } from "next/server";
-import { reference } from "@/lib/format";
 import { roundAmount, roundsToPay } from "@/lib/logic";
 import { mapGroup } from "@/lib/mappers";
 import { fraisMobileMoney } from "@/lib/payments";
-import { cinetpayConfigured, initierCinetpay, supabaseAdmin, userFromRequest } from "@/lib/server/cinetpay";
+import { fournisseurConfigure, initierCinetpay, supabaseAdmin, userFromRequest } from "@/lib/server/cinetpay";
+import { creerSessionWave } from "@/lib/server/wave";
 
 export const runtime = "nodejs";
 
 export async function POST(req: Request) {
-  if (!cinetpayConfigured()) return NextResponse.json({ error: "Les vrais paiements ne sont pas encore activés." }, { status: 503 });
+  if (!fournisseurConfigure()) return NextResponse.json({ error: "Les vrais paiements ne sont pas encore activés." }, { status: 503 });
   const user = await userFromRequest(req);
   if (!user) return NextResponse.json({ error: "non connecté" }, { status: 401 });
 
@@ -41,7 +41,7 @@ export async function POST(req: Request) {
 
   const transactionId = `CTZ${Date.now()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
   const { error } = await sb.from("payments").insert(
-    lignes.map((l) => ({
+    lignes.map((l, i) => ({
       group_id: g.id,
       member_id: memberId,
       round: l.round,
@@ -51,13 +51,31 @@ export async function POST(req: Request) {
       method: "wave", // remplacé par l'opérateur réel après confirmation
       status: "en_attente",
       transaction_id: transactionId,
-      reference: reference(),
+      reference: `${transactionId}-${i + 1}`, // permet de retrouver la transaction au retour
       created_by: user.id,
     }))
   );
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const origin = new URL(req.url).origin;
+
+  if (process.env.NEXT_PUBLIC_PAIEMENT_MODE === "wave") {
+    try {
+      const session = await creerSessionWave({
+        amount: total,
+        clientReference: transactionId,
+        successUrl: `${origin}/api/paiements/retour?ref=${transactionId}&g=${g.id}`,
+        errorUrl: `${origin}/api/paiements/retour?ref=${transactionId}&g=${g.id}&erreur=1`,
+      });
+      // On retient l'identifiant de session Wave pour vérifier le paiement ensuite
+      await sb.from("payments").update({ transaction_id: session.id }).eq("transaction_id", transactionId);
+      return NextResponse.json({ paymentUrl: session.launchUrl, transactionId: session.id });
+    } catch (e) {
+      await sb.from("payments").update({ status: "echoue" }).eq("transaction_id", transactionId);
+      return NextResponse.json({ error: (e as Error).message }, { status: 502 });
+    }
+  }
+
   try {
     const { paymentUrl } = await initierCinetpay({
       transactionId,

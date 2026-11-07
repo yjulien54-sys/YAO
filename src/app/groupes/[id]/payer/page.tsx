@@ -53,14 +53,15 @@ function Payer() {
   const lignes = tours.map((r) => ({ r, ...roundAmount(g, r) }));
   const total = isCollecte ? Number(montant) || 0 : lignes.reduce((s, l) => s + l.total, 0);
   const rienAPayer = !isCollecte && aPayer.length === 0;
-  const op = OPERATEURS.find((o) => o.id === method)!;
+  const operateurs = MODE_PAIEMENT === "wave" ? OPERATEURS.filter((o) => o.id === "wave") : OPERATEURS;
+  const op = operateurs.find((o) => o.id === method) ?? operateurs[0];
   const pourAutrui = member.id !== me?.id;
 
   async function payer() {
     setErreur("");
     setEtat("attente");
     try {
-      if (MODE_PAIEMENT === "cinetpay") {
+      if (MODE_PAIEMENT !== "simulation") {
         const { data } = await supabase.auth.getSession();
         const res = await fetch("/api/paiements/initier", {
           method: "POST",
@@ -69,7 +70,7 @@ function Payer() {
         });
         const json = await res.json();
         if (!res.ok || !json.paymentUrl) throw new Error(json.error ?? "paiement impossible");
-        window.location.href = json.paymentUrl; // page sécurisée CinetPay
+        window.location.href = json.paymentUrl; // page sécurisée Wave / CinetPay
         return;
       }
       await initierPaiement({ method, phone, amount: total });
@@ -89,12 +90,12 @@ function Payer() {
             <div className="mx-auto mb-6 grid h-20 w-20 animate-pulse place-items-center rounded-full text-2xl font-extrabold" style={{ background: op.bg, color: op.fg }}>
               {op.nom[0]}
             </div>
-            <h2 className="text-xl font-bold">{MODE_PAIEMENT === "cinetpay" ? "Ouverture du paiement sécurisé…" : "Confirme sur ton téléphone"}</h2>
+            <h2 className="text-xl font-bold">{MODE_PAIEMENT === "wave" ? "Ouverture de Wave…" : MODE_PAIEMENT === "cinetpay" ? "Ouverture du paiement sécurisé…" : "Confirme sur ton téléphone"}</h2>
             <p className="mt-2 text-sm leading-relaxed text-stone-600">
               Paiement de <b>{fcfa(total)}</b> via {op.nom}.
-              {MODE_PAIEMENT !== "cinetpay" && <><br />Valide avec ton code secret.</>}
+              {MODE_PAIEMENT === "simulation" && <><br />Valide avec ton code secret.</>}
             </p>
-            {MODE_PAIEMENT !== "cinetpay" && <p className="mt-6 text-xs text-stone-400">Mode test : le paiement est simulé, aucun argent n’est prélevé</p>}
+            {MODE_PAIEMENT === "simulation" && <p className="mt-6 text-xs text-stone-400">Mode test : le paiement est simulé, aucun argent n’est prélevé</p>}
           </div>
         </div>
       </Page>
@@ -104,7 +105,7 @@ function Payer() {
     <Page>
       <Header back={`/groupes/${g.id}`} title={isCollecte ? "Participer" : "Payer la cotisation"} />
       <div className="space-y-4 p-4">
-        {MODE_PAIEMENT !== "cinetpay" && (
+        {MODE_PAIEMENT === "simulation" && (
           <p className="rounded-xl bg-amber-50 px-3 py-2 text-xs text-amber-800 ring-1 ring-amber-200">
             Mode test : les paiements sont simulés, aucun argent n’est prélevé.
           </p>
@@ -168,7 +169,7 @@ function Payer() {
             <div>
               <p className="mb-2 px-1 text-sm font-semibold text-stone-700">Moyen de paiement</p>
               <div className="grid grid-cols-2 gap-2">
-                {OPERATEURS.map((o) => (
+                {operateurs.map((o) => (
                   <button key={o.id} type="button" onClick={() => setMethod(o.id)} className={`flex items-center gap-2.5 rounded-2xl border-2 bg-white p-3 text-left text-sm font-bold transition ${method === o.id ? "border-emerald-500" : "border-stone-200"}`}>
                     <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-base font-extrabold" style={{ background: o.bg, color: o.fg }}>{o.nom[0]}</span>
                     {o.nom}
@@ -176,11 +177,15 @@ function Payer() {
                 ))}
               </div>
             </div>
-            <Field label={`Numéro ${op.nom}`}>
-              <input className={inputClass} inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
-            </Field>
+            {MODE_PAIEMENT === "wave" ? (
+              <p className="px-1 text-sm text-stone-600">Tu vas être redirigé vers <b>Wave</b> pour valider le paiement, puis tu reviendras automatiquement sur Cotiz.</p>
+            ) : (
+              <Field label={`Numéro ${op.nom}`}>
+                <input className={inputClass} inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
+              </Field>
+            )}
             {erreur && <p className="text-sm font-medium text-red-600">{erreur}</p>}
-            <Button className="w-full text-base" disabled={total <= 0 || phone.replace(/\D/g, "").length < 10} onClick={payer}>
+            <Button className="w-full text-base" disabled={total <= 0 || (MODE_PAIEMENT !== "wave" && phone.replace(/\D/g, "").length < 10)} onClick={payer}>
               Payer {fcfa(total)} avec {op.nom}
             </Button>
             <p className="text-center text-xs leading-relaxed text-stone-500">

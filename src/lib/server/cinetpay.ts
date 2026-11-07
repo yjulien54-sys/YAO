@@ -17,6 +17,12 @@ const API = "https://api-checkout.cinetpay.com/v2";
 export const cinetpayConfigured = () =>
   Boolean(process.env.CINETPAY_APIKEY && process.env.CINETPAY_SITE_ID && process.env.SUPABASE_SERVICE_ROLE_KEY);
 
+/** Un fournisseur de paiement réel est-il configuré ? */
+export const fournisseurConfigure = () =>
+  process.env.NEXT_PUBLIC_PAIEMENT_MODE === "wave"
+    ? Boolean(process.env.WAVE_API_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY)
+    : cinetpayConfigured();
+
 /** Client Supabase avec tous les droits — ne jamais l'utiliser côté navigateur. */
 export const supabaseAdmin = () =>
   createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY!, {
@@ -90,12 +96,21 @@ export function methodeDepuisCinetpay(code?: string): PayMethod | undefined {
   return undefined;
 }
 
-/** Vérifie une transaction chez CinetPay et met à jour les paiements correspondants. */
+/** Vérifie une transaction chez le fournisseur (CinetPay ou Wave) et met à jour les paiements. */
 export async function synchroniserTransaction(transactionId: string) {
   const sb = supabaseAdmin();
-  const { statut, methode } = await verifierCinetpay(transactionId);
+  let statut: StatutCinetpay;
+  let m: PayMethod | undefined;
+  if (transactionId.startsWith("cos-") || process.env.NEXT_PUBLIC_PAIEMENT_MODE === "wave") {
+    const { lireSessionWave } = await import("./wave");
+    statut = await lireSessionWave(transactionId);
+    m = "wave";
+  } else {
+    const r = await verifierCinetpay(transactionId);
+    statut = r.statut;
+    m = methodeDepuisCinetpay(r.methode);
+  }
   if (statut === "ACCEPTED") {
-    const m = methodeDepuisCinetpay(methode);
     await sb
       .from("payments")
       .update({ status: "reussi", ...(m ? { method: m } : {}) })

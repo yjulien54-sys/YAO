@@ -7,13 +7,15 @@ export const OPERATEURS: { id: Exclude<PayMethod, "especes">; nom: string; bg: s
   { id: "moov", nom: "Moov Money", bg: "#0066B3", fg: "#ffffff" },
 ];
 
-/** Frais Mobile Money estimés (pris sur la caisse du groupe) */
-export const FRAIS_TAUX = Number(process.env.NEXT_PUBLIC_FRAIS_TAUX ?? "0.03");
+/** Mode de paiement : "simulation" (par défaut), "wave" (Wave Business) ou "cinetpay" */
+export const MODE_PAIEMENT: "simulation" | "wave" | "cinetpay" =
+  process.env.NEXT_PUBLIC_PAIEMENT_MODE === "wave" ? "wave" : process.env.NEXT_PUBLIC_PAIEMENT_MODE === "cinetpay" ? "cinetpay" : "simulation";
+
+/** Frais estimés (pris sur la caisse du groupe) : ≈1 % chez Wave Business, ≈3 % chez les agrégateurs. À ajuster selon ton contrat. */
+export const FRAIS_TAUX = Number(process.env.NEXT_PUBLIC_FRAIS_TAUX ?? (MODE_PAIEMENT === "wave" ? "0.01" : "0.03"));
 export const fraisMobileMoney = (montant: number, method: PayMethod) =>
   method === "especes" ? 0 : Math.round(montant * FRAIS_TAUX);
 
-/** Mode de paiement : "simulation" (par défaut) ou "cinetpay" (vrais paiements) */
-export const MODE_PAIEMENT = process.env.NEXT_PUBLIC_PAIEMENT_MODE === "cinetpay" ? "cinetpay" : "simulation";
 
 export const METHOD_LABEL: Record<PayMethod | "virement" | "cinetpay", string> = {
   wave: "Wave",
