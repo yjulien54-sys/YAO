@@ -20,8 +20,9 @@ const RAPIDES = [2000, 5000, 10000, 25000];
 const APPS: Record<string, { android?: string; store?: string; ussd?: string; label: string }> = {
   wave: {
     label: "Ouvrir Wave et payer",
-    // Format officiel Android (Intent.toUri) ; si l'app ne s'ouvre pas, la page Wave du Play Store s'affiche (bouton « Ouvrir »)
-    android: "intent:#Intent;action=android.intent.action.MAIN;category=android.intent.category.LAUNCHER;package=com.wave.personal;S.browser_fallback_url=https%3A%2F%2Fplay.google.com%2Fstore%2Fapps%2Fdetails%3Fid%3Dcom.wave.personal;end",
+    // Lien Play Store avec ouverture directe : ouvre Wave s'il est installé, sinon la page Wave (bouton « Ouvrir »).
+    // Fonctionne aussi depuis le navigateur de WhatsApp, contrairement aux liens « intent: ».
+    android: "https://play.google.com/store/apps/details?id=com.wave.personal&launch=true",
   },
   orange: { label: "Payer avec Orange Money (#144#)", ussd: "#144#" },
   mtn: { label: "Payer avec MTN MoMo (*133#)", ussd: "*133#" },
@@ -259,23 +260,31 @@ function Payer() {
                       <p className="text-3xl font-extrabold tracking-tight">{fcfa(total)}</p>
                     </div>
                   </div>
-                  <div className="mt-2 flex items-center justify-between gap-2 border-t border-stone-100 pt-2">
-                    <div>
-                      <p className="text-xs text-stone-500">Numéro {op.nom} du trésorier{tresorier ? ` (${tresorier.name})` : ""}</p>
-                      <p className="text-lg font-extrabold tracking-wide">{numeroCaisse ? telAffiche(numeroCaisse) : "—"}</p>
+                  <div className="mt-3 border-t border-stone-100 pt-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Envoyer au trésorier</p>
+                    <div className="mt-1 flex items-center justify-between gap-2">
+                      <p className="text-2xl font-extrabold tracking-wide">{numeroCaisse ? telAffiche(numeroCaisse) : "—"}</p>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          navigator.clipboard?.writeText(numeroCaisse.replace(/\D/g, "").slice(-10)).then(() => {
+                            setCopie(true);
+                            setTimeout(() => setCopie(false), 2000);
+                          });
+                        }}
+                        className="inline-flex items-center gap-1.5 rounded-xl bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-700"
+                      >
+                        {copie ? <><Check size={15} strokeWidth={2.25} /> Copié</> : <><Copy size={15} strokeWidth={1.9} /> Copier</>}
+                      </button>
                     </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        navigator.clipboard?.writeText(numeroCaisse.replace(/\D/g, "").slice(-10)).then(() => {
-                          setCopie(true);
-                          setTimeout(() => setCopie(false), 2000);
-                        });
-                      }}
-                      className="inline-flex items-center gap-1.5 rounded-xl bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-700"
-                    >
-                      {copie ? <><Check size={15} strokeWidth={2.25} /> Copié</> : <><Copy size={15} strokeWidth={1.9} /> Copier</>}
-                    </button>
+                    {tresorier && (
+                      <p className="mt-2 rounded-xl bg-emerald-50 px-3 py-2 text-base font-extrabold uppercase tracking-wide text-emerald-800 ring-1 ring-emerald-200">
+                        {tresorier.name}
+                      </p>
+                    )}
+                    <p className="mt-2 text-xs leading-snug text-stone-500">
+                      Avant de valider dans {op.nom}, vérifie que le nom affiché est bien <b>{tresorier?.name ?? "celui du trésorier"}</b>.
+                    </p>
                   </div>
                 </div>
                 {(() => {
@@ -284,8 +293,8 @@ function Payer() {
                   // Lien direct (pas d'attente avant l'ouverture, sinon Android bloque)
                   const href = app.ussd ? `tel:${encodeURIComponent(app.ussd)}` : android && app.android ? app.android : undefined;
                   const consigne = app.ussd
-                    ? `Numéro copié. Dans le menu, choisis « Transfert », colle le numéro ${telAffiche(num)} et envoie ${fcfa(total)}.`
-                    : `Numéro copié. Dans ${op.nom}, choisis « Envoyer », colle le numéro ${telAffiche(num)} et envoie ${fcfa(total)}.${href ? "" : " Ouvre ton application " + op.nom + " maintenant."}`;
+                    ? `Numéro copié. Dans le menu, choisis « Transfert », colle le numéro ${telAffiche(num)}${tresorier ? ` (${tresorier.name})` : ""} et envoie ${fcfa(total)}.`
+                    : `Numéro copié. Dans ${op.nom}, choisis « Envoyer », colle le numéro ${telAffiche(num)}${tresorier ? ` (${tresorier.name})` : ""} et envoie ${fcfa(total)}.${href ? "" : " Ouvre ton application " + op.nom + " maintenant."}`;
                   return (
                     <a
                       href={href}
