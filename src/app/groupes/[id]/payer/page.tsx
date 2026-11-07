@@ -265,7 +265,7 @@ function Payer() {
                   <div className="mt-3 border-t border-stone-100 pt-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Envoyer au trésorier</p>
                     <div className="mt-1 flex items-center justify-between gap-2">
-                      <p className="text-2xl font-extrabold tracking-wide">{numeroCaisse ? telAffiche(numeroCaisse) : "—"}</p>
+                      <p className="whitespace-nowrap text-[clamp(18px,6vw,24px)] font-extrabold tracking-wide">{numeroCaisse ? telAffiche(numeroCaisse) : "—"}</p>
                       <button
                         type="button"
                         onClick={() => {
@@ -274,7 +274,7 @@ function Payer() {
                             setTimeout(() => setCopie(false), 2000);
                           });
                         }}
-                        className="inline-flex items-center gap-1.5 rounded-xl bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-700"
+                        className="inline-flex shrink-0 items-center gap-1.5 rounded-xl bg-stone-100 px-3 py-2 text-sm font-semibold text-stone-700"
                       >
                         {copie ? <><Check size={15} strokeWidth={2.25} /> Copié</> : <><Copy size={15} strokeWidth={1.9} /> Copier</>}
                       </button>
