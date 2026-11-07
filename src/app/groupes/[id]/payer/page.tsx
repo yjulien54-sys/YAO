@@ -17,12 +17,14 @@ import type { PayMethod } from "@/lib/types";
 const RAPIDES = [2000, 5000, 10000, 25000];
 
 /** Ouverture de l'application de paiement du membre (mode paiement direct au trésorier) */
-const APPS: Record<string, { android?: string; store?: string; ussd?: string; label: string }> = {
+const APPS: Record<string, { android?: string; ios?: string; ussd?: string; label: string }> = {
   wave: {
     label: "Ouvrir Wave et payer",
     // Lien Play Store avec ouverture directe : ouvre Wave s'il est installé, sinon la page Wave (bouton « Ouvrir »).
     // Fonctionne aussi depuis le navigateur de WhatsApp, contrairement aux liens « intent: ».
     android: "https://play.google.com/store/apps/details?id=com.wave.personal&launch=true",
+    // iPhone : page Wave de l'App Store, qui affiche « Ouvrir » si l'application est installée
+    ios: "https://apps.apple.com/app/id1523884528",
   },
   orange: { label: "Payer avec Orange Money (#144#)", ussd: "#144#" },
   mtn: { label: "Payer avec MTN MoMo (*133#)", ussd: "*133#" },
@@ -56,7 +58,11 @@ function Payer() {
   const [copie, setCopie] = useState(false);
   const [aide, setAide] = useState("");
   const [android, setAndroid] = useState(false);
-  useEffect(() => setAndroid(/android/i.test(navigator.userAgent)), []);
+  const [ios, setIos] = useState(false);
+  useEffect(() => {
+    setAndroid(/android/i.test(navigator.userAgent));
+    setIos(/iphone|ipad|ipod/i.test(navigator.userAgent));
+  }, []);
   const [erreur, setErreur] = useState("");
 
   if (!ok || !loaded) return <Loading />;
@@ -292,7 +298,7 @@ function Payer() {
                   const app = APPS[method];
                   // Lien direct (pas d'attente avant l'ouverture, sinon Android bloque)
                   const lienBusiness = method === "wave" && lienWaveValide(g.waveLink) ? lienWaveAvecMontant(g.waveLink!, total) : undefined;
-                  const href = lienBusiness ?? (app.ussd ? `tel:${encodeURIComponent(app.ussd)}` : android && app.android ? app.android : undefined);
+                  const href = lienBusiness ?? (app.ussd ? `tel:${encodeURIComponent(app.ussd)}` : android && app.android ? app.android : ios && app.ios ? app.ios : undefined);
                   const consigne = lienBusiness
                     ? `Wave s’ouvre avec ${fcfa(total)} déjà rempli. Vérifie le nom ${tresorier ? tresorier.name : "du trésorier"} et valide avec ton code.`
                     : app.ussd
