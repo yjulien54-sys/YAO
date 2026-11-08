@@ -141,3 +141,40 @@ export function droits(g: Group, me?: Member, userId?: string | null) {
     tresorier || (gestionnaire && g.addPolicy !== "tresorier") || (!!me && g.addPolicy === "tous");
   return { tresorier, gestionnaire, peutAjouter, peutModifier: gestionnaire };
 }
+
+/* ---------- Engagement au règlement et dettes ---------- */
+
+/** Tours impayés d'un membre (tours passés, et le tour en cours s'il est en retard) */
+export function impayes(g: Group, memberId: string): number[] {
+  if (g.type === "collecte") return [];
+  const out: number[] = [];
+  for (let r = 1; r <= g.currentRound; r++) {
+    if (r === g.currentRound && !isLate(g, r)) break;
+    if (!isPaid(g, memberId, r)) out.push(r);
+  }
+  return out;
+}
+
+/** Texte du règlement que le membre accepte (copie figée enregistrée avec sa signature) */
+export function texteReglement(g: Group, nom: string, telephone: string, mesParts: Member[]): string {
+  const freq = FREQUENCES.find((f) => f.id === g.frequency)?.label.toLowerCase() ?? g.frequency;
+  const tours = mesParts
+    .map((m) => g.order.indexOf(m.id) + 1)
+    .filter((n) => n > 0)
+    .sort((a, b) => a - b);
+  const lignes = [
+    `Règlement du groupe « ${g.name} » (${TYPE_LABEL[g.type].toLowerCase()}).`,
+    `Membre : ${nom}, téléphone ${telephone}.`,
+    `Cotisation : ${g.amount.toLocaleString("fr-FR")} F CFA par part, ${freq}, première échéance le ${new Date(g.startDate).toLocaleDateString("fr-FR")}.`,
+  ];
+  if (g.type === "tontine") {
+    lignes.push(`Nombre de tours : ${g.order.length}. Mes parts : ${mesParts.length}.${tours.length ? ` Je reçois la caisse au(x) tour(s) : ${tours.join(", ")}.` : ""}`);
+  }
+  if (g.penalty > 0) lignes.push(`Pénalité de retard : ${g.penalty.toLocaleString("fr-FR")} F CFA par cotisation en retard.`);
+  lignes.push(
+    g.type === "tontine"
+      ? "Je m’engage à payer toutes mes cotisations à chaque échéance jusqu’au dernier tour, y compris après avoir reçu la caisse. En cas de non-paiement, je reconnais devoir au groupe les sommes impayées."
+      : "Je m’engage à payer mes cotisations à chaque échéance. En cas de non-paiement, je reconnais devoir au groupe les sommes impayées."
+  );
+  return lignes.join("\n");
+}

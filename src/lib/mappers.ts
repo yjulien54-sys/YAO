@@ -57,6 +57,13 @@ export const mapGroup = (r: any): Group => {
     tiragePrevu: r.tirage_prevu ?? undefined,
     tirageFait: r.tirage_fait ?? undefined,
     tiragePar: r.tirage_par ?? undefined,
+    engagements: (r.engagements ?? []).map((e: any) => ({
+      profileId: e.profile_id,
+      nom: e.nom,
+      telephone: e.telephone,
+      texte: e.texte,
+      acceptedAt: e.accepted_at,
+    })),
     payouts: (r.payouts ?? []).map(mapPayout).sort((a: Payout, b: Payout) => a.date.localeCompare(b.date)),
     createdAt: r.created_at,
   };

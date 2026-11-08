@@ -1,6 +1,14 @@
 export type GroupType = "tontine" | "association" | "collecte";
 export type Frequency = "quotidienne" | "3jours" | "hebdomadaire" | "2semaines" | "mensuelle" | "trimestrielle" | "semestrielle" | "annuelle" | "unique";
 export type PayMethod = "wave" | "orange" | "mtn" | "moov" | "especes";
+export interface Engagement {
+  profileId: string;
+  nom: string;
+  telephone: string;
+  texte: string;
+  acceptedAt: string;
+}
+
 export type AddPolicy = "tresorier" | "gestionnaires" | "tous";
 export type MemberStatus = "paye" | "attente" | "retard";
 
@@ -69,5 +77,6 @@ export interface Group {
   tiragePrevu?: string; // date prévue du tirage au sort (ISO)
   tirageFait?: string; // date à laquelle le tirage a été fait (ISO)
   tiragePar?: string; // nom de la personne qui a lancé le tirage
+  engagements: Engagement[]; // règlements acceptés
   createdAt: string;
 }

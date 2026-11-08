@@ -6,14 +6,15 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import { Avatar, Button, Card, Header, Loading, Page, Progress, StatusBadge, WhatsAppIcon, btnClass, inputClass, useRequireUser } from "@/components/ui";
 import { dateCourte, dateLongue, fcfa, prenom, telAffiche } from "@/lib/format";
-import { ROLE_LABEL, TYPE_LABEL, amountDue, droits, arrears, beneficiary, caisse, dueDate, isLate, memberStatus, netDuTour, paidUntil, payoutFor, paymentsOf, roundStats, roundsToPay, sum, unpaidMembers } from "@/lib/logic";
+import { ROLE_LABEL, TYPE_LABEL, amountDue, droits, impayes, arrears, beneficiary, caisse, dueDate, isLate, memberStatus, netDuTour, paidUntil, payoutFor, paymentsOf, roundStats, roundsToPay, sum, unpaidMembers } from "@/lib/logic";
 import { PayoutModal } from "@/components/PayoutModal";
 import { METHOD_LABEL, MODE_PAIEMENT } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
 import { invitation, waLink } from "@/lib/whatsapp";
 import { MessageModal } from "@/components/MessageModal";
 import { Tirage } from "@/components/Tirage";
-import { ArrowUpRight, CalendarDays, ChevronsRight, Flag, History, Users, MessageCircle, Phone, Settings, Check, CheckCircle2, Clock, Gift, HeartHandshake, PartyPopper, Smartphone, UserPlus, X } from "lucide-react";
+import { Reglement } from "@/components/Reglement";
+import { ArrowUpRight, CalendarDays, ChevronsRight, FileText, Flag, History, Users, MessageCircle, Phone, Settings, Check, CheckCircle2, Clock, Gift, HeartHandshake, PartyPopper, Smartphone, UserPlus, X } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 import type { Member } from "@/lib/types";
 
@@ -221,6 +222,8 @@ export default function GroupeDetail() {
           </div>
         </div>
 
+        <Reglement g={g} mesParts={g.members.filter((m) => !!userId && m.profileId === userId)} />
+
         <Tirage g={g} tresorier={isTreasurer} onVoirOrdre={() => setTab("tours")} />
 
         {isTreasurer && declarations.length > 0 && (
@@ -311,6 +314,16 @@ export default function GroupeDetail() {
                     )}
                     {arrears(g, m.id).length > 0 && (
                       <p className="text-[11px] font-semibold text-red-600">Doit : tour{arrears(g, m.id).length > 1 ? "s" : ""} {arrears(g, m.id).join(", ")}</p>
+                    )}
+                    {g.type !== "collecte" && dr.gestionnaire && (
+                      <p className={`text-[11px] font-semibold ${!m.profileId ? "text-stone-400" : g.engagements.some((e) => e.profileId === m.profileId) ? "text-emerald-700" : "text-amber-700"}`}>
+                        {!m.profileId ? "Pas encore inscrit" : g.engagements.some((e) => e.profileId === m.profileId) ? "Règlement accepté" : "Règlement pas encore accepté"}
+                      </p>
+                    )}
+                    {g.type !== "collecte" && impayes(g, m.id).length > 0 && (dr.gestionnaire || m.profileId === userId) && (
+                      <Link href={`/groupes/${g.id}/dette/${m.id}`} className="mt-1 inline-flex items-center gap-1 rounded-lg bg-red-50 px-2 py-1 text-[11px] font-semibold text-red-700 ring-1 ring-red-100">
+                        <FileText size={12} strokeWidth={2} /> Reconnaissance de dette
+                      </Link>
                     )}
                     {m.id !== me?.id && m.profileId !== userId && m.phone && (
                       <div className="mt-1.5 flex gap-1.5">

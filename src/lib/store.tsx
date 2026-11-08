@@ -62,6 +62,7 @@ interface Ctx {
   setTiragePrevu: (groupId: string, date: string | null) => Promise<void>;
   lancerTirage: (groupId: string) => Promise<string[]>;
   updateProfile: (u: User) => Promise<void>;
+  accepterReglement: (groupId: string, texte: string) => Promise<void>;
   setWaveLink: (groupId: string, link: string) => Promise<void>;
   recordPayout: (groupId: string, p: { round: number; memberId?: string | null; beneficiaryName: string; amount: number; method: PayoutMethod; note?: string }) => Promise<void>;
   nextRound: (groupId: string) => Promise<void>;
@@ -87,8 +88,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const reload = useCallback(async () => {
     let { data, error } = await supabase
       .from("groups")
-      .select("*, members(*), payments(*), payouts(*)")
+      .select("*, members(*), payments(*), payouts(*), engagements(*)")
       .order("created_at", { ascending: false });
+    if (error) {
+      // base pas encore mise à jour (table engagements absente)
+      ({ data, error } = await supabase.from("groups").select("*, members(*), payments(*), payouts(*)").order("created_at", { ascending: false }));
+    }
     if (error) {
       // base pas encore mise à jour (table payouts absente)
       ({ data, error } = await supabase.from("groups").select("*, members(*), payments(*)").order("created_at", { ascending: false }));
@@ -428,6 +433,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [groups, reload, user]
   );
 
+  const accepterReglement = useCallback(
+    async (groupId: string, texte: string) => {
+      const { error } = await supabase.from("engagements").insert({ group_id: groupId, nom: user!.name, telephone: user!.phone, texte });
+      fail(error);
+      await reload();
+    },
+    [user, reload]
+  );
+
   const updateProfile = useCallback(
     async (u: User) => {
       const phone = u.phone.replace(/\D/g, "");
@@ -492,7 +506,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider
-      value={{ ready, loaded, user, userId, groups, login, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, setWaveLink, updateGroup, updateMember, removeMember, setOrder, deleteGroup, setTiragePrevu, lancerTirage, updateProfile, recordPayout, nextRound, joinGroup }}
+      value={{ ready, loaded, user, userId, groups, login, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, setWaveLink, updateGroup, updateMember, removeMember, setOrder, deleteGroup, setTiragePrevu, lancerTirage, updateProfile, accepterReglement, recordPayout, nextRound, joinGroup }}
     >
       {children}
     </StoreContext.Provider>
