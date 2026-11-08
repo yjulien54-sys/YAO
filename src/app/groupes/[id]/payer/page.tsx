@@ -269,6 +269,11 @@ function Payer() {
                     <div>
                       <p className="text-xs text-stone-500">Montant à envoyer</p>
                       <p className="text-3xl font-extrabold tracking-tight">{fcfa(total)}</p>
+                      {!isCollecte && lignes.some((l) => l.penalty > 0) && (
+                        <p className="mt-1 rounded-lg bg-red-50 px-2 py-1 text-xs font-semibold text-red-700 ring-1 ring-red-100">
+                          Dont {fcfa(lignes.reduce((s, l) => s + l.penalty, 0))} de pénalité de retard. Envoie bien le montant complet : sinon le trésorier ne pourra pas valider.
+                        </p>
+                      )}
                     </div>
                   </div>
                   <div className="mt-3 border-t border-stone-100 pt-3">
