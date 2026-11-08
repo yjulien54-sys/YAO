@@ -127,14 +127,11 @@ export default function DettePage() {
             )}
           </section>
 
-          <section className="grid grid-cols-2 gap-4 pt-2 text-xs text-stone-500">
-            <div>
-              Fait à ……………………… le ………………
-              <div className="mt-8 border-t border-stone-300 pt-1">Signature du membre</div>
-            </div>
-            <div>
-              &nbsp;
-              <div className="mt-8 border-t border-stone-300 pt-1">Signature du trésorier</div>
+          <section className="space-y-6 pt-2 text-xs text-stone-500">
+            <p>Fait à ……………………………… le ………………………</p>
+            <div className="grid grid-cols-2 gap-6">
+              <div className="border-t border-stone-300 pt-1">Signature du membre</div>
+              <div className="border-t border-stone-300 pt-1">Signature du trésorier</div>
             </div>
           </section>
 
