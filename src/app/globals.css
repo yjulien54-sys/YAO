@@ -12,6 +12,8 @@
 html {
   background: #e9e5dc;
   color-scheme: light;
+  /* Textes légèrement agrandis pour la lecture sur téléphone (17 px au lieu de 16) */
+  font-size: 106.25%;
 }
 
 body {

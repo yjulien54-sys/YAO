@@ -197,7 +197,7 @@ export function texteReglement(g: Group, nom: string, telephone: string, mesPart
     `Cotisation : ${g.amount.toLocaleString("fr-FR")} F CFA par part, ${freq}, première échéance le ${new Date(g.startDate).toLocaleDateString("fr-FR")}.`,
   ];
   if (g.type === "tontine") {
-    lignes.push(`Nombre de tours : ${g.order.length}. Mes parts : ${mesParts.length}.${tours.length ? ` Je reçois la caisse au(x) tour(s) : ${tours.join(", ")}.` : ""}`);
+    lignes.push(`Nombre de tours : ${g.order.length}. Mes parts (bras) : ${mesParts.length}.${tours.length ? ` Je reçois la caisse au(x) tour(s) : ${tours.join(", ")}.` : ""}`);
   }
   if (g.penalty > 0) lignes.push(`Pénalité de retard : ${g.penalty.toLocaleString("fr-FR")} F CFA par cotisation en retard.`);
   lignes.push(

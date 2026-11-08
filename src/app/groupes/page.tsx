@@ -30,11 +30,11 @@ export default function Groupes() {
           <h2 className="relative text-2xl font-extrabold tracking-tight">{prenom(user!.name)}</h2>
           <div className="relative mt-4 grid grid-cols-2 gap-2">
             <div className="rounded-2xl bg-white/[0.12] p-3 ring-1 ring-white/15">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-50/80">Total collecté</p>
+              <p className="text-[0.8125rem] font-semibold uppercase tracking-wide text-emerald-50/80">Total collecté</p>
               <p className="mt-0.5 text-lg font-extrabold">{fcfa(totalCaisse)}</p>
             </div>
             <div className="rounded-2xl bg-white/[0.12] p-3 ring-1 ring-white/15">
-              <p className="text-[11px] font-semibold uppercase tracking-wide text-emerald-50/80">À relancer</p>
+              <p className="text-[0.8125rem] font-semibold uppercase tracking-wide text-emerald-50/80">À relancer</p>
               <p className={`mt-0.5 text-lg font-extrabold ${enRetard ? "text-orange-200" : ""}`}>{enRetard} retard{enRetard > 1 ? "s" : ""}</p>
             </div>
           </div>

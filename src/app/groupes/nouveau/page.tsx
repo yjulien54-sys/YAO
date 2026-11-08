@@ -149,7 +149,7 @@ export default function NouveauGroupe() {
           </div>
           {type === "tontine" && (
             <div className="flex items-center justify-between gap-2 rounded-2xl bg-stone-50 px-3 py-2 ring-1 ring-stone-200">
-              <span className="text-sm font-semibold">Mes parts (toi)</span>
+              <span className="text-sm font-semibold">Mes parts / bras (toi)</span>
               <Parts valeur={mesParts} onChange={setMesParts} />
             </div>
           )}
@@ -245,7 +245,7 @@ export default function NouveauGroupe() {
 function Parts({ valeur, onChange }: { valeur: number; onChange: (n: number) => void }) {
   return (
     <div className="flex items-center gap-1.5 text-xs">
-      <span className="text-stone-500">Parts :</span>
+      <span className="text-stone-500">Parts (bras) :</span>
       {[1, 2, 3].map((n) => (
         <button
           key={n}

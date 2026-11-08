@@ -347,7 +347,7 @@ function Payer() {
                     </>
                   );
                 })()}
-                <p className="text-[11px] leading-snug text-stone-500">
+                <p className="text-[0.8125rem] leading-snug text-stone-500">
                   Astuce : si l’application ne s’ouvre pas, ouvre ce lien dans <b>Chrome</b> (et non dans WhatsApp), ou ouvre {op.nom} toi-même : le numéro est déjà copié.
                 </p>
                 {aide && <p className="rounded-xl bg-white px-3 py-2 text-xs font-medium text-stone-700 ring-1 ring-stone-200">{aide}</p>}

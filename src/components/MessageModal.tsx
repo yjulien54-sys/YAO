@@ -43,7 +43,7 @@ export function MessageModal({ group, member, type, onClose }: { group: Group; m
         <div className="mb-3 flex items-start justify-between gap-3">
           <div>
             <h3 className="font-bold">{type === "groupe" ? "Message pour le groupe" : `Message pour ${member?.name}`}</h3>
-            <div className="mt-1 flex flex-wrap gap-1.5 text-[11px] font-semibold">
+            <div className="mt-1 flex flex-wrap gap-1.5 text-[0.8125rem] font-semibold">
               <span className="rounded-full bg-stone-100 px-2 py-0.5 text-stone-600">{EVENEMENT_LABEL[ctx.evenement]}</span>
               {group.type !== "collecte" && <span className="rounded-full bg-stone-100 px-2 py-0.5 text-stone-600">{MOMENT_LABEL[ctx.moment]}</span>}
               {source === "ia" && <span className="rounded-full bg-violet-100 px-2 py-0.5 text-violet-700"><Sparkles size={11} strokeWidth={2} className="mr-0.5 inline -mt-0.5" />Écrit par l’IA</span>}

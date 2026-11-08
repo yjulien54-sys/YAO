@@ -20,7 +20,7 @@ export default function SuppressionCompte() {
   }
 
   return (
-    <main className="mx-auto min-h-dvh max-w-2xl bg-white px-5 py-8 text-[15px] leading-relaxed text-stone-800">
+    <main className="mx-auto min-h-dvh max-w-2xl bg-white px-5 py-8 text-base leading-relaxed text-stone-800">
       <Link href="/" className="text-sm font-semibold text-emerald-700">← Retour à Cotiz</Link>
       <h1 className="mt-4 text-2xl font-extrabold">Supprimer mon compte Cotiz</h1>
       <p className="mt-2">La suppression efface ton profil (nom et numéro de téléphone) et te déconnecte de l’application.</p>

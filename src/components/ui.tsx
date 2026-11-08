@@ -102,7 +102,7 @@ export function WhatsAppIcon({ size = 18 }: { size?: number }) {
 }
 
 export const inputClass =
-  "w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-[15px] text-stone-900 shadow-sm outline-none transition placeholder:text-stone-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100";
+  "w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base text-stone-900 shadow-sm outline-none transition placeholder:text-stone-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100";
 
 export function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (

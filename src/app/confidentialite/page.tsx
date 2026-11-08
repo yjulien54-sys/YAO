@@ -7,7 +7,7 @@ const MAJ = "7 novembre 2026";
 
 export default function Confidentialite() {
   return (
-    <main className="mx-auto min-h-dvh max-w-2xl bg-white px-5 py-8 text-[15px] leading-relaxed text-stone-800">
+    <main className="mx-auto min-h-dvh max-w-2xl bg-white px-5 py-8 text-base leading-relaxed text-stone-800">
       <Link href="/" className="text-sm font-semibold text-emerald-700">← Retour à Cotiz</Link>
       <h1 className="mt-4 text-2xl font-extrabold">Politique de confidentialité</h1>
       <p className="text-sm text-stone-500">Dernière mise à jour : {MAJ}</p>

@@ -34,7 +34,7 @@ export function CaissePenalites({ g, tresorier }: { g: Group; tresorier: boolean
         </div>
         <div className="text-right">
           <p className="text-lg font-extrabold">{fcfa(cp.solde)}</p>
-          <p className="text-[11px] text-stone-500">disponible</p>
+          <p className="text-[0.8125rem] text-stone-500">disponible</p>
         </div>
       </div>
       <p className="text-xs text-stone-600">

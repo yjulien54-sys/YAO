@@ -51,7 +51,7 @@ export default function DettePage() {
         <Header back={`/groupes/${g.id}`} title="Reconnaissance de dette" />
       </div>
       <div className="space-y-4 p-4 print:p-0">
-        <article className="carte space-y-4 p-5 text-[14px] leading-relaxed text-stone-800 print:border-0 print:shadow-none">
+        <article className="carte space-y-4 p-5 text-[0.9375rem] leading-relaxed text-stone-800 print:border-0 print:shadow-none">
           <header className="border-b border-stone-200 pb-3 text-center">
             <p className="text-xs font-semibold uppercase tracking-widest text-stone-500">Cotiz · {TYPE_LABEL[g.type]}</p>
             <h1 className="mt-1 text-xl font-extrabold">Reconnaissance de dette</h1>
@@ -64,7 +64,7 @@ export default function DettePage() {
             <b>{fcfa(total)}</b>, correspondant aux cotisations impayées détaillées ci-dessous.
           </p>
 
-          <table className="w-full text-left text-[13px]">
+          <table className="w-full text-left text-[0.875rem]">
             <thead>
               <tr className="border-b border-stone-200 text-xs text-stone-500">
                 <th className="py-1.5">Tour</th>
@@ -120,7 +120,7 @@ export default function DettePage() {
                 <p className="text-stone-600">
                   Règlement accepté dans l’application Cotiz le <b>{dateLongue(engagement.acceptedAt)}</b> par {engagement.nom} ({telAffiche(engagement.telephone)}) :
                 </p>
-                <p className="mt-1 whitespace-pre-line rounded-xl bg-stone-50 p-3 text-[12.5px] text-stone-700 ring-1 ring-stone-200">{engagement.texte}</p>
+                <p className="mt-1 whitespace-pre-line rounded-xl bg-stone-50 p-3 text-[0.8125rem] text-stone-700 ring-1 ring-stone-200">{engagement.texte}</p>
               </>
             ) : (
               <p className="text-stone-600">Le membre n’a pas accepté le règlement dans l’application.</p>
@@ -135,7 +135,7 @@ export default function DettePage() {
             </div>
           </section>
 
-          <footer className="border-t border-stone-200 pt-3 text-[11px] leading-snug text-stone-500">
+          <footer className="border-t border-stone-200 pt-3 text-[0.8125rem] leading-snug text-stone-500">
             Document généré le {dateLongue(new Date().toISOString())} par Cotiz à partir de l’historique enregistré du groupe. Il récapitule les informations
             enregistrées et peut servir de preuve ; il ne remplace pas un acte établi par un professionnel du droit.
           </footer>

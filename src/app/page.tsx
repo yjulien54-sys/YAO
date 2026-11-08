@@ -64,10 +64,10 @@ function Accueil() {
           <Logo className="text-xl" />
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold ring-1 ring-white/20"><Drapeau /> Côte d’Ivoire</span>
         </div>
-        <h1 className="relative mt-9 text-[30px] font-extrabold leading-[1.15] tracking-tight">
+        <h1 className="relative mt-9 text-[1.875rem] font-extrabold leading-[1.15] tracking-tight">
           Tes tontines et cotisations, <span className="text-orange-300">sans palabres.</span>
         </h1>
-        <p className="relative mt-3 text-[15px] leading-relaxed text-emerald-50/90">
+        <p className="relative mt-3 text-base leading-relaxed text-emerald-50/90">
           Tontine, association, mutuelle, collecte pour des funérailles… Tout le monde voit qui a payé, et les rappels partent sur WhatsApp.
         </p>
 
@@ -89,7 +89,7 @@ function Accueil() {
           </div>
           <div className="mt-3 flex -space-x-2">
             {["AK", "MT", "FD", "SB", "AN"].map((x, i) => (
-              <span key={x} className={`grid h-7 w-7 place-items-center rounded-full border-2 border-white text-[10px] font-bold ${["bg-orange-100 text-orange-700", "bg-emerald-100 text-emerald-700", "bg-sky-100 text-sky-700", "bg-violet-100 text-violet-700", "bg-rose-100 text-rose-700"][i]}`}>
+              <span key={x} className={`grid h-7 w-7 place-items-center rounded-full border-2 border-white text-[0.75rem] font-bold ${["bg-orange-100 text-orange-700", "bg-emerald-100 text-emerald-700", "bg-sky-100 text-sky-700", "bg-violet-100 text-violet-700", "bg-rose-100 text-rose-700"][i]}`}>
                 {x}
               </span>
             ))}
@@ -98,7 +98,7 @@ function Accueil() {
         </div>
       </section>
 
-      <ul className="-mt-10 grid grid-cols-2 gap-2 px-4 text-[13px] font-semibold text-stone-700">
+      <ul className="-mt-10 grid grid-cols-2 gap-2 px-4 text-[0.875rem] font-semibold text-stone-700">
         {([[Wallet, "Wave, Orange, MTN, Moov"], [ShieldCheck, "Transparent pour tous"], [BellRing, "Rappels WhatsApp"], [Receipt, "Un reçu par paiement"]] as const).map(([I, t]) => (
           <li key={t} className="carte relative flex items-center gap-2.5 !rounded-2xl px-3 py-2.5 leading-tight">
             <IconBadge icon={I} taille="sm" />

@@ -19,7 +19,7 @@ export function BottomNav() {
         {ONGLETS.map(({ href, label, icon: Icon }) => {
           const actif = path === href;
           return (
-            <Link key={href} href={href} className={`flex flex-col items-center gap-0.5 py-2.5 text-[11px] font-semibold transition ${actif ? "text-emerald-700" : "text-stone-500"}`}>
+            <Link key={href} href={href} className={`flex flex-col items-center gap-0.5 py-2.5 text-[0.8125rem] font-semibold transition ${actif ? "text-emerald-700" : "text-stone-500"}`}>
               <span className={`grid h-8 w-14 place-items-center rounded-full transition ${actif ? "bg-emerald-50" : ""}`}>
                 <Icon size={21} strokeWidth={actif ? 2.1 : 1.75} />
               </span>

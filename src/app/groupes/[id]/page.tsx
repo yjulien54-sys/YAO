@@ -255,11 +255,11 @@ export default function GroupeDetail() {
                     <div className="shrink-0 text-right">
                       <p className="font-extrabold">{fcfa(sum(d))}</p>
                       {d.some((p) => p.penalty > 0) && (
-                        <p className="text-[11px] font-semibold text-red-600">dont {fcfa(d.reduce((s, p) => s + p.penalty, 0))} de pénalité</p>
+                        <p className="text-[0.8125rem] font-semibold text-red-600">dont {fcfa(d.reduce((s, p) => s + p.penalty, 0))} de pénalité</p>
                       )}
                     </div>
                   </div>
-                  <p className="mt-1.5 text-[11px] text-stone-500">Confirme seulement si tu as reçu <b>{fcfa(sum(d))}</b> au total. S’il manque de l’argent, touche « Pas reçu » et préviens le membre.</p>
+                  <p className="mt-1.5 text-[0.8125rem] text-stone-500">Confirme seulement si tu as reçu <b>{fcfa(sum(d))}</b> au total. S’il manque de l’argent, touche « Pas reçu » et préviens le membre.</p>
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <Button
                       variant="secondary"
@@ -312,40 +312,40 @@ export default function GroupeDetail() {
                     </p>
                     <p className="text-xs text-stone-500">
                       {m.role !== "membre" && (
-                        <span className={`mr-1.5 rounded-md px-1.5 py-0.5 text-[10px] font-bold uppercase ${m.role === "tresorier" ? "bg-orange-100 text-orange-700" : "bg-sky-100 text-sky-700"}`}>
+                        <span className={`mr-1.5 rounded-md px-1.5 py-0.5 text-[0.75rem] font-bold uppercase ${m.role === "tresorier" ? "bg-orange-100 text-orange-700" : "bg-sky-100 text-sky-700"}`}>
                           {ROLE_LABEL[m.role]}
                         </span>
                       )}
                       {telAffiche(m.phone)}{paid > 0 && g.type === "collecte" && ` · ${fcfa(paid)}`}
                     </p>
                     {g.type !== "collecte" && paidUntil(g, m.id) > g.currentRound && (
-                      <p className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700"><ChevronsRight size={12} strokeWidth={2.25} />Payé jusqu’au tour {paidUntil(g, m.id)}</p>
+                      <p className="inline-flex items-center gap-1 text-[0.8125rem] font-semibold text-emerald-700"><ChevronsRight size={12} strokeWidth={2.25} />Payé jusqu’au tour {paidUntil(g, m.id)}</p>
                     )}
                     {s === "retard" && g.type !== "collecte" && !g.pending.some((p) => p.memberId === m.id) && (
-                      <p className="text-[11px] font-semibold text-red-600">Doit {fcfa(due.total)}{due.penalty > 0 ? ` (dont ${fcfa(due.penalty)} de pénalité)` : ""}</p>
+                      <p className="text-[0.8125rem] font-semibold text-red-600">Doit {fcfa(due.total)}{due.penalty > 0 ? ` (dont ${fcfa(due.penalty)} de pénalité)` : ""}</p>
                     )}
                     {g.pending.some((p) => p.memberId === m.id) && (
-                      <p className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700"><Clock size={12} strokeWidth={2} />Paiement déclaré, à confirmer</p>
+                      <p className="inline-flex items-center gap-1 text-[0.8125rem] font-semibold text-amber-700"><Clock size={12} strokeWidth={2} />Paiement déclaré, à confirmer</p>
                     )}
                     {arrears(g, m.id).length > 0 && (
-                      <p className="text-[11px] font-semibold text-red-600">Doit : tour{arrears(g, m.id).length > 1 ? "s" : ""} {arrears(g, m.id).join(", ")}</p>
+                      <p className="text-[0.8125rem] font-semibold text-red-600">Doit : tour{arrears(g, m.id).length > 1 ? "s" : ""} {arrears(g, m.id).join(", ")}</p>
                     )}
                     {g.type !== "collecte" && dr.gestionnaire && (
-                      <p className={`text-[11px] font-semibold ${!m.profileId ? "text-stone-400" : g.engagements.some((e) => e.profileId === m.profileId) ? "text-emerald-700" : "text-amber-700"}`}>
+                      <p className={`text-[0.8125rem] font-semibold ${!m.profileId ? "text-stone-400" : g.engagements.some((e) => e.profileId === m.profileId) ? "text-emerald-700" : "text-amber-700"}`}>
                         {!m.profileId ? "Pas encore inscrit" : g.engagements.some((e) => e.profileId === m.profileId) ? "Règlement accepté" : "Règlement pas encore accepté"}
                       </p>
                     )}
                     {g.type !== "collecte" && impayes(g, m.id).length > 0 && (dr.gestionnaire || m.profileId === userId) && (
-                      <Link href={`/groupes/${g.id}/dette/${m.id}`} className="mt-1 inline-flex items-center gap-1 rounded-lg bg-red-50 px-2 py-1 text-[11px] font-semibold text-red-700 ring-1 ring-red-100">
+                      <Link href={`/groupes/${g.id}/dette/${m.id}`} className="mt-1 inline-flex items-center gap-1 rounded-lg bg-red-50 px-2 py-1 text-[0.8125rem] font-semibold text-red-700 ring-1 ring-red-100">
                         <FileText size={12} strokeWidth={2} /> Reconnaissance de dette
                       </Link>
                     )}
                     {m.id !== me?.id && m.profileId !== userId && m.phone && (
                       <div className="mt-1.5 flex gap-1.5">
-                        <a href={`tel:${m.phone.replace(/\D/g, "").slice(-10)}`} className="inline-flex items-center gap-1 rounded-lg bg-stone-100 px-2 py-1 text-[11px] font-semibold text-stone-700">
+                        <a href={`tel:${m.phone.replace(/\D/g, "").slice(-10)}`} className="inline-flex items-center gap-1 rounded-lg bg-stone-100 px-2 py-1 text-[0.8125rem] font-semibold text-stone-700">
                           <Phone size={12} strokeWidth={2} /> Appeler
                         </a>
-                        <a href={waLink("", m.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg bg-stone-100 px-2 py-1 text-[11px] font-semibold text-stone-700">
+                        <a href={waLink("", m.phone)} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1 rounded-lg bg-stone-100 px-2 py-1 text-[0.8125rem] font-semibold text-stone-700">
                           <MessageCircle size={12} strokeWidth={2} /> Écrire
                         </a>
                       </div>
@@ -408,7 +408,7 @@ export default function GroupeDetail() {
               </div>
               {g.type === "tontine" && (
                 <div className="flex items-center gap-1.5 text-xs">
-                  <span className="text-stone-500">Nombre de parts :</span>
+                  <span className="text-stone-500">Nombre de parts (bras) :</span>
                   {[1, 2, 3].map((n) => (
                     <button key={n} type="button" onClick={() => setNewParts(n)} className={`h-7 w-7 rounded-full text-xs font-bold ring-1 ${newParts === n ? "bg-emerald-600 text-white ring-emerald-600" : "bg-white text-stone-700 ring-stone-300"}`}>
                       {n}
@@ -450,7 +450,7 @@ export default function GroupeDetail() {
                   </div>
                   <div className="text-right">
                     <p className="text-sm font-bold text-emerald-700">+{fcfa(p.amount + p.penalty)}</p>
-                    {p.penalty > 0 && <p className="text-[11px] text-red-600">dont {fcfa(p.penalty)} pénalité</p>}
+                    {p.penalty > 0 && <p className="text-[0.8125rem] text-red-600">dont {fcfa(p.penalty)} pénalité</p>}
                   </div>
                 </Link>
               );
@@ -607,7 +607,7 @@ function Stat({ n, label, cls }: { n: number; label: string; cls: string }) {
   return (
     <div className="py-3">
       <p className={`text-xl font-extrabold ${cls}`}>{n}</p>
-      <p className="text-[11px] font-medium text-stone-500">{label}</p>
+      <p className="text-[0.8125rem] font-medium text-stone-500">{label}</p>
     </div>
   );
 }
@@ -618,11 +618,11 @@ function ActionRapide({ label, children, onClick, href, interne, disabled, badge
     <span className="relative grid h-14 w-14 place-items-center rounded-full bg-white text-emerald-700 shadow-sm ring-1 ring-stone-200">
       {children}
       {badge !== undefined && (
-        <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-orange-500 px-1 text-[10px] font-bold text-white">{badge}</span>
+        <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-orange-500 px-1 text-[0.75rem] font-bold text-white">{badge}</span>
       )}
     </span>
   );
-  const cls = `flex flex-col items-center gap-1.5 text-[11px] font-semibold text-stone-700 ${disabled ? "pointer-events-none opacity-40" : ""}`;
+  const cls = `flex flex-col items-center gap-1.5 text-[0.8125rem] font-semibold text-stone-700 ${disabled ? "pointer-events-none opacity-40" : ""}`;
   if (href && interne) return <Link href={href} className={cls}>{rond}{label}</Link>;
   if (href) return <a href={href} target="_blank" rel="noreferrer" className={cls}>{rond}{label}</a>;
   return <button onClick={onClick} disabled={disabled} className={cls}>{rond}{label}</button>;

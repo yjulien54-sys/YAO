@@ -40,7 +40,7 @@ export function Tirage({ g, tresorier, onVoirOrdre }: { g: Group; tresorier: boo
         <ol className="space-y-1">
           {noms(g.order).slice(0, 3).map((n, i) => (
             <li key={i} className="flex items-center gap-2 text-sm">
-              <span className="grid h-6 w-6 place-items-center rounded-full bg-emerald-600 text-[11px] font-bold text-white">{i + 1}</span>
+              <span className="grid h-6 w-6 place-items-center rounded-full bg-emerald-600 text-[0.8125rem] font-bold text-white">{i + 1}</span>
               {n}
             </li>
           ))}
@@ -155,9 +155,9 @@ function AnimationTirage({ anim, onFermer }: { anim: { phase: "melange" | "resul
             <ol className="mt-3 max-h-[50vh] space-y-1.5 overflow-y-auto text-left">
               {anim.noms.map((n, i) => (
                 <li key={i} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-sm transition-all duration-300 ${i < revele ? "bg-emerald-50 opacity-100" : "translate-y-1 opacity-0"}`}>
-                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-600 text-[11px] font-bold text-white">{i + 1}</span>
+                  <span className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-emerald-600 text-[0.8125rem] font-bold text-white">{i + 1}</span>
                   <span className="font-semibold">{n}</span>
-                  {i === 0 && <span className="ml-auto text-[11px] font-bold text-emerald-700">reçoit en 1er</span>}
+                  {i === 0 && <span className="ml-auto text-[0.8125rem] font-bold text-emerald-700">reçoit en 1er</span>}
                 </li>
               ))}
             </ol>

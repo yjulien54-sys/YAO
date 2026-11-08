@@ -200,7 +200,7 @@ export default function Parametres() {
                       {m?.name ?? "—"} {actuel && <span className="text-xs font-semibold text-emerald-700">· reçoit ce tour</span>}
                     </span>
                     {!passe && !actuel && (
-                      <button onClick={() => mettreAuTour(i)} className="rounded-lg bg-emerald-50 px-2 py-1 text-[11px] font-bold text-emerald-700 ring-1 ring-emerald-200">
+                      <button onClick={() => mettreAuTour(i)} className="rounded-lg bg-emerald-50 px-2 py-1 text-[0.8125rem] font-bold text-emerald-700 ring-1 ring-emerald-200">
                         Ce tour
                       </button>
                     )}
