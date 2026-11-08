@@ -183,6 +183,9 @@ export default function GroupeDetail() {
               {g.type === "collecte" ? "Participer" : `Payer ma part · ${fcfa(due.total)}`}
             </Link>
           )}
+          {me && mesArrieres.length === 0 && myStatus === "retard" && due.penalty > 0 && !(tourEnAttente && g.type !== "collecte") && (
+            <p className="-mt-1 text-center text-xs font-semibold text-red-600">En retard : pénalité de {fcfa(due.penalty)} incluse dans le montant</p>
+          )}
           {me && myStatus === "paye" && g.type !== "collecte" && (
             <div className="rounded-xl bg-emerald-50 px-4 py-3 text-center text-sm font-semibold text-emerald-700 ring-1 ring-emerald-200">
               <CheckCircle2 size={16} strokeWidth={2} className="mr-1 inline -mt-0.5" />{paidUntil(g, me.id) > g.currentRound ? `Tu as payé jusqu’au tour ${paidUntil(g, me.id)}` : "Tu as payé ta part pour ce tour"}
@@ -246,8 +249,14 @@ export default function GroupeDetail() {
                       </p>
                       {refOperateur && <p className="text-xs font-semibold text-stone-700">Réf. : {refOperateur}</p>}
                     </div>
-                    <p className="shrink-0 font-extrabold">{fcfa(sum(d))}</p>
+                    <div className="shrink-0 text-right">
+                      <p className="font-extrabold">{fcfa(sum(d))}</p>
+                      {d.some((p) => p.penalty > 0) && (
+                        <p className="text-[11px] font-semibold text-red-600">dont {fcfa(d.reduce((s, p) => s + p.penalty, 0))} de pénalité</p>
+                      )}
+                    </div>
                   </div>
+                  <p className="mt-1.5 text-[11px] text-stone-500">Confirme seulement si tu as reçu <b>{fcfa(sum(d))}</b> au total. S’il manque de l’argent, touche « Pas reçu » et préviens le membre.</p>
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <Button
                       variant="secondary"
@@ -308,6 +317,9 @@ export default function GroupeDetail() {
                     </p>
                     {g.type !== "collecte" && paidUntil(g, m.id) > g.currentRound && (
                       <p className="inline-flex items-center gap-1 text-[11px] font-semibold text-emerald-700"><ChevronsRight size={12} strokeWidth={2.25} />Payé jusqu’au tour {paidUntil(g, m.id)}</p>
+                    )}
+                    {s === "retard" && g.type !== "collecte" && !g.pending.some((p) => p.memberId === m.id) && (
+                      <p className="text-[11px] font-semibold text-red-600">Doit {fcfa(due.total)}{due.penalty > 0 ? ` (dont ${fcfa(due.penalty)} de pénalité)` : ""}</p>
                     )}
                     {g.pending.some((p) => p.memberId === m.id) && (
                       <p className="inline-flex items-center gap-1 text-[11px] font-semibold text-amber-700"><Clock size={12} strokeWidth={2} />Paiement déclaré, à confirmer</p>

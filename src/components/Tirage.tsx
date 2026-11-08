@@ -69,11 +69,11 @@ export function Tirage({ g, tresorier, onVoirOrdre }: { g: Group; tresorier: boo
 
         {tresorier && (
           <div className="space-y-2">
-            <div className="flex gap-2">
-              <input type="datetime-local" className={inputClass} value={date} onChange={(e) => setDate(e.target.value)} aria-label="Date du tirage" />
+            <div className="grid gap-2">
+              <input type="datetime-local" className={`${inputClass} min-w-0`} value={date} onChange={(e) => setDate(e.target.value)} aria-label="Date du tirage" />
               <Button
                 variant="secondary"
-                className="shrink-0 !px-3"
+                className="w-full"
                 disabled={busy || !date}
                 onClick={async () => {
                   setBusy(true);
