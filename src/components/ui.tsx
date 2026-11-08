@@ -120,7 +120,7 @@ export function useRequireUser() {
   const router = useRouter();
   const pathname = usePathname();
   useEffect(() => {
-    if (ready && !user) router.replace(`/?suite=${encodeURIComponent(pathname)}`);
+    if (ready && !user) router.replace(`/?suite=${encodeURIComponent(pathname + window.location.search)}`);
   }, [ready, user, router, pathname]);
   return ready && !!user;
 }
