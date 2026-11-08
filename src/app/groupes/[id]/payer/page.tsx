@@ -10,6 +10,7 @@ import { FRAIS_TAUX, MODE_PAIEMENT, OPERATEURS, initierPaiement, lienWaveAvecMon
 import { useMe, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { waLink } from "@/lib/whatsapp";
+import { Invitation } from "@/components/Invitation";
 import { ArrowUpRight, CheckCircle2, Clock, Copy, Check, Lock } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 import type { PayMethod } from "@/lib/types";
@@ -44,7 +45,7 @@ function Payer() {
   const { id } = useParams<{ id: string }>();
   const search = useSearchParams();
   const router = useRouter();
-  const { getGroup, recordPayments, declarePayments, loaded } = useStore();
+  const { getGroup, recordPayments, declarePayments, joinGroup, loaded } = useStore();
   const g = getGroup(id);
   const me = useMe(g);
   const member = g?.members.find((m) => m.id === search.get("membre")) ?? me;
@@ -68,7 +69,9 @@ function Payer() {
   const [erreur, setErreur] = useState("");
 
   if (!ok || !loaded) return <Loading />;
-  if (!g || !member)
+  // Lien reçu sur WhatsApp par quelqu'un qui n'est pas encore membre : on l'invite à rejoindre, puis il paie
+  if (!g) return <Invitation id={id} onJoin={() => joinGroup(id)} />;
+  if (!member)
     return (
       <Page>
         <Header back="/groupes" title="Paiement" />
