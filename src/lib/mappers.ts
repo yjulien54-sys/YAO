@@ -23,6 +23,7 @@ export const mapPayout = (p: any): Payout => ({
   amount: p.amount,
   method: p.method,
   status: p.status,
+  nature: p.nature ?? "versement",
   note: p.note ?? undefined,
   reference: p.reference,
   date: p.created_at,
@@ -57,6 +58,8 @@ export const mapGroup = (r: any): Group => {
     tiragePrevu: r.tirage_prevu ?? undefined,
     tirageFait: r.tirage_fait ?? undefined,
     tiragePar: r.tirage_par ?? undefined,
+    penaltyDestination: r.penalty_destination ?? "beneficiaire",
+    donCause: r.don_cause ?? undefined,
     engagements: (r.engagements ?? []).map((e: any) => ({
       profileId: e.profile_id,
       nom: e.nom,

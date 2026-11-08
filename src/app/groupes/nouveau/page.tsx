@@ -8,7 +8,8 @@ import { useStore } from "@/lib/store";
 import { FREQUENCES, parFrequence } from "@/lib/logic";
 import { HandCoins, Repeat, Users, type LucideIcon } from "lucide-react";
 import { IconBadge } from "@/components/icons";
-import type { AddPolicy, Frequency, GroupType } from "@/lib/types";
+import type { AddPolicy, Frequency, GroupType, PenaltyDestination } from "@/lib/types";
+import { ChoixPenalites } from "@/components/ChoixPenalites";
 
 const TYPES: { id: GroupType; icon: LucideIcon; ton: "vert"; titre: string; desc: string }[] = [
   { id: "tontine", icon: Repeat, ton: "vert", titre: "Tontine", desc: "Chacun cotise, un membre ramasse à chaque tour" },
@@ -33,6 +34,8 @@ export default function NouveauGroupe() {
   const [shuffle, setShuffle] = useState(true);
   const [members, setMembers] = useState<{ name: string; phone: string; gestionnaire?: boolean; parts?: number }[]>([{ name: "", phone: "" }, { name: "", phone: "" }]);
   const [mesParts, setMesParts] = useState(1);
+  const [penaltyDestination, setPenaltyDestination] = useState<PenaltyDestination>("beneficiaire");
+  const [donCause, setDonCause] = useState("");
   const [addPolicy, setAddPolicy] = useState<AddPolicy>("tresorier");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -64,6 +67,8 @@ export default function NouveauGroupe() {
       shuffle,
       addPolicy,
       mesParts,
+      penaltyDestination,
+      donCause,
     });
     router.replace(`/groupes/${id}`);
     } catch (err) {
@@ -169,6 +174,16 @@ export default function NouveauGroupe() {
             </label>
           )}
         </Card>
+
+        {type !== "collecte" && Number(penalty) > 0 && (
+          <Card className="space-y-3">
+            <div>
+              <h3 className="font-bold">À quoi servent les pénalités ?</h3>
+              <p className="text-xs text-stone-500">Les pénalités appartiennent au groupe. Choisis leur utilisation.</p>
+            </div>
+            <ChoixPenalites valeur={penaltyDestination} cause={donCause} onChange={setPenaltyDestination} onCause={setDonCause} />
+          </Card>
+        )}
 
         <Card className="space-y-3">
           <div>

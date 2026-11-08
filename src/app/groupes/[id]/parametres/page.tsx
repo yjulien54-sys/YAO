@@ -2,13 +2,14 @@
 
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { ArrowDown, ArrowUp, Gift, Settings2, ShieldCheck, Trash2, UserCog, Users } from "lucide-react";
+import { ArrowDown, ArrowUp, Gift, HandHeart, Settings2, ShieldCheck, Trash2, UserCog, Users } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 import { Avatar, Button, Card, Field, Header, Loading, Page, inputClass, useRequireUser } from "@/components/ui";
 import { dateLongue, fcfa, telAffiche } from "@/lib/format";
 import { ADD_POLICY_LABEL, FREQUENCES, ROLE_LABEL, droits } from "@/lib/logic";
 import { useMe, useStore } from "@/lib/store";
-import type { AddPolicy, Frequency, Member } from "@/lib/types";
+import type { AddPolicy, Frequency, Member, PenaltyDestination } from "@/lib/types";
+import { ChoixPenalites } from "@/components/ChoixPenalites";
 
 export default function Parametres() {
   const ok = useRequireUser();
@@ -29,6 +30,8 @@ export default function Parametres() {
   const [startDate, setStartDate] = useState("");
   const [target, setTarget] = useState("");
   const [ordre, setOrdre] = useState<string[]>([]);
+  const [destination, setDestination] = useState<PenaltyDestination>("beneficiaire");
+  const [cause, setCause] = useState("");
   const [edition, setEdition] = useState<{ id: string; name: string; phone: string } | null>(null);
 
   useEffect(() => {
@@ -41,6 +44,8 @@ export default function Parametres() {
     setStartDate(g.startDate.slice(0, 10));
     setTarget(String(g.target ?? ""));
     setOrdre(g.order);
+    setDestination(g.penaltyDestination);
+    setCause(g.donCause ?? "");
   }, [g]);
 
   if (!ok || !loaded) return <Loading />;
@@ -277,6 +282,23 @@ export default function Parametres() {
             ))}
           </div>
         </Card>
+
+        {/* Utilisation des pénalités */}
+        {d.tresorier && g.type !== "collecte" && (
+          <Card className="space-y-3">
+            <p className="flex items-center gap-2 font-bold"><IconBadge icon={HandHeart} taille="sm" />À quoi servent les pénalités ?</p>
+            <ChoixPenalites valeur={destination} cause={cause} onChange={setDestination} onCause={setCause} disabled={busy} />
+            {(destination !== g.penaltyDestination || (destination === "don" && cause !== (g.donCause ?? ""))) && (
+              <Button
+                className="w-full"
+                disabled={busy || (destination === "don" && !cause.trim())}
+                onClick={() => agir(() => updateGroup(g.id, { penaltyDestination: destination, donCause: destination === "don" ? cause : null }), "Utilisation des pénalités enregistrée")}
+              >
+                Enregistrer
+              </Button>
+            )}
+          </Card>
+        )}
 
         {/* Qui peut ajouter */}
         {d.tresorier && (

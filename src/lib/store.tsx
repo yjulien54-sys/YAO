@@ -6,7 +6,7 @@ import { roundAmount } from "./logic";
 import { fraisMobileMoney } from "./payments";
 import { mapGroup, mapPayment } from "./mappers";
 import { supabase } from "./supabase";
-import type { AddPolicy, Frequency, Group, GroupType, Member, Payment, PayoutMethod, PayMethod, User } from "./types";
+import type { AddPolicy, PenaltyDestination, PayoutNature, Frequency, Group, GroupType, Member, Payment, PayoutMethod, PayMethod, User } from "./types";
 
 export interface NewGroupInput {
   name: string;
@@ -21,6 +21,8 @@ export interface NewGroupInput {
   shuffle: boolean;
   addPolicy: AddPolicy;
   mesParts?: number;
+  penaltyDestination?: PenaltyDestination;
+  donCause?: string;
 }
 
 export interface GroupUpdate {
@@ -32,6 +34,8 @@ export interface GroupUpdate {
   penalty?: number;
   target?: number | null;
   addPolicy?: AddPolicy;
+  penaltyDestination?: PenaltyDestination;
+  donCause?: string | null;
 }
 
 interface Ctx {
@@ -64,7 +68,7 @@ interface Ctx {
   updateProfile: (u: User) => Promise<void>;
   accepterReglement: (groupId: string, texte: string) => Promise<void>;
   setWaveLink: (groupId: string, link: string) => Promise<void>;
-  recordPayout: (groupId: string, p: { round: number; memberId?: string | null; beneficiaryName: string; amount: number; method: PayoutMethod; note?: string }) => Promise<void>;
+  recordPayout: (groupId: string, p: { round: number; memberId?: string | null; beneficiaryName: string; amount: number; method: PayoutMethod; note?: string; nature?: PayoutNature }) => Promise<void>;
   nextRound: (groupId: string) => Promise<void>;
   joinGroup: (groupId: string) => Promise<void>;
 }
@@ -187,6 +191,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           penalty: isCollecte ? 0 : input.penalty,
           target: isCollecte ? input.target ?? null : null,
           add_policy: input.addPolicy,
+          penalty_destination: input.penaltyDestination ?? "beneficiaire",
+          don_cause: input.penaltyDestination === "don" ? input.donCause?.trim() || null : null,
           // tirage au sort public prévu : à lancer depuis le groupe
           tirage_prevu: input.type === "tontine" && input.shuffle ? new Date(input.startDate).toISOString() : null,
         })
@@ -347,6 +353,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       if (u.penalty !== undefined) row.penalty = Math.round(u.penalty);
       if (u.target !== undefined) row.target = u.target;
       if (u.addPolicy !== undefined) row.add_policy = u.addPolicy;
+      if (u.penaltyDestination !== undefined) row.penalty_destination = u.penaltyDestination;
+      if (u.donCause !== undefined) row.don_cause = u.donCause?.trim() || null;
       const { error } = await supabase.from("groups").update(row).eq("id", groupId);
       fail(error);
       await reload();
@@ -468,7 +476,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const recordPayout = useCallback(
-    async (groupId: string, p: { round: number; memberId?: string | null; beneficiaryName: string; amount: number; method: PayoutMethod; note?: string }) => {
+    async (groupId: string, p: { round: number; memberId?: string | null; beneficiaryName: string; amount: number; method: PayoutMethod; note?: string; nature?: PayoutNature }) => {
       const { error } = await supabase.from("payouts").insert({
         group_id: groupId,
         round: p.round,
@@ -477,6 +485,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         amount: Math.round(p.amount),
         method: p.method,
         note: p.note?.trim() || null,
+        ...(p.nature && p.nature !== "versement" ? { nature: p.nature } : {}),
         reference: reference().replace("CTZ-", "VRS-"),
       });
       fail(error);

@@ -109,7 +109,7 @@ export function paidUntil(g: Group, memberId: string) {
 export const feesOf = (ps: Payment[]) => ps.reduce((s, p) => s + (p.fees ?? 0), 0);
 
 export const payoutFor = (g: Group, round = g.currentRound) =>
-  g.payouts.find((p) => p.round === round && p.status !== "echoue");
+  g.payouts.find((p) => p.round === round && p.status !== "echoue" && (p.nature ?? "versement") === "versement");
 
 /** Caisse : entrées nettes (après frais) moins les versements. */
 export function caisse(g: Group) {
@@ -122,7 +122,36 @@ export function caisse(g: Group) {
 /** Montant net à verser pour le tour en cours (tontine) */
 export function netDuTour(g: Group, round = g.currentRound) {
   const ps = g.payments.filter((p) => p.round === round);
-  return sum(ps) - feesOf(ps);
+  // Si les pénalités ont une autre destination, elles ne vont pas au bénéficiaire du tour
+  const penalites = g.penaltyDestination && g.penaltyDestination !== "beneficiaire" ? ps.reduce((s, p) => s + p.penalty, 0) : 0;
+  return sum(ps) - feesOf(ps) - penalites;
+}
+
+/* ---------- Destination des pénalités ---------- */
+export const DESTINATION_PENALITES = {
+  beneficiaire: { titre: "Ajoutées à la caisse du tour", desc: "Le bénéficiaire du tour reçoit la pénalité en plus : il est dédommagé du retard." },
+  solidarite: { titre: "Caisse de solidarité du groupe", desc: "Pour aider un membre en difficulté (maladie, décès…), payer des frais ou une fête." },
+  recompense: { titre: "Récompense en fin de cycle", desc: "Partagées à la fin entre les membres qui ont toujours payé à l’heure." },
+  don: { titre: "Don à une cause", desc: "Offertes à des personnes démunies, un orphelinat ou une association choisie par le groupe." },
+} as const;
+
+export const NATURE_LABEL = { versement: "Versé à", don: "Don à", solidarite: "Aide solidaire à", recompense: "Récompense à" } as const;
+
+/** Caisse des pénalités (quand elles ne vont pas au bénéficiaire du tour) */
+export function caissePenalites(g: Group) {
+  if (!g.penaltyDestination || g.penaltyDestination === "beneficiaire") return null;
+  const total = g.payments.reduce((s, p) => s + p.penalty, 0);
+  const sorties = g.payouts.filter((p) => p.status !== "echoue" && p.nature && p.nature !== "versement");
+  const utilise = sorties.reduce((s, p) => s + p.amount, 0);
+  return { total, utilise, solde: total - utilise, sorties };
+}
+
+/** Membres qui ont toujours payé à l'heure (pour la récompense de fin de cycle) */
+export function toujoursPonctuels(g: Group): Member[] {
+  return g.members.filter((m) => {
+    const ps = g.payments.filter((p) => p.memberId === m.id);
+    return ps.length > 0 && ps.every((p) => p.penalty === 0) && impayes(g, m.id).length === 0;
+  });
 }
 
 /* ---------- Droits ---------- */

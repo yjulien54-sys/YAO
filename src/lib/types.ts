@@ -9,6 +9,9 @@ export interface Engagement {
   acceptedAt: string;
 }
 
+export type PenaltyDestination = "beneficiaire" | "solidarite" | "recompense" | "don";
+export type PayoutNature = "versement" | "don" | "solidarite" | "recompense";
+
 export type AddPolicy = "tresorier" | "gestionnaires" | "tous";
 export type MemberStatus = "paye" | "attente" | "retard";
 
@@ -49,6 +52,7 @@ export interface Payout {
   amount: number;
   method: PayoutMethod;
   status: "en_cours" | "verse" | "echoue";
+  nature: PayoutNature;
   note?: string;
   reference: string;
   date: string;
@@ -78,5 +82,7 @@ export interface Group {
   tirageFait?: string; // date à laquelle le tirage a été fait (ISO)
   tiragePar?: string; // nom de la personne qui a lancé le tirage
   engagements: Engagement[]; // règlements acceptés
+  penaltyDestination: PenaltyDestination; // à quoi servent les pénalités
+  donCause?: string; // cause soutenue si les pénalités deviennent des dons
   createdAt: string;
 }

@@ -5,7 +5,7 @@ import { useParams } from "next/navigation";
 import { useState } from "react";
 import { Avatar, Button, Card, Header, Loading, Page, Progress, StatusBadge, WhatsAppIcon, btnClass, inputClass, useRequireUser } from "@/components/ui";
 import { dateCourte, dateLongue, fcfa, prenom, telAffiche } from "@/lib/format";
-import { ROLE_LABEL, TYPE_LABEL, amountDue, droits, impayes, arrears, beneficiary, caisse, dueDate, isLate, memberStatus, netDuTour, paidUntil, payoutFor, paymentsOf, roundStats, roundsToPay, sum, unpaidMembers } from "@/lib/logic";
+import { NATURE_LABEL, ROLE_LABEL, TYPE_LABEL, amountDue, droits, impayes, arrears, beneficiary, caisse, dueDate, isLate, memberStatus, netDuTour, paidUntil, payoutFor, paymentsOf, roundStats, roundsToPay, sum, unpaidMembers } from "@/lib/logic";
 import { PayoutModal } from "@/components/PayoutModal";
 import { METHOD_LABEL, MODE_PAIEMENT } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
@@ -14,6 +14,7 @@ import { MessageModal } from "@/components/MessageModal";
 import { Invitation } from "@/components/Invitation";
 import { Tirage } from "@/components/Tirage";
 import { Reglement } from "@/components/Reglement";
+import { CaissePenalites } from "@/components/CaissePenalites";
 import { ArrowUpRight, CalendarDays, ChevronsRight, FileText, Flag, History, Users, MessageCircle, Phone, Settings, Check, CheckCircle2, Clock, Gift, PartyPopper, Smartphone, UserPlus, X } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 import type { Member } from "@/lib/types";
@@ -229,6 +230,8 @@ export default function GroupeDetail() {
 
         <Tirage g={g} tresorier={isTreasurer} onVoirOrdre={() => setTab("tours")} />
 
+        <CaissePenalites g={g} tresorier={isTreasurer} />
+
         {isTreasurer && declarations.length > 0 && (
           <Card className="space-y-3 border-amber-300 bg-amber-50/60">
             <div>
@@ -426,7 +429,7 @@ export default function GroupeDetail() {
               <div key={v.id} className="flex items-center gap-3 bg-amber-50/50 px-4 py-3">
                 <IconBadge icon={ArrowUpRight} ton="ambre" taille="sm" />
                 <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-semibold">Versé à {v.beneficiaryName}</p>
+                  <p className="truncate text-sm font-semibold">{NATURE_LABEL[v.nature ?? "versement"]} {v.beneficiaryName}</p>
                   <p className="text-xs text-stone-500">
                     {dateLongue(v.date)} · {METHOD_LABEL[v.method]}{g.type === "tontine" && ` · Tour ${v.round}`}{v.note && ` · ${v.note}`}
                   </p>
