@@ -9,8 +9,8 @@ import { Avatar, Button, Card, Field, Header, Loading, Page, inputClass, useRequ
 import { telAffiche } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { waLink } from "@/lib/whatsapp";
+import { ServiceClient } from "@/components/ServiceClient";
 
-const SUPPORT = process.env.NEXT_PUBLIC_SUPPORT_WHATSAPP;
 
 function Ligne({ href, icon, label, detail, externe, onClick }: { href?: string; icon: Parameters<typeof IconBadge>[0]["icon"]; label: string; detail?: string; externe?: boolean; onClick?: () => void }) {
   const contenu = (
@@ -100,11 +100,12 @@ export default function ProfilPage() {
           </Card>
         </div>
 
+        <ServiceClient />
+
         <div>
           <h2 className="mb-2 px-1 text-xs font-bold uppercase tracking-wide text-stone-500">Aide</h2>
           <Card className="divide-y divide-stone-100 !p-0">
             <Ligne href="/aide" icon={HelpCircle} label="Questions fréquentes" detail="Paiements, trésorier, rappels…" />
-            {SUPPORT && <Ligne href={waLink("Bonjour, j’ai besoin d’aide avec Cotiz.", SUPPORT)} externe icon={HelpCircle} label="Contacter le support" detail="Sur WhatsApp" />}
             <Ligne href="/confidentialite" icon={FileText} label="Confidentialité" />
           </Card>
         </div>

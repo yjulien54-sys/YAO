@@ -75,6 +75,24 @@ interface Ctx {
 
 const StoreContext = createContext<Ctx | null>(null);
 
+/* Cache local : affiche tout de suite les groupes déjà connus, puis les met à jour */
+const CACHE = "cotiz:cache:v1";
+type Cache = { userId: string; user: User; groups: Group[] };
+const lireCache = (): Cache | null => {
+  try {
+    const raw = localStorage.getItem(CACHE);
+    return raw ? (JSON.parse(raw) as Cache) : null;
+  } catch {
+    return null;
+  }
+};
+const ecrireCache = (c: Cache | null) => {
+  try {
+    if (c) localStorage.setItem(CACHE, JSON.stringify(c));
+    else localStorage.removeItem(CACHE);
+  } catch {}
+};
+
 
 
 const fail = (error: { message: string } | null) => {
@@ -102,25 +120,49 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       // base pas encore mise à jour (table payouts absente)
       ({ data, error } = await supabase.from("groups").select("*, members(*), payments(*)").order("created_at", { ascending: false }));
     }
-    if (!error && data) setGroups(data.map(mapGroup));
+    if (!error && data) {
+      const gs = data.map(mapGroup);
+      setGroups(gs);
+      const c = lireCache();
+      const uid = (await supabase.auth.getSession()).data.session?.user.id;
+      if (uid && c?.userId === uid) ecrireCache({ ...c, groups: gs });
+    }
     setLoaded(true);
   }, []);
 
   // Session existante au démarrage
   useEffect(() => {
     (async () => {
-      const { data } = await supabase.auth.getSession();
+      const { data } = await supabase.auth.getSession(); // lecture locale, instantanée
       const uid = data.session?.user.id;
-      if (uid) {
-        const { data: prof } = await supabase.from("profiles").select("name, phone").eq("id", uid).maybeSingle();
-        if (prof) {
-          setUserId(uid);
-          setUser(prof);
-          await supabase.rpc("rattacher_par_numero");
-          await reload();
-        }
+      if (!uid) {
+        setReady(true);
+        return;
       }
-      setReady(true);
+      // 1. Affichage immédiat à partir du cache (pas d'attente réseau)
+      const c = lireCache();
+      if (c && c.userId === uid) {
+        setUserId(uid);
+        setUser(c.user);
+        setGroups(c.groups);
+        setLoaded(true);
+        setReady(true);
+      }
+      // 2. Mise à jour en arrière-plan
+      const { data: prof } = await supabase.from("profiles").select("name, phone").eq("id", uid).maybeSingle();
+      if (prof) {
+        setUserId(uid);
+        setUser(prof);
+        ecrireCache({ userId: uid, user: prof, groups: c && c.userId === uid ? c.groups : [] });
+        setReady(true);
+        await reload();
+        // Reconnaissance par numéro : si de nouvelles places ont été rattachées, on recharge
+        const { data: n } = await supabase.rpc("rattacher_par_numero");
+        if (typeof n === "number" && n > 0) await reload();
+      } else {
+        ecrireCache(null);
+        setReady(true);
+      }
     })();
   }, [reload]);
 
@@ -161,6 +203,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       await supabase.rpc("rattacher_par_numero");
       setUserId(uid);
       setUser(u);
+      ecrireCache({ userId: uid, user: u, groups: [] });
       await reload();
     },
     [reload]
@@ -168,6 +211,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(async () => {
     await supabase.auth.signOut();
+    ecrireCache(null);
     setUser(null);
     setUserId(null);
     setGroups([]);
@@ -456,6 +500,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.from("profiles").update({ name: u.name.trim(), phone }).eq("id", userId!);
       fail(error);
       setUser({ name: u.name.trim(), phone });
+      const c = lireCache();
+      if (c) ecrireCache({ ...c, user: { name: u.name.trim(), phone } });
     },
     [userId]
   );

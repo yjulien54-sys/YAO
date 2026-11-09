@@ -128,7 +128,13 @@ export function useRequireUser() {
 export function Loading() {
   return (
     <Page>
-      <div className="grid min-h-dvh place-items-center text-stone-400">Chargement…</div>
+      <div className="grid min-h-dvh place-items-center">
+        <div className="flex flex-col items-center gap-4">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="/icons/logo.svg" alt="" width={72} height={72} className="h-[72px] w-[72px] animate-pulse rounded-[20px] shadow-lg" />
+          <p className="text-sm font-semibold text-stone-500">Cotiz</p>
+        </div>
+      </div>
     </Page>
   );
 }

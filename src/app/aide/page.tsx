@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ServiceClient } from "@/components/ServiceClient";
 
 export const metadata: Metadata = { title: "Aide — Cotiz" };
 
@@ -35,7 +36,10 @@ export default function Aide() {
           </details>
         ))}
       </div>
-      <p className="mt-6 text-center text-xs text-stone-500">
+      <div className="mt-6">
+        <ServiceClient />
+      </div>
+      <p className="mt-4 text-center text-xs text-stone-500">
         Un souci avec un paiement ? Contacte ton trésorier avec les boutons « Appeler » ou « Écrire » dans le groupe.
       </p>
       <p className="mt-2 text-center text-xs text-stone-400">

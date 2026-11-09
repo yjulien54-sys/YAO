@@ -11,6 +11,7 @@ import { useMe, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { waLink } from "@/lib/whatsapp";
 import { Invitation } from "@/components/Invitation";
+import { LienAide } from "@/components/ServiceClient";
 import { ArrowUpRight, CheckCircle2, Clock, Copy, Check, Lock } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 import type { PayMethod } from "@/lib/types";
@@ -379,6 +380,7 @@ function Payer() {
                 : `Tu paies exactement ${fcfa(total)}. Les frais (≈${Math.round(FRAIS_TAUX * 100)} %) sont pris sur la caisse du groupe.`}
               {MODE_PAIEMENT !== "manuel" && !pourAutrui ? ` Reçu visible par tout le groupe.` : ""}
             </p>
+            <LienAide sujet={`Bonjour, j’ai besoin d’aide pour payer dans le groupe « ${g.name} ».`} />
           </>
         )}
       </div>

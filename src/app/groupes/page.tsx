@@ -6,6 +6,7 @@ import { dateCourte, fcfa, prenom } from "@/lib/format";
 import { TYPE_LABEL, beneficiary, parFrequence, dueDate, isLate, roundStats } from "@/lib/logic";
 import { useStore } from "@/lib/store";
 import { BottomNav } from "@/components/BottomNav";
+import { Annonces } from "@/components/Annonces";
 import { AlertCircle, CalendarDays, Gift, HandCoins, Plus, Repeat, Users } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 
@@ -39,6 +40,8 @@ export default function Groupes() {
             </div>
           </div>
         </div>
+
+        <Annonces />
 
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-stone-800">Mes groupes</h3>
