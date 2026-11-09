@@ -11,7 +11,7 @@ import { useStore } from "@/lib/store";
 import { BottomNav } from "@/components/BottomNav";
 import { Annonces } from "@/components/Annonces";
 import { Bienvenue } from "@/components/Bienvenue";
-import { AlertCircle, CalendarDays, Gift, HandCoins, Headset, Link2, Plus, Repeat, Users, Wallet } from "lucide-react";
+import { AlertCircle, CalendarDays, ClipboardPaste, Gift, HandCoins, Headset, Link2, Plus, Repeat, Users, Wallet } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 
 const TYPE_ICON = { tontine: Repeat, association: Users, collecte: HandCoins };
@@ -38,11 +38,33 @@ export default function Groupes() {
     return [{ g, me, montant: amountDue(g).total, retard: statut === "retard" || arr > 0, echeance: dueDate(g, g.currentRound).toISOString() }];
   });
 
-  const ouvrirLien = () => {
-    const m = lien.match(/groupes\/([0-9a-f-]{36})/i) ?? lien.trim().match(/^([0-9a-f-]{36})$/i);
-    if (!m) return setErreurLien("Colle le lien reçu sur WhatsApp (il contient « /groupes/ »).");
+  const idDuLien = (t: string) => (t.match(/groupes\/([0-9a-f-]{36})/i) ?? t.trim().match(/^([0-9a-f-]{36})$/i))?.[1];
+
+  const ouvrirLien = (texte = lien) => {
+    const id = idDuLien(texte);
+    if (!id) return setErreurLien("Colle le lien reçu sur WhatsApp (il contient « /groupes/ »).");
     setRejoindre(false);
-    router.push(`/groupes/${m[1]}`);
+    router.push(`/groupes/${id}`);
+  };
+
+  // Collage automatique : si un lien de groupe a été copié (WhatsApp « Copier »), on le reprend
+  const collerDepuisPressePapiers = async () => {
+    try {
+      const t = await navigator.clipboard.readText();
+      if (idDuLien(t)) {
+        setLien(t.trim());
+        setErreurLien("");
+        return true;
+      }
+    } catch {}
+    return false;
+  };
+
+  const ouvrirRejoindre = () => {
+    setLien("");
+    setErreurLien("");
+    setRejoindre(true);
+    collerDepuisPressePapiers();
   };
 
   const enRetard = groups.reduce((n, g) => n + roundStats(g).counts.retard, 0);
@@ -79,7 +101,7 @@ export default function Groupes() {
           <ActionRapide label="Créer" href="/groupes/nouveau" interne>
             <Plus size={22} strokeWidth={1.9} />
           </ActionRapide>
-          <ActionRapide label="Rejoindre" onClick={() => setRejoindre(true)}>
+          <ActionRapide label="Rejoindre" onClick={ouvrirRejoindre}>
             <Link2 size={20} strokeWidth={1.9} />
           </ActionRapide>
           <ActionRapide label="À payer" badge={aPayer.length || undefined} onClick={() => document.getElementById("a-payer")?.scrollIntoView({ behavior: "smooth" })}>
@@ -180,12 +202,30 @@ export default function Groupes() {
         <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 sm:items-center" onClick={() => setRejoindre(false)}>
           <div className="w-full max-w-md space-y-3 rounded-t-3xl bg-white p-5 shadow-xl sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
             <h3 className="text-lg font-extrabold">Rejoindre un groupe</h3>
-            <p className="text-sm text-stone-600">Colle le lien d’invitation (ou de paiement) que le trésorier t’a envoyé sur WhatsApp.</p>
-            <input className={inputClass} value={lien} onChange={(e) => { setLien(e.target.value); setErreurLien(""); }} placeholder="https://tontine-et-cotise.vercel.app/groupes/…" inputMode="url" autoFocus />
+            {idDuLien(lien) ? (
+              <p className="rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800 ring-1 ring-emerald-200">Lien de groupe détecté ✓</p>
+            ) : (
+              <p className="text-sm text-stone-600">
+                Le plus simple : touche directement le lien reçu sur WhatsApp. Sinon, copie-le puis touche « Coller ».
+              </p>
+            )}
+            <div className="flex gap-2">
+              <input className={inputClass} value={lien} onChange={(e) => { setLien(e.target.value); setErreurLien(""); }} placeholder="https://tontine-et-cotise.vercel.app/groupes/…" inputMode="url" />
+              <Button
+                type="button"
+                variant="secondary"
+                className="shrink-0 !px-3"
+                onClick={async () => {
+                  if (!(await collerDepuisPressePapiers())) setErreurLien("Aucun lien de groupe copié. Copie d’abord le lien dans WhatsApp (appui long → Copier).");
+                }}
+              >
+                <ClipboardPaste size={17} strokeWidth={1.9} /> Coller
+              </Button>
+            </div>
             {erreurLien && <p className="text-sm text-red-600">{erreurLien}</p>}
             <div className="grid grid-cols-2 gap-2">
               <Button variant="secondary" onClick={() => setRejoindre(false)}>Annuler</Button>
-              <Button onClick={ouvrirLien} disabled={!lien.trim()}>Ouvrir</Button>
+              <Button onClick={() => ouvrirLien()} disabled={!lien.trim()}>{idDuLien(lien) ? "Rejoindre ce groupe" : "Ouvrir"}</Button>
             </div>
           </div>
         </div>
