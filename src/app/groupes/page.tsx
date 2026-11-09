@@ -1,13 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { Card, Header, Loading, Page, Progress, btnClass, useRequireUser } from "@/components/ui";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import { Button, Card, Header, Loading, Page, Progress, inputClass, useRequireUser } from "@/components/ui";
+import { ActionRapide } from "@/components/ActionRapide";
 import { dateCourte, fcfa, prenom } from "@/lib/format";
-import { TYPE_LABEL, beneficiary, parFrequence, dueDate, isLate, roundStats } from "@/lib/logic";
+import { TYPE_LABEL, amountDue, beneficiary, impayes, memberStatus, parFrequence, dueDate, isLate, roundStats } from "@/lib/logic";
 import { useStore } from "@/lib/store";
 import { BottomNav } from "@/components/BottomNav";
 import { Annonces } from "@/components/Annonces";
-import { AlertCircle, CalendarDays, Gift, HandCoins, Plus, Repeat, Users } from "lucide-react";
+import { AlertCircle, CalendarDays, Gift, HandCoins, Headset, Link2, Plus, Repeat, Users, Wallet } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 
 const TYPE_ICON = { tontine: Repeat, association: Users, collecte: HandCoins };
@@ -15,16 +18,45 @@ const TYPE_TON = { tontine: "vert", association: "vert", collecte: "vert" } as c
 
 export default function Groupes() {
   const ok = useRequireUser();
-  const { user, groups, loaded } = useStore();
+  const { user, userId, groups, loaded } = useStore();
+  const router = useRouter();
+  const [rejoindre, setRejoindre] = useState(false);
+  const [lien, setLien] = useState("");
+  const [erreurLien, setErreurLien] = useState("");
   if (!ok || !loaded) return <Loading />;
+
+  // Mes cotisations dues dans tous mes groupes (tour en cours et arriérés)
+  const aPayer = groups.flatMap((g) => {
+    if (g.type === "collecte") return [];
+    const me = g.members.find((m) => !!userId && m.profileId === userId);
+    if (!me) return [];
+    const enAttente = g.pending.some((p) => p.memberId === me.id);
+    const statut = memberStatus(g, me.id);
+    const arr = impayes(g, me.id).filter((r) => r < g.currentRound).length;
+    if (enAttente || (statut === "paye" && arr === 0)) return [];
+    return [{ g, me, montant: amountDue(g).total, retard: statut === "retard" || arr > 0, echeance: dueDate(g, g.currentRound).toISOString() }];
+  });
+
+  const ouvrirLien = () => {
+    const m = lien.match(/groupes\/([0-9a-f-]{36})/i) ?? lien.trim().match(/^([0-9a-f-]{36})$/i);
+    if (!m) return setErreurLien("Colle le lien reçu sur WhatsApp (il contient « /groupes/ »).");
+    setRejoindre(false);
+    router.push(`/groupes/${m[1]}`);
+  };
 
   const enRetard = groups.reduce((n, g) => n + roundStats(g).counts.retard, 0);
   const totalCaisse = groups.reduce((n, g) => n + g.payments.reduce((s, p) => s + p.amount + p.penalty, 0), 0);
 
   return (
     <Page>
-      <Header />
-      <div className="space-y-5 p-4 pb-40">
+      <Header
+        right={
+          <Link href="/aide" aria-label="Service client" className="rounded-full p-2 text-emerald-700 hover:bg-emerald-50">
+            <Headset size={22} strokeWidth={1.9} />
+          </Link>
+        }
+      />
+      <div className="space-y-5 p-4 pb-28">
         <div className="degrade-vert relative overflow-hidden rounded-3xl p-5 text-white shadow-lg shadow-emerald-900/15">
           <div className="motif absolute inset-0 opacity-60" />
           <p className="relative text-sm text-emerald-50/90">Bonjour,</p>
@@ -41,7 +73,50 @@ export default function Groupes() {
           </div>
         </div>
 
+        {/* Actions rapides */}
+        <div className="grid grid-cols-4 gap-1">
+          <ActionRapide label="Créer" href="/groupes/nouveau" interne>
+            <Plus size={22} strokeWidth={1.9} />
+          </ActionRapide>
+          <ActionRapide label="Rejoindre" onClick={() => setRejoindre(true)}>
+            <Link2 size={20} strokeWidth={1.9} />
+          </ActionRapide>
+          <ActionRapide label="À payer" badge={aPayer.length || undefined} onClick={() => document.getElementById("a-payer")?.scrollIntoView({ behavior: "smooth" })}>
+            <Wallet size={20} strokeWidth={1.9} />
+          </ActionRapide>
+          <ActionRapide label="Contact" href="/aide" interne>
+            <Headset size={20} strokeWidth={1.9} />
+          </ActionRapide>
+        </div>
+
         <Annonces />
+
+        {/* À payer */}
+        <section id="a-payer" className="scroll-mt-20 space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="font-bold text-stone-800">À payer</h3>
+            <span className="text-sm text-stone-500">{aPayer.length}</span>
+          </div>
+          {aPayer.length === 0 ? (
+            <Card className="!p-3.5 text-sm text-stone-500">Tu es à jour dans tous tes groupes.</Card>
+          ) : (
+            <Card className="divide-y divide-stone-100 !p-0">
+              {aPayer.map(({ g, me, montant, retard, echeance }) => (
+                <div key={g.id} className="flex items-center gap-3 px-4 py-3">
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{g.name}</p>
+                    <p className={`text-[0.8125rem] ${retard ? "font-semibold text-red-600" : "text-stone-500"}`}>
+                      {retard ? "En retard" : `Avant le ${dateCourte(echeance)}`} · {fcfa(montant)}
+                    </p>
+                  </div>
+                  <Link href={`/groupes/${g.id}/payer?membre=${me.id}`} className="shrink-0 rounded-xl bg-emerald-600 px-3.5 py-2 text-sm font-bold text-white">
+                    Payer
+                  </Link>
+                </div>
+              ))}
+            </Card>
+          )}
+        </section>
 
         <div className="flex items-center justify-between">
           <h3 className="font-bold text-stone-800">Mes groupes</h3>
@@ -100,11 +175,20 @@ export default function Groupes() {
 
       </div>
 
-      <div className="fixed inset-x-0 bottom-[60px] z-10 mx-auto max-w-md bg-gradient-to-t from-[#f7f5f0] via-[#f7f5f0] to-transparent p-4 pt-8">
-        <Link href="/groupes/nouveau" className={btnClass("primary", "w-full shadow-lg shadow-emerald-900/20")}>
-          <Plus size={18} strokeWidth={2} /> Créer un groupe
-        </Link>
-      </div>
+      {rejoindre && (
+        <div className="fixed inset-0 z-40 flex items-end justify-center bg-black/40 sm:items-center" onClick={() => setRejoindre(false)}>
+          <div className="w-full max-w-md space-y-3 rounded-t-3xl bg-white p-5 shadow-xl sm:rounded-3xl" onClick={(e) => e.stopPropagation()}>
+            <h3 className="text-lg font-extrabold">Rejoindre un groupe</h3>
+            <p className="text-sm text-stone-600">Colle le lien d’invitation (ou de paiement) que le trésorier t’a envoyé sur WhatsApp.</p>
+            <input className={inputClass} value={lien} onChange={(e) => { setLien(e.target.value); setErreurLien(""); }} placeholder="https://tontine-et-cotise.vercel.app/groupes/…" inputMode="url" autoFocus />
+            {erreurLien && <p className="text-sm text-red-600">{erreurLien}</p>}
+            <div className="grid grid-cols-2 gap-2">
+              <Button variant="secondary" onClick={() => setRejoindre(false)}>Annuler</Button>
+              <Button onClick={ouvrirLien} disabled={!lien.trim()}>Ouvrir</Button>
+            </div>
+          </div>
+        </div>
+      )}
       <BottomNav />
     </Page>
   );

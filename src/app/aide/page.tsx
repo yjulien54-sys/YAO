@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ServiceClient } from "@/components/ServiceClient";
+import { BottomNav } from "@/components/BottomNav";
+import { Header, Page } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Aide — Cotiz" };
 
@@ -21,30 +23,32 @@ const FAQ: { q: string; r: string; id?: string }[] = [
 
 export default function Aide() {
   return (
-    <main className="mx-auto min-h-dvh max-w-md bg-[#f7f5f0] px-4 pb-10 pt-6">
-      <Link href="/profil" className="text-sm font-semibold text-emerald-700">← Retour</Link>
-      <h1 className="mt-3 text-2xl font-extrabold tracking-tight">Questions fréquentes</h1>
-      <p className="mt-1 text-sm text-stone-500">Tout ce qu’il faut savoir pour bien utiliser Cotiz.</p>
-      <div className="carte mt-5 divide-y divide-stone-100 overflow-hidden">
-        {FAQ.map((f) => (
-          <details key={f.q} id={f.id} className="group px-4 py-3 [&_summary::-webkit-details-marker]:hidden">
-            <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-bold">
-              {f.q}
-              <span className="text-lg leading-none text-stone-400 transition group-open:rotate-45">+</span>
-            </summary>
-            <p className="mt-2 text-sm leading-relaxed text-stone-600">{f.r}</p>
-          </details>
-        ))}
-      </div>
-      <div className="mt-6">
+    <Page>
+      <Header title="Aide et service client" />
+      <div className="space-y-5 p-4 pb-28">
         <ServiceClient />
+        <section>
+          <h2 className="mb-2 px-1 text-xs font-bold uppercase tracking-wide text-stone-500">Questions fréquentes</h2>
+          <div className="carte divide-y divide-stone-100 overflow-hidden">
+            {FAQ.map((f) => (
+              <details key={f.q} id={f.id} className="group px-4 py-3 [&_summary::-webkit-details-marker]:hidden">
+                <summary className="flex cursor-pointer list-none items-center justify-between gap-3 text-sm font-bold">
+                  {f.q}
+                  <span className="text-lg leading-none text-stone-400 transition group-open:rotate-45">+</span>
+                </summary>
+                <p className="mt-2 text-sm leading-relaxed text-stone-600">{f.r}</p>
+              </details>
+            ))}
+          </div>
+        </section>
+        <p className="text-center text-xs text-stone-500">
+          Un souci avec un paiement dans un groupe ? Tu peux aussi contacter ton trésorier avec les boutons « Appeler » ou « Écrire » dans le groupe.
+        </p>
+        <p className="text-center text-xs text-stone-400">
+          <Link href="/confidentialite" className="underline">Confidentialité</Link> · <Link href="/suppression-compte" className="underline">Supprimer mon compte</Link>
+        </p>
       </div>
-      <p className="mt-4 text-center text-xs text-stone-500">
-        Un souci avec un paiement ? Contacte ton trésorier avec les boutons « Appeler » ou « Écrire » dans le groupe.
-      </p>
-      <p className="mt-2 text-center text-xs text-stone-400">
-        <Link href="/confidentialite" className="underline">Confidentialité</Link> · <Link href="/suppression-compte" className="underline">Supprimer mon compte</Link>
-      </p>
-    </main>
+      <BottomNav />
+    </Page>
   );
 }

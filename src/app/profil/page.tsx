@@ -2,14 +2,14 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ChevronRight, Download, FileText, HelpCircle, LogOut, Pencil, Share2, Smartphone, Trash2 } from "lucide-react";
+import { ChevronRight, Download, Headset, FileText, HelpCircle, LogOut, Pencil, Share2, Smartphone, Trash2 } from "lucide-react";
 import { BottomNav } from "@/components/BottomNav";
 import { IconBadge } from "@/components/icons";
 import { Avatar, Button, Card, Field, Header, Loading, Page, inputClass, useRequireUser } from "@/components/ui";
 import { telAffiche } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { waLink } from "@/lib/whatsapp";
-import { ServiceClient } from "@/components/ServiceClient";
+import { SUPPORT_AFFICHE } from "@/lib/support";
 
 
 function Ligne({ href, icon, label, detail, externe, onClick }: { href?: string; icon: Parameters<typeof IconBadge>[0]["icon"]; label: string; detail?: string; externe?: boolean; onClick?: () => void }) {
@@ -100,11 +100,10 @@ export default function ProfilPage() {
           </Card>
         </div>
 
-        <ServiceClient />
-
         <div>
           <h2 className="mb-2 px-1 text-xs font-bold uppercase tracking-wide text-stone-500">Aide</h2>
           <Card className="divide-y divide-stone-100 !p-0">
+            <Ligne href="/aide" icon={Headset} label="Service client" detail={`WhatsApp ou appel · ${SUPPORT_AFFICHE}`} />
             <Ligne href="/aide" icon={HelpCircle} label="Questions fréquentes" detail="Paiements, trésorier, rappels…" />
             <Ligne href="/confidentialite" icon={FileText} label="Confidentialité" />
           </Card>

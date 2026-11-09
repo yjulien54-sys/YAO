@@ -13,6 +13,7 @@ import { invitation, waLink } from "@/lib/whatsapp";
 import { MessageModal } from "@/components/MessageModal";
 import { Invitation } from "@/components/Invitation";
 import { Tirage } from "@/components/Tirage";
+import { ActionRapide } from "@/components/ActionRapide";
 import { Reglement } from "@/components/Reglement";
 import { CaissePenalites } from "@/components/CaissePenalites";
 import { ArrowUpRight, CalendarDays, ChevronsRight, FileText, Flag, History, Users, MessageCircle, Phone, Settings, Check, CheckCircle2, Clock, Gift, PartyPopper, Smartphone, UserPlus, X } from "lucide-react";
@@ -610,20 +611,4 @@ function Stat({ n, label, cls }: { n: number; label: string; cls: string }) {
       <p className="text-[0.8125rem] font-medium text-stone-500">{label}</p>
     </div>
   );
-}
-
-/** Bouton rond d'action rapide (style application bancaire) */
-function ActionRapide({ label, children, onClick, href, interne, disabled, badge }: { label: string; children: React.ReactNode; onClick?: () => void; href?: string; interne?: boolean; disabled?: boolean; badge?: number }) {
-  const rond = (
-    <span className="relative grid h-14 w-14 place-items-center rounded-full bg-white text-emerald-700 shadow-sm ring-1 ring-stone-200">
-      {children}
-      {badge !== undefined && (
-        <span className="absolute -right-0.5 -top-0.5 grid h-5 min-w-5 place-items-center rounded-full bg-orange-500 px-1 text-[0.75rem] font-bold text-white">{badge}</span>
-      )}
-    </span>
-  );
-  const cls = `flex flex-col items-center gap-1.5 text-[0.8125rem] font-semibold text-stone-700 ${disabled ? "pointer-events-none opacity-40" : ""}`;
-  if (href && interne) return <Link href={href} className={cls}>{rond}{label}</Link>;
-  if (href) return <a href={href} target="_blank" rel="noreferrer" className={cls}>{rond}{label}</a>;
-  return <button onClick={onClick} disabled={disabled} className={cls}>{rond}{label}</button>;
 }
