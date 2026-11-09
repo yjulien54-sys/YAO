@@ -3,7 +3,7 @@ import Link from "next/link";
 
 export const metadata: Metadata = { title: "Politique de confidentialité — Cotiz" };
 
-const MAJ = "7 novembre 2026";
+const MAJ = "9 novembre 2026";
 
 export default function Confidentialite() {
   return (
@@ -36,6 +36,9 @@ export default function Confidentialite() {
 
       <h2 className="mt-6 text-lg font-bold">5. Hébergement et sécurité</h2>
       <p>Les données sont hébergées par notre prestataire Supabase, dans des centres de données sécurisés. L’accès est protégé par des règles qui limitent chaque utilisateur à ses propres groupes. Les messages de rappel peuvent être rédigés à l’aide d’un service d’intelligence artificielle, qui reçoit seulement les informations nécessaires au message (prénom, nom du groupe, montant, date).</p>
+
+      <h2 className="mt-6 text-lg font-bold">Journal des actions (traçabilité)</h2>
+      <p>Pour la sécurité de tous et pour régler les litiges, chaque action importante (création ou modification d’un groupe, ajout ou retrait d’un membre, paiement, versement, acceptation du règlement) est enregistrée avec sa date, son auteur et son contenu. Ce journal n’est accessible qu’à l’équipe de Cotiz, uniquement pour la sécurité, la lutte contre la fraude et l’assistance.</p>
 
       <h2 className="mt-6 text-lg font-bold">6. Durée de conservation</h2>
       <p>Tes données sont conservées tant que ton compte existe. L’historique des paiements d’un groupe est conservé pour la transparence du groupe, même si un membre quitte l’application.</p>

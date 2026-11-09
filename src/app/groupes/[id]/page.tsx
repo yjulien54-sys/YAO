@@ -16,7 +16,7 @@ import { Tirage } from "@/components/Tirage";
 import { ActionRapide } from "@/components/ActionRapide";
 import { Reglement } from "@/components/Reglement";
 import { CaissePenalites } from "@/components/CaissePenalites";
-import { ArrowUpRight, CalendarDays, ChevronsRight, FileText, Flag, History, Users, MessageCircle, Phone, Settings, Check, CheckCircle2, Clock, Gift, PartyPopper, Smartphone, UserPlus, X } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, CalendarDays, ChevronsRight, FileText, Flag, History, Users, MessageCircle, Phone, Settings, Check, CheckCircle2, Clock, Gift, PartyPopper, Smartphone, UserPlus, X } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 import type { Member } from "@/lib/types";
 
@@ -149,6 +149,16 @@ export default function GroupeDetail() {
               {late && g.penalty > 0 && <span className="text-xs font-semibold">+{fcfa(g.penalty)} de pénalité</span>}
             </div>
           </Card>
+        )}
+
+        {g.paymentPhoneChangedAt && Date.now() - new Date(g.paymentPhoneChangedAt).getTime() < 14 * 24 * 3600 * 1000 && (
+          <div className="flex items-start gap-3 rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-200">
+            <AlertTriangle size={20} strokeWidth={2} className="mt-0.5 shrink-0 text-amber-600" />
+            <p className="text-sm text-amber-900">
+              <b>Le numéro de réception a été modifié</b> le {dateLongue(g.paymentPhoneChangedAt)}. Nouveau numéro : <b>{telAffiche(g.paymentPhone ?? "")}</b>.
+              Avant de payer, vérifie que le nom affiché dans Wave est bien celui du trésorier.
+            </p>
+          </div>
         )}
 
         {g.description && <p className="px-1 text-sm leading-relaxed text-stone-600">{g.description}</p>}
@@ -439,7 +449,7 @@ export default function GroupeDetail() {
               </div>
             ))}
             {[...g.payments].reverse().map((p) => {
-              const m = g.members.find((x) => x.id === p.memberId);
+              const m = [...g.members, ...g.anciens].find((x) => x.id === p.memberId);
               return (
                 <Link key={p.id} href={`/groupes/${g.id}/recu/${p.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50">
                   <Avatar name={m?.name ?? "?"} size={36} />

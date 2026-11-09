@@ -45,6 +45,10 @@ interface Ctx {
   userId: string | null;
   groups: Group[];
   login: (u: User) => Promise<void>;
+  /** Connexion par SMS : envoie le code au numéro */
+  envoyerCode: (phone: string) => Promise<void>;
+  /** Connexion par SMS : vérifie le code et ouvre la session */
+  verifierCode: (u: User, code: string) => Promise<void>;
   logout: () => Promise<void>;
   reload: () => Promise<void>;
   getGroup: (id: string) => Group | undefined;
@@ -204,6 +208,46 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setUserId(uid);
       setUser(u);
       ecrireCache({ userId: uid, user: u, groups: [] });
+      await reload();
+    },
+    [reload]
+  );
+
+  // Connexion par SMS (activée par NEXT_PUBLIC_CONNEXION=sms)
+  const modeVerif = useRef<"sms" | "phone_change">("sms");
+  const e164 = (phone: string) => "+225" + phone.replace(/\D/g, "").slice(-10);
+
+  const envoyerCode = useCallback(async (phone: string) => {
+    const { data } = await supabase.auth.getSession();
+    // Compte existant sans vérification : on vérifie son numéro en gardant ses groupes
+    if (data.session?.user.is_anonymous) {
+      const { error } = await supabase.auth.updateUser({ phone: e164(phone) });
+      if (!error) {
+        modeVerif.current = "phone_change";
+        return;
+      }
+      await supabase.auth.signOut(); // numéro déjà vérifié sur un autre compte : connexion normale
+    }
+    const { error } = await supabase.auth.signInWithOtp({ phone: e164(phone) });
+    fail(error);
+    modeVerif.current = "sms";
+  }, []);
+
+  const verifierCode = useCallback(
+    async (u: User, code: string) => {
+      const { data, error } = await supabase.auth.verifyOtp({ phone: e164(u.phone), token: code.trim(), type: modeVerif.current });
+      fail(error);
+      const uid = data.user?.id ?? data.session?.user.id;
+      if (!uid) throw new Error("Code invalide");
+      const phone = u.phone.replace(/\D/g, "").slice(-10);
+      const { error: e2 } = await supabase.from("profiles").upsert({ id: uid, name: u.name.trim(), phone });
+      fail(e2);
+      // Numéro vérifié : on rattache ses places, y compris celles d'anciens comptes non vérifiés
+      await supabase.rpc("rattacher_numero_verifie");
+      await supabase.rpc("rattacher_par_numero");
+      setUserId(uid);
+      setUser({ name: u.name.trim(), phone });
+      ecrireCache({ userId: uid, user: { name: u.name.trim(), phone }, groups: [] });
       await reload();
     },
     [reload]
@@ -421,11 +465,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   const removeMember = useCallback(
     async (memberId: string) => {
-      const { error } = await supabase.from("members").delete().eq("id", memberId);
+      const g = groups.find((x) => x.members.some((m) => m.id === memberId));
+      const aDesPaiements = !!g && [...g.payments, ...g.pending].some((p) => p.memberId === memberId);
+      // Un membre qui a des paiements est archivé (son historique reste), sinon il est supprimé
+      const { error } = aDesPaiements
+        ? await supabase.from("members").update({ archive: true }).eq("id", memberId)
+        : await supabase.from("members").delete().eq("id", memberId);
       fail(error);
       await reload();
     },
-    [reload]
+    [groups, reload]
   );
 
   const setOrder = useCallback(
@@ -561,7 +610,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider
-      value={{ ready, loaded, user, userId, groups, login, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, setWaveLink, updateGroup, updateMember, removeMember, setOrder, deleteGroup, setTiragePrevu, lancerTirage, updateProfile, accepterReglement, recordPayout, nextRound, joinGroup }}
+      value={{ ready, loaded, user, userId, groups, login, envoyerCode, verifierCode, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, setWaveLink, updateGroup, updateMember, removeMember, setOrder, deleteGroup, setTiragePrevu, lancerTirage, updateProfile, accepterReglement, recordPayout, nextRound, joinGroup }}
     >
       {children}
     </StoreContext.Provider>

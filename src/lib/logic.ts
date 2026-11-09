@@ -207,3 +207,7 @@ export function texteReglement(g: Group, nom: string, telephone: string, mesPart
   );
   return lignes.join("\n");
 }
+
+/** Nom d'un membre, y compris s'il a été retiré du groupe (historique) */
+export const nomMembre = (g: Group, id?: string | null) =>
+  [...g.members, ...(g.anciens ?? [])].find((m) => m.id === id)?.name ?? "Ancien membre";

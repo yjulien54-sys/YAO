@@ -269,7 +269,7 @@ export default function Parametres() {
                     <button
                       disabled={busy}
                       onClick={() => {
-                        if (confirm(`Retirer ${m.name} du groupe ? Ses paiements déjà enregistrés seront aussi supprimés.`))
+                        if (confirm(`Retirer ${m.name} du groupe ? Ses paiements déjà enregistrés restent dans l’historique.`))
                           agir(() => removeMember(m.id), `${m.name} a été retiré(e)`);
                       }}
                       className="inline-flex items-center gap-1 rounded-lg bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600 ring-1 ring-red-100"

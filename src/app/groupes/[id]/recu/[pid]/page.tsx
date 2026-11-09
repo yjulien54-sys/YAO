@@ -28,7 +28,7 @@ function Recu() {
   const { getGroup, loaded } = useStore();
   const g = getGroup(id);
   const p = g?.payments.find((x) => x.id === pid);
-  const m = g?.members.find((x) => x.id === p?.memberId);
+  const m = g ? [...g.members, ...g.anciens].find((x) => x.id === p?.memberId) : undefined;
 
   if (!ok || !loaded) return <Loading />;
   if (!g || !p)

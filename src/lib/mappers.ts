@@ -30,9 +30,11 @@ export const mapPayout = (p: any): Payout => ({
 });
 
 export const mapGroup = (r: any): Group => {
-  const members: (Member & { pos: number })[] = (r.members ?? [])
-    .map((m: any) => ({ id: m.id, profileId: m.profile_id, name: m.name, phone: m.phone, role: m.role, pos: m.turn_position }))
+  const tous: (Member & { pos: number })[] = (r.members ?? [])
+    .map((m: any) => ({ id: m.id, profileId: m.profile_id, name: m.name, phone: m.phone, role: m.role, archive: !!m.archive, pos: m.turn_position }))
     .sort((a: any, b: any) => a.pos - b.pos);
+  const members = tous.filter((m) => !m.archive);
+  const anciens = tous.filter((m) => m.archive).map(({ pos: _p, ...m }) => m); // eslint-disable-line @typescript-eslint/no-unused-vars
   return {
     id: r.id,
     name: r.name,
@@ -52,6 +54,8 @@ export const mapGroup = (r: any): Group => {
       .sort((a: Payment, b: Payment) => a.date.localeCompare(b.date)),
     pending: (r.payments ?? []).map(mapPayment).filter((p: Payment) => p.status === "en_attente"),
     paymentPhone: r.payment_phone ?? undefined,
+    paymentPhoneChangedAt: r.payment_phone_changed_at ?? undefined,
+    anciens,
     waveLink: r.wave_link ?? undefined,
     addPolicy: r.add_policy ?? "tresorier",
     createdBy: r.created_by ?? undefined,

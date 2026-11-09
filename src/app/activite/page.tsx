@@ -8,6 +8,7 @@ import { Card, Header, Loading, Page, useRequireUser } from "@/components/ui";
 import { fcfa } from "@/lib/format";
 import { METHOD_LABEL } from "@/lib/payments";
 import { useStore } from "@/lib/store";
+import { nomMembre } from "@/lib/logic";
 
 type Evt = { id: string; date: string; type: "paiement" | "attente" | "versement"; titre: string; detail: string; montant: number; href: string };
 
@@ -28,7 +29,7 @@ export default function ActivitePage() {
 
   const evts: Evt[] = [];
   for (const g of groups) {
-    const nom = (id?: string | null) => g.members.find((m) => m.id === id)?.name ?? "Ancien membre";
+    const nom = (id?: string | null) => nomMembre(g, id);
     for (const p of g.payments)
       evts.push({ id: p.id, date: p.date, type: "paiement", titre: `${nom(p.memberId)} a payé`, detail: `${g.name} · ${METHOD_LABEL[p.method]}${g.type !== "collecte" ? ` · Tour ${p.round}` : ""}`, montant: p.amount + p.penalty, href: `/groupes/${g.id}/recu/${p.id}` });
     for (const p of g.pending)

@@ -26,6 +26,7 @@ export interface Member {
   name: string;
   phone: string;
   role: "tresorier" | "gestionnaire" | "membre";
+  archive?: boolean; // membre retiré (gardé pour l'historique)
 }
 
 export interface Payment {
@@ -75,6 +76,8 @@ export interface Group {
   pending: Payment[]; // paiements déclarés, en attente de confirmation du trésorier
   payouts: Payout[];
   paymentPhone?: string; // numéro Wave qui reçoit les cotisations
+  paymentPhoneChangedAt?: string; // dernier changement du numéro de réception
+  anciens: Member[]; // membres retirés (archivés), pour l'historique
   waveLink?: string; // lien de paiement Wave Business (montant pré-rempli)
   addPolicy: AddPolicy; // qui peut ajouter des membres
   createdBy?: string;

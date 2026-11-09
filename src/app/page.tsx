@@ -15,6 +15,9 @@ const Drapeau = () => (
   </span>
 );
 
+/** Connexion sécurisée par code SMS (à activer quand le fournisseur de SMS est branché dans Supabase) */
+const CONNEXION_SMS = process.env.NEXT_PUBLIC_CONNEXION === "sms";
+
 export default function AccueilPage() {
   return (
     <Suspense fallback={<Loading />}>
@@ -24,7 +27,9 @@ export default function AccueilPage() {
 }
 
 function Accueil() {
-  const { ready, user, login } = useStore();
+  const { ready, user, login, envoyerCode, verifierCode } = useStore();
+  const [etape, setEtape] = useState<"infos" | "code">("infos");
+  const [code, setCode] = useState("");
   const router = useRouter();
   const suiteParam = useSearchParams().get("suite");
   const suite = suiteParam && suiteParam.startsWith("/") ? suiteParam : "/groupes";
@@ -46,10 +51,30 @@ function Accueil() {
     setError("");
     setBusy(true);
     try {
+      if (CONNEXION_SMS) {
+        await envoyerCode(phone);
+        setEtape("code");
+        setBusy(false);
+        return;
+      }
       await login({ name: name.trim(), phone: phone.replace(/\D/g, "") });
       router.replace(suite);
     } catch (err) {
       setError("Connexion impossible : " + (err as Error).message);
+      setBusy(false);
+    }
+  }
+
+  async function valider(e: React.FormEvent) {
+    e.preventDefault();
+    if (code.replace(/\D/g, "").length < 6) return setError("Entre le code à 6 chiffres reçu par SMS.");
+    setError("");
+    setBusy(true);
+    try {
+      await verifierCode({ name: name.trim(), phone: phone.replace(/\D/g, "") }, code.replace(/\D/g, ""));
+      router.replace(suite);
+    } catch (err) {
+      setError("Code incorrect ou expiré : " + (err as Error).message);
       setBusy(false);
     }
   }
@@ -109,6 +134,27 @@ function Accueil() {
 
       <div className="mt-4 px-4 pb-10">
         <Card className="relative shadow-lg shadow-stone-900/5">
+          {etape === "code" ? (
+            <form onSubmit={valider} className="space-y-4">
+              <h2 className="text-lg font-bold">Code de vérification</h2>
+              <p className="text-sm text-stone-600">Nous avons envoyé un code à 6 chiffres par SMS au <b>+225 {phone}</b>.</p>
+              <input
+                className={`${inputClass} text-center text-2xl font-bold tracking-[0.5em]`}
+                value={code}
+                onChange={(e) => setCode(e.target.value.replace(/\D/g, "").slice(0, 6))}
+                inputMode="numeric"
+                autoComplete="one-time-code"
+                placeholder="••••••"
+                autoFocus
+              />
+              {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+              <Button className="w-full" type="submit" disabled={busy}>{busy ? "Vérification…" : "Valider"}</Button>
+              <div className="flex justify-between text-sm font-medium">
+                <button type="button" onClick={() => { setEtape("infos"); setCode(""); setError(""); }} className="text-stone-500">Changer de numéro</button>
+                <button type="button" disabled={busy} onClick={async () => { setError(""); try { await envoyerCode(phone); setError("Nouveau code envoyé."); } catch (er) { setError((er as Error).message); } }} className="text-emerald-700">Renvoyer le code</button>
+              </div>
+            </form>
+          ) : (
           <form onSubmit={continuer} className="space-y-4">
             <h2 className="text-lg font-bold">{suite.startsWith("/groupes/") ? "Rejoindre le groupe" : "Commencer"}</h2>
             <Field label="Ton nom">
@@ -121,8 +167,9 @@ function Accueil() {
               </div>
             </Field>
             {error && <p className="text-sm font-medium text-red-600">{error}</p>}
-            <Button className="w-full" type="submit" disabled={busy}>{busy ? "Connexion…" : "Continuer"}</Button>
+            <Button className="w-full" type="submit" disabled={busy}>{busy ? (CONNEXION_SMS ? "Envoi du code…" : "Connexion…") : CONNEXION_SMS ? "Recevoir mon code par SMS" : "Continuer"}</Button>
           </form>
+          )}
         </Card>
         <p className="mt-6 text-center text-xs leading-relaxed text-stone-500">
           Cotiz ne garde jamais ton argent : les paiements passent par un opérateur agréé BCEAO et arrivent directement sur le compte du groupe.
