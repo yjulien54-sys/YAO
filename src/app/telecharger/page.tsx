@@ -17,7 +17,8 @@ export default function Telecharger() {
   return (
     <main className="mx-auto min-h-dvh max-w-md bg-[#f7f5f0]">
       <section className="degrade-vert relative overflow-hidden px-6 pb-10 pt-10 text-center text-white">
-        <div className="motif absolute inset-0 opacity-60" />
+        <div className="motif absolute inset-0" />
+        <div className="bande-kente absolute inset-x-0 bottom-0" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/logo.svg" alt="" width={88} height={88} className="relative mx-auto h-[88px] w-[88px] rounded-[22px] shadow-xl" />
         <h1 className="relative mt-5 text-2xl font-extrabold tracking-tight">Cotiz pour Android</h1>

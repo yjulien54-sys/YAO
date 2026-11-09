@@ -12,20 +12,31 @@
 html {
   background: #e9e5dc;
   color-scheme: light;
-  /* Textes légèrement agrandis pour la lecture sur téléphone (17 px au lieu de 16) */
-  font-size: 106.25%;
+  /* Textes agrandis pour la lecture sur téléphone (17,6 px au lieu de 16) */
+  font-size: 110%;
 }
 
 body {
   color: #1c1917;
   -webkit-tap-highlight-color: transparent;
-  font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  font-family: "Plus Jakarta Sans Variable", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  font-feature-settings: "ss01", "cv11";
+  letter-spacing: -0.005em;
 }
 
 @layer components {
   /* Motif géométrique discret inspiré du pagne / kente */
+  /* Motif riche inspiré du kente et du pagne : losanges imbriqués, zigzags, croix */
   .motif {
-    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='56' height='56' viewBox='0 0 56 56'%3E%3Cg fill='none' stroke='%23ffffff' stroke-opacity='0.09' stroke-width='2'%3E%3Cpath d='M28 4 L52 28 L28 52 L4 28 Z'/%3E%3Cpath d='M28 16 L40 28 L28 40 L16 28 Z'/%3E%3C/g%3E%3Ccircle cx='28' cy='28' r='3' fill='%23ffffff' fill-opacity='0.12'/%3E%3C/svg%3E");
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='96' height='96' viewBox='0 0 96 96'%3E%3Cg fill='none' stroke='%23ffffff' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M48 6 L90 48 L48 90 L6 48 Z' stroke-opacity='0.10' stroke-width='2'/%3E%3Cpath d='M48 22 L74 48 L48 74 L22 48 Z' stroke-opacity='0.12' stroke-width='1.6'/%3E%3Cpath d='M48 36 L60 48 L48 60 L36 48 Z' stroke-opacity='0.16' stroke-width='1.4'/%3E%3Cpath d='M0 0 L12 12 L24 0 M72 0 L84 12 L96 0 M0 96 L12 84 L24 96 M72 96 L84 84 L96 96' stroke-opacity='0.10' stroke-width='1.6'/%3E%3Cpath d='M44 48 h8 M48 44 v8' stroke-opacity='0.22' stroke-width='1.6'/%3E%3C/g%3E%3Cg fill='%23ffffff'%3E%3Ccircle cx='48' cy='6' r='1.6' fill-opacity='0.18'/%3E%3Ccircle cx='90' cy='48' r='1.6' fill-opacity='0.18'/%3E%3Ccircle cx='48' cy='90' r='1.6' fill-opacity='0.18'/%3E%3Ccircle cx='6' cy='48' r='1.6' fill-opacity='0.18'/%3E%3C/g%3E%3C/svg%3E"),
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='12' viewBox='0 0 24 12'%3E%3Cpath d='M0 10 L6 2 L12 10 L18 2 L24 10' fill='none' stroke='%23ffffff' stroke-opacity='0.05' stroke-width='1.4'/%3E%3C/svg%3E");
+    background-size: 96px 96px, 24px 12px;
+  }
+  /* Bande décorative façon kente (vert, or, orange, noir) */
+  .bande-kente {
+    height: 6px;
+    background: repeating-linear-gradient(90deg, #009e60 0 14px, #f7c948 14px 20px, #f77f00 20px 34px, #1c1917 34px 38px, #f7c948 38px 44px);
   }
   .carte {
     @apply rounded-3xl border border-stone-200/70 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_10px_30px_-18px_rgba(6,78,59,0.35)];

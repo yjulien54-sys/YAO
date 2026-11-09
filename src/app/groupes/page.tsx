@@ -81,7 +81,8 @@ export default function Groupes() {
       />
       <div className="space-y-5 p-4 pb-28">
         <div className="degrade-vert relative overflow-hidden rounded-3xl p-5 text-white shadow-lg shadow-emerald-900/15">
-          <div className="motif absolute inset-0 opacity-60" />
+          <div className="motif absolute inset-0 opacity-80" />
+          <div className="bande-kente absolute inset-x-0 bottom-0" />
           <p className="relative text-sm text-emerald-50/90">Bonjour,</p>
           <h2 className="relative text-2xl font-extrabold tracking-tight">{prenom(user!.name)}</h2>
           <div className="relative mt-4 grid grid-cols-2 gap-2">

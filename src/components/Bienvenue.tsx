@@ -44,6 +44,7 @@ export function Bienvenue({ nom }: { nom: string }) {
     <div className={`fixed inset-0 z-50 mx-auto max-w-md overflow-hidden transition-opacity duration-300 ${sortie ? "opacity-0" : "opacity-100"}`}>
       <section className="degrade-vert relative flex h-full flex-col px-6 pb-8 pt-10 text-white">
         <div className="motif absolute inset-0" />
+        <div className="bande-kente absolute inset-x-0 top-0" />
         <div className="relative flex items-center justify-between">
           <span className="inline-flex items-center gap-2 text-xl font-extrabold tracking-tight">
             {/* eslint-disable-next-line @next/next/no-img-element */}

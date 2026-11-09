@@ -100,6 +100,7 @@ export default function GroupeDetail() {
         <Card className="overflow-hidden !p-0">
           <div className="degrade-vert relative overflow-hidden p-5 text-white">
             <div className="motif pointer-events-none absolute inset-0" />
+            <div className="bande-kente pointer-events-none absolute inset-x-0 bottom-0" />
             <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/20 blur-2xl" />
             <div className="relative">
             <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-emerald-100">

@@ -85,6 +85,7 @@ function Accueil() {
     <div className="mx-auto min-h-dvh max-w-md bg-[#f7f5f0]">
       <section className="degrade-vert relative overflow-hidden px-6 pb-24 pt-8 text-white">
         <div className="motif absolute inset-0" />
+        <div className="bande-kente absolute inset-x-0 bottom-0" />
         <div className="relative flex items-center justify-between">
           <Logo className="text-xl" />
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold ring-1 ring-white/20"><Drapeau /> Côte d’Ivoire</span>
