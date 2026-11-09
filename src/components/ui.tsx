@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { initiales } from "@/lib/format";
 import { useStore } from "@/lib/store";
+import { SideNav } from "./SideNav";
 import type { MemberStatus } from "@/lib/types";
 
 export function Logo({ className = "" }: { className?: string }) {
@@ -19,7 +20,7 @@ export function Logo({ className = "" }: { className?: string }) {
 
 export function Header({ title, back, right }: { title?: string; back?: string; right?: React.ReactNode }) {
   return (
-    <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-stone-200/60 bg-[#f7f5f0]/85 px-4 py-3 backdrop-blur-md">
+    <header className="sticky top-0 z-10 flex items-center gap-3 border-b border-stone-200/60 bg-[#f7f5f0]/85 px-4 py-3 backdrop-blur-md lg:px-0 lg:py-5">
       {back ? (
         <Link href={back} aria-label="Retour" className="-ml-1 rounded-full p-1.5 text-stone-600 hover:bg-stone-100">
           <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
@@ -36,8 +37,13 @@ export function Header({ title, back, right }: { title?: string; back?: string; 
   );
 }
 
-export function Page({ children }: { children: React.ReactNode }) {
-  return <div className="mx-auto min-h-dvh max-w-md bg-[#f7f5f0] pb-24 shadow-xl shadow-stone-900/5">{children}</div>;
+export function Page({ children, large }: { children: React.ReactNode; large?: boolean }) {
+  return (
+    <div className="mx-auto min-h-dvh max-w-md bg-[#f7f5f0] pb-24 shadow-xl shadow-stone-900/5 lg:max-w-none lg:pb-10 lg:pl-64 lg:shadow-none">
+      <SideNav />
+      <div className={`lg:mx-auto ${large ? "lg:max-w-5xl" : "lg:max-w-3xl"} lg:px-6`}>{children}</div>
+    </div>
+  );
 }
 
 export function Card({ children, className = "" }: { children: React.ReactNode; className?: string }) {

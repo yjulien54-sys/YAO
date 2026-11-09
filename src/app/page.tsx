@@ -82,23 +82,23 @@ function Accueil() {
   if (!ready) return <Loading />;
 
   return (
-    <div className="mx-auto min-h-dvh max-w-md bg-[#f7f5f0]">
-      <section className="degrade-vert relative overflow-hidden px-6 pb-24 pt-8 text-white">
+    <div className="mx-auto min-h-dvh max-w-md bg-[#f7f5f0] lg:grid lg:max-w-none lg:grid-cols-2">
+      <section className="degrade-vert relative overflow-hidden px-6 pb-24 pt-8 text-white lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col lg:justify-center lg:px-[8%] lg:pb-12">
         <div className="motif absolute inset-0" />
         <div className="bande-kente absolute inset-x-0 bottom-0" />
-        <div className="relative flex items-center justify-between">
+        <div className="relative flex items-center justify-between lg:absolute lg:inset-x-[8%] lg:top-8">
           <Logo className="text-xl" />
           <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold ring-1 ring-white/20"><Drapeau /> Côte d’Ivoire</span>
         </div>
-        <h1 className="relative mt-9 text-[1.875rem] font-extrabold leading-[1.15] tracking-tight">
+        <h1 className="relative mt-9 text-[1.875rem] font-extrabold leading-[1.15] tracking-tight lg:mt-0 lg:text-[2.75rem]">
           Tes tontines et cotisations, <span className="text-orange-300">sans palabres.</span>
         </h1>
-        <p className="relative mt-3 text-base leading-relaxed text-emerald-50/90">
+        <p className="relative mt-3 text-base leading-relaxed text-emerald-50/90 lg:max-w-lg lg:text-lg">
           Tontine, association, mutuelle, collecte pour des funérailles… Tout le monde voit qui a payé, et les rappels partent sur WhatsApp.
         </p>
 
         {/* Aperçu flottant */}
-        <div className="flotte relative mx-auto mt-7 w-[88%] rounded-3xl bg-white p-4 text-stone-900 shadow-2xl shadow-emerald-950/40">
+        <div className="flotte relative mx-auto mt-7 w-[88%] max-w-sm rounded-3xl lg:mx-0 lg:mt-10 bg-white p-4 text-stone-900 shadow-2xl shadow-emerald-950/40">
           <div className="flex items-center gap-3">
             <IconBadge icon={Repeat} ton="orange" />
             <div className="min-w-0 flex-1">
@@ -124,7 +124,9 @@ function Accueil() {
         </div>
       </section>
 
-      <ul className="-mt-10 grid grid-cols-2 gap-2 px-4 text-[0.875rem] font-semibold text-stone-700">
+      <div className="lg:flex lg:min-h-dvh lg:flex-col lg:justify-center lg:px-10 lg:py-10">
+      <div className="lg:mx-auto lg:w-full lg:max-w-md">
+      <ul className="-mt-10 grid grid-cols-2 gap-2 px-4 lg:mt-0 lg:px-0 text-[0.875rem] font-semibold text-stone-700">
         {([[Wallet, "Wave, Orange, MTN, Moov"], [ShieldCheck, "Transparent pour tous"], [BellRing, "Rappels WhatsApp"], [Receipt, "Un reçu par paiement"]] as const).map(([I, t]) => (
           <li key={t} className="carte relative flex items-center gap-2.5 !rounded-2xl px-3 py-2.5 leading-tight">
             <IconBadge icon={I} taille="sm" />
@@ -133,7 +135,7 @@ function Accueil() {
         ))}
       </ul>
 
-      <div className="mt-4 px-4 pb-10">
+      <div className="mt-4 px-4 pb-10 lg:px-0 lg:pb-0">
         <Card className="relative shadow-lg shadow-stone-900/5">
           {etape === "code" ? (
             <form onSubmit={valider} className="space-y-4">
@@ -178,6 +180,8 @@ function Accueil() {
         <p className="mt-4 text-center text-xs text-stone-400">
           <a href="/confidentialite" className="underline">Confidentialité</a> · <a href="/suppression-compte" className="underline">Supprimer mon compte</a>
         </p>
+      </div>
+      </div>
       </div>
     </div>
   );

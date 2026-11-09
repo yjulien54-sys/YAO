@@ -71,7 +71,7 @@ export default function Groupes() {
   const totalCaisse = groups.reduce((n, g) => n + g.payments.reduce((s, p) => s + p.amount + p.penalty, 0), 0);
 
   return (
-    <Page>
+    <Page large>
       <Header
         right={
           <Link href="/aide" aria-label="Service client" className="rounded-full p-2 text-emerald-700 hover:bg-emerald-50">
@@ -153,7 +153,7 @@ export default function Groupes() {
           </Card>
         )}
 
-        <div className="space-y-3">
+        <div className="grid gap-3 md:grid-cols-2">
           {groups.map((g) => {
             const st = roundStats(g);
             const ben = beneficiary(g);

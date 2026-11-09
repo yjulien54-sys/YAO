@@ -41,8 +41,8 @@ export function Bienvenue({ nom }: { nom: string }) {
 
   if (!visible) return null;
   return (
-    <div className={`fixed inset-0 z-50 mx-auto max-w-md overflow-hidden transition-opacity duration-300 ${sortie ? "opacity-0" : "opacity-100"}`}>
-      <section className="degrade-vert relative flex h-full flex-col px-6 pb-8 pt-10 text-white">
+    <div className={`fixed inset-0 z-50 mx-auto max-w-md overflow-hidden transition-opacity duration-300 lg:grid lg:max-w-none lg:place-items-center lg:bg-stone-900/50 lg:backdrop-blur-sm ${sortie ? "opacity-0" : "opacity-100"}`}>
+      <section className="degrade-vert relative flex h-full flex-col px-6 pb-8 pt-10 text-white lg:h-auto lg:max-h-[92vh] lg:w-[460px] lg:overflow-hidden lg:rounded-[2rem] lg:shadow-2xl">
         <div className="motif absolute inset-0" />
         <div className="bande-kente absolute inset-x-0 top-0" />
         <div className="relative flex items-center justify-between">

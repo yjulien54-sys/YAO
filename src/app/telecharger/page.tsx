@@ -15,7 +15,7 @@ const ETAPES = [
 
 export default function Telecharger() {
   return (
-    <main className="mx-auto min-h-dvh max-w-md bg-[#f7f5f0]">
+    <main className="mx-auto min-h-dvh max-w-md bg-[#f7f5f0] lg:my-8 lg:min-h-0 lg:overflow-hidden lg:rounded-[2rem] lg:shadow-2xl lg:shadow-stone-900/10">
       <section className="degrade-vert relative overflow-hidden px-6 pb-10 pt-10 text-center text-white">
         <div className="motif absolute inset-0" />
         <div className="bande-kente absolute inset-x-0 bottom-0" />

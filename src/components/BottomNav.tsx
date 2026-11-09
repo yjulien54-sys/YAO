@@ -15,7 +15,7 @@ const ONGLETS = [
 export function BottomNav() {
   const path = usePathname();
   return (
-    <nav className="fixed inset-x-0 bottom-0 z-20 mx-auto max-w-md border-t border-stone-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md">
+    <nav className="fixed inset-x-0 bottom-0 z-20 mx-auto max-w-md border-t lg:hidden border-stone-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md">
       <div className="grid grid-cols-4">
         {ONGLETS.map(({ href, label, icon: Icon }) => {
           const actif = path === href;
