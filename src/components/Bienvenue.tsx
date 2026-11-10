@@ -28,12 +28,7 @@ export function Bienvenue({ nom }: { nom: string }) {
     setVisible(true);
   }, []);
 
-  useEffect(() => {
-    if (!visible) return;
-    const t = setTimeout(() => fermer(), 4000);
-    return () => clearTimeout(t);
-  }, [visible]);
-
+  // L'écran reste affiché jusqu'à ce que la personne appuie sur « Entrer »
   function fermer() {
     setSortie(true);
     setTimeout(() => setVisible(false), 300);
