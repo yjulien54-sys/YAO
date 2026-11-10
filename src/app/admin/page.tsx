@@ -197,7 +197,7 @@ function TableauDeBord({ email }: { email: string }) {
         {msg && <p className="rounded-xl bg-red-50 p-3 text-sm font-medium text-red-700">{msg}</p>}
         {onglet === "apercu" && <Apercu stats={stats} attente={attente} demandes={demandes} aller={setOnglet} />}
         {onglet === "inscrits" && <Inscrits liste={inscrits} />}
-        {onglet === "groupes" && <Groupes liste={groupes} />}
+        {onglet === "groupes" && <Groupes liste={groupes} recharger={charger} />}
         {onglet === "paiements" && <Paiements liste={attente} />}
         {onglet === "codes" && <Codes liste={demandes} recharger={charger} />}
         {onglet === "annonces" && <Annonces liste={annonces} recharger={charger} />}
@@ -289,12 +289,35 @@ function Inscrits({ liste }: { liste: Inscrit[] }) {
   );
 }
 
-function Groupes({ liste }: { liste: Groupe[] }) {
+function Groupes({ liste, recharger }: { liste: Groupe[]; recharger: () => void }) {
   const [q, setQ] = useState("");
+  const [msg, setMsg] = useState("");
   const vus = liste.filter((g) => !q || norm(g.nom).includes(norm(q)) || norm(g.tresorier).includes(norm(q)));
+  const supprimer = async (g: Groupe) => {
+    if (!confirm(`Supprimer définitivement « ${g.nom} » ? Ses membres, paiements et versements seront effacés pour tout le monde.`)) return;
+    const { error } = await db.rpc("admin_supprimer_groupe", { g: g.id });
+    setMsg(error ? "Erreur : " + error.message : `« ${g.nom} » supprimé.`);
+    recharger();
+  };
+  const toutSupprimer = async () => {
+    const saisie = prompt(`Tu vas supprimer les ${liste.length} groupes de la plateforme, avec tous leurs paiements. Les comptes des inscrits sont gardés.\n\nPour confirmer, écris : SUPPRIMER TOUT`);
+    if (saisie === null) return;
+    if (saisie.trim() !== "SUPPRIMER TOUT") return setMsg("Confirmation incorrecte : rien n’a été supprimé.");
+    const { data, error } = await db.rpc("admin_supprimer_tous_groupes", { confirmation: "SUPPRIMER TOUT" });
+    setMsg(error ? "Erreur : " + error.message : `${data} groupe(s) supprimé(s).`);
+    recharger();
+  };
   return (
     <section className="carte space-y-3 p-4">
-      <Recherche valeur={q} onChange={setQ} placeholder="Chercher un groupe ou un trésorier…" />
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-0 flex-1"><Recherche valeur={q} onChange={setQ} placeholder="Chercher un groupe ou un trésorier…" /></div>
+        {liste.length > 0 && (
+          <button onClick={toutSupprimer} className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-red-200 px-3 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50">
+            <Trash2 size={16} /> Supprimer tous les groupes
+          </button>
+        )}
+      </div>
+      {msg && <p className="text-sm font-medium text-emerald-800">{msg}</p>}
       <div className="grid gap-3 md:grid-cols-2">
         {vus.map((g) => (
           <div key={g.id} className="rounded-2xl border border-stone-200 p-3">
@@ -310,7 +333,12 @@ function Groupes({ liste }: { liste: Groupe[] }) {
               <p><span className="block text-stone-500">Confirmé</span><b>{fcfa(g.collecte)}</b></p>
               <p><span className="block text-stone-500">Créé le</span><b>{dateCourte(g.cree_le)}</b></p>
             </div>
-            <p className="mt-2 text-xs text-stone-600">Trésorier : <b>{g.tresorier ?? "—"}</b>{g.tresorier_tel && ` · ${telAffiche(g.tresorier_tel)}`}</p>
+            <div className="mt-2 flex items-center justify-between gap-2">
+              <p className="min-w-0 text-xs text-stone-600">Trésorier : <b>{g.tresorier ?? "—"}</b>{g.tresorier_tel && ` · ${telAffiche(g.tresorier_tel)}`}</p>
+              <button onClick={() => supprimer(g)} className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50" aria-label={`Supprimer ${g.nom}`}>
+                <Trash2 size={14} /> Supprimer
+              </button>
+            </div>
           </div>
         ))}
       </div>

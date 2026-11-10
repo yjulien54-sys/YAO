@@ -6,6 +6,7 @@ import { roundAmount } from "./logic";
 import { fraisMobileMoney } from "./payments";
 import { mapGroup, mapPayment } from "./mappers";
 import { supabase } from "./supabase";
+import { CLE_SESSION, verifierCode as verifierCodeSecret } from "./verrou";
 import type { AddPolicy, PenaltyDestination, PayoutNature, Frequency, Group, GroupType, Member, Payment, PayoutMethod, PayMethod, User } from "./types";
 
 export interface NewGroupInput {
@@ -76,6 +77,8 @@ interface Ctx {
   nextRound: (groupId: string) => Promise<void>;
   joinGroup: (groupId: string) => Promise<"membre" | "en_attente" | "aucun">;
   repondreDemande: (memberId: string, accepter: boolean) => Promise<void>;
+  retrouverCompte: (telephone: string, naissance: string, code: string) => Promise<{ ok: boolean; raison?: string; restants?: number }>;
+  quitterGroupe: (groupId: string) => Promise<void>;
   annulerDeclaration: (paymentIds: string[]) => Promise<void>;
 }
 
@@ -612,6 +615,41 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [reload]
   );
 
+  // Nouveau téléphone : le serveur vérifie numéro + date de naissance + code, puis ouvre la session du compte
+  const retrouverCompte = useCallback(
+    async (telephone: string, naissance: string, code: string) => {
+      const res = await fetch("/api/connexion", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ telephone, naissance, code }) }).catch(() => null);
+      if (!res) return { ok: false, raison: "reseau" };
+      const r = (await res.json().catch(() => ({}))) as { ok?: boolean; jeton?: string; raison?: string; restants?: number };
+      if (!r.ok || !r.jeton) return { ok: false, raison: r.raison ?? "erreur", restants: r.restants };
+      await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+      const { data, error } = await supabase.auth.verifyOtp({ token_hash: r.jeton, type: "magiclink" });
+      if (error || !data.session) return { ok: false, raison: "erreur" };
+      const uid = data.session.user.id;
+      const { data: prof } = await supabase.from("profiles").select("name, phone").eq("id", uid).maybeSingle();
+      if (!prof) return { ok: false, raison: "erreur" };
+      // Le code vient d'être vérifié : on garde sa copie chiffrée sur ce téléphone et on ouvre directement
+      await verifierCodeSecret(uid, code).catch(() => {});
+      try { sessionStorage.setItem(CLE_SESSION, "1"); } catch {}
+      setUserId(uid);
+      setUser(prof);
+      ecrireCache({ userId: uid, user: prof, groups: [] });
+      await reload();
+      return { ok: true };
+    },
+    [reload]
+  );
+
+  // Quitter un groupe (un membre ; le trésorier, lui, supprime le groupe)
+  const quitterGroupe = useCallback(
+    async (groupId: string) => {
+      const { error } = await supabase.rpc("quitter_groupe", { g: groupId });
+      fail(error);
+      await reload();
+    },
+    [reload]
+  );
+
   // Le trésorier ou un co-gestionnaire accepte (ou refuse) une personne arrivée par le lien
   const repondreDemande = useCallback(
     async (memberId: string, accepter: boolean) => {
@@ -637,7 +675,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider
-      value={{ ready, loaded, user, userId, groups, login, envoyerCode, verifierCode, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, setWaveLink, updateGroup, updateMember, removeMember, setOrder, deleteGroup, setTiragePrevu, lancerTirage, updateProfile, accepterReglement, recordPayout, nextRound, joinGroup, repondreDemande, annulerDeclaration }}
+      value={{ ready, loaded, user, userId, groups, login, envoyerCode, verifierCode, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, setWaveLink, updateGroup, updateMember, removeMember, setOrder, deleteGroup, setTiragePrevu, lancerTirage, updateProfile, accepterReglement, recordPayout, nextRound, joinGroup, repondreDemande, annulerDeclaration, retrouverCompte, quitterGroupe }}
     >
       {children}
     </StoreContext.Provider>

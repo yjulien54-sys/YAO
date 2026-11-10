@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useParams } from "next/navigation";
+import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Avatar, Button, Card, Header, Loading, Page, Progress, StatusBadge, WhatsAppIcon, btnClass, inputClass, useRequireUser } from "@/components/ui";
 import { dateCourte, dateLongue, fcfa, prenom, telAffiche } from "@/lib/format";
@@ -16,7 +16,7 @@ import { Tirage } from "@/components/Tirage";
 import { ActionRapide } from "@/components/ActionRapide";
 import { Reglement } from "@/components/Reglement";
 import { CaissePenalites } from "@/components/CaissePenalites";
-import { AlertTriangle, ArrowUpRight, CalendarDays, ChevronsRight, FileText, Flag, History, Users, MessageCircle, Phone, Settings, Check, CheckCircle2, Clock, Gift, PartyPopper, Smartphone, UserPlus, X } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, CalendarDays, ChevronsRight, FileText, Flag, History, Users, MessageCircle, Phone, Settings, Check, CheckCircle2, Clock, Gift, PartyPopper, Smartphone, Trash2, LogOut, UserPlus, X } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 import type { Member } from "@/lib/types";
 
@@ -25,7 +25,8 @@ type Tab = "membres" | "historique" | "tours";
 export default function GroupeDetail() {
   const ok = useRequireUser();
   const { id } = useParams<{ id: string }>();
-  const { getGroup, recordPayment, recordPayout, confirmPayments, setPaymentPhone, addMember, nextRound, joinGroup, repondreDemande, annulerDeclaration, loaded, userId } = useStore();
+  const { getGroup, recordPayment, recordPayout, confirmPayments, setPaymentPhone, addMember, nextRound, joinGroup, repondreDemande, annulerDeclaration, quitterGroupe, loaded, userId } = useStore();
+  const router = useRouter();
   const g = getGroup(id);
   const me = useMe(g);
   const [tab, setTab] = useState<Tab>("membres");
@@ -668,6 +669,31 @@ export default function GroupeDetail() {
             )}
           </Card>
         )}
+
+        {/* Quitter ou supprimer le groupe */}
+        <div className="pt-2 text-center">
+          {userId && g.createdBy === userId ? (
+            <Link href={`/groupes/${g.id}/parametres#supprimer`} className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600">
+              <Trash2 size={15} strokeWidth={2} /> Supprimer le groupe
+            </Link>
+          ) : me && !isTreasurer ? (
+            <button
+              type="button"
+              onClick={async () => {
+                if (!confirm(`Quitter « ${g.name} » ? Tu ne verras plus ce groupe. Si tu as déjà payé, ton historique reste visible pour les autres membres.`)) return;
+                try {
+                  await quitterGroupe(g.id);
+                  router.replace("/groupes");
+                } catch (e) {
+                  flash("Impossible de quitter : " + (e as Error).message);
+                }
+              }}
+              className="inline-flex items-center gap-1.5 text-sm font-semibold text-red-600"
+            >
+              <LogOut size={15} strokeWidth={2} /> Quitter le groupe
+            </button>
+          ) : null}
+        </div>
       </div>
 
       {versement && (

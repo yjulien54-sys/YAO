@@ -28,8 +28,9 @@ export default function AccueilPage() {
 }
 
 function Accueil() {
-  const { ready, user, login, envoyerCode, verifierCode } = useStore();
-  const [etape, setEtape] = useState<"infos" | "code">("infos");
+  const { ready, user, login, envoyerCode, verifierCode, retrouverCompte } = useStore();
+  const [etape, setEtape] = useState<"infos" | "code" | "retrouver">("infos");
+  const [codeSecret, setCodeSecret] = useState("");
   const [code, setCode] = useState("");
   const router = useRouter();
   const suiteParam = useSearchParams().get("suite");
@@ -67,6 +68,27 @@ function Accueil() {
       setError("Connexion impossible : " + (err as Error).message);
       setBusy(false);
     }
+  }
+
+  // Nouveau téléphone : numéro + date de naissance + code secret
+  async function retrouver(e: React.FormEvent) {
+    e.preventDefault();
+    if (!telValide) return setError("Le numéro doit avoir 10 chiffres (ex : 07 07 12 34 56).");
+    if (!naissance) return setError("Indique ta date de naissance.");
+    if (!/^\d{4}$/.test(codeSecret)) return setError("Ton code secret a 4 chiffres.");
+    setError("");
+    setBusy(true);
+    const r = await retrouverCompte(phone, naissance, codeSecret);
+    if (r.ok) return router.replace(suite);
+    setBusy(false);
+    setCodeSecret("");
+    setError(
+      r.raison === "bloquee" ? "Trop d’essais pour ce numéro. Réessaie dans une heure ou contacte le service client."
+      : r.raison === "faux" ? `Numéro, date de naissance ou code incorrect.${r.restants !== undefined ? ` Encore ${r.restants} essai${r.restants > 1 ? "s" : ""}.` : ""}`
+      : r.raison === "indisponible" ? "Cette fonction n’est pas encore activée. Contacte le service client."
+      : r.raison === "reseau" ? "Pas de connexion. Réessaie quand tu as du réseau."
+      : "Une erreur est survenue. Réessaie ou contacte le service client."
+    );
   }
 
   async function valider(e: React.FormEvent) {
@@ -142,7 +164,36 @@ function Accueil() {
 
       <div className="mt-4 px-4 pb-10 lg:px-0 lg:pb-0">
         <Card className="relative shadow-lg shadow-stone-900/5">
-          {etape === "code" ? (
+          {etape === "retrouver" ? (
+            <form onSubmit={retrouver} className="space-y-4">
+              <h2 className="text-lg font-bold">Retrouver mon compte</h2>
+              <p className="text-sm text-stone-600">Nouveau téléphone ? Tape les informations de ton compte Cotiz : tu retrouves tous tes groupes.</p>
+              <Field label="Numéro de téléphone">
+                <div className="flex gap-2">
+                  <span className="flex shrink-0 items-center gap-1.5 rounded-2xl border border-stone-200 bg-stone-50 px-3 text-sm font-semibold text-stone-600"><Drapeau /> +225</span>
+                  <input className={inputClass} value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="07 07 12 34 56" inputMode="tel" autoComplete="tel" />
+                </div>
+              </Field>
+              <Field label="Date de naissance">
+                <input type="date" className={inputClass} value={naissance} onChange={(e) => setNaissance(e.target.value)} max={new Date().toISOString().slice(0, 10)} autoComplete="bday" />
+              </Field>
+              <Field label="Code secret Cotiz (4 chiffres)">
+                <input
+                  type="password"
+                  className={`${inputClass} text-center text-xl font-bold tracking-[0.6em]`}
+                  value={codeSecret}
+                  onChange={(e) => setCodeSecret(e.target.value.replace(/\D/g, "").slice(0, 4))}
+                  inputMode="numeric"
+                  autoComplete="off"
+                  placeholder="••••"
+                  aria-label="Code secret"
+                />
+              </Field>
+              {error && <p className="text-sm font-medium text-red-600">{error}</p>}
+              <Button className="w-full" type="submit" disabled={busy}>{busy ? "Vérification…" : "Retrouver mon compte"}</Button>
+              <button type="button" onClick={() => { setEtape("infos"); setError(""); }} className="w-full text-sm font-semibold text-stone-500">Je n’ai pas encore de compte</button>
+            </form>
+          ) : etape === "code" ? (
             <form onSubmit={valider} className="space-y-4">
               <h2 className="text-lg font-bold">Code de vérification</h2>
               <p className="text-sm text-stone-600">Nous avons envoyé un code à 6 chiffres par SMS au <b>+225 {phone}</b>.</p>
@@ -179,6 +230,9 @@ function Accueil() {
             </Field>
             {error && <p className="text-sm font-medium text-red-600">{error}</p>}
             <Button className="w-full" type="submit" disabled={busy}>{busy ? (CONNEXION_SMS ? "Envoi du code…" : "Connexion…") : CONNEXION_SMS ? "Recevoir mon code par SMS" : "Continuer"}</Button>
+            <button type="button" onClick={() => { setEtape("retrouver"); setError(""); }} className="w-full rounded-2xl border border-emerald-200 bg-emerald-50 py-3 text-sm font-bold text-emerald-800">
+              J’ai déjà un compte (nouveau téléphone)
+            </button>
           </form>
           )}
         </Card>
