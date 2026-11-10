@@ -54,13 +54,13 @@ function BoutonEmpreinte({ onEntrer }: { onEntrer: () => void }) {
   function appuyer() {
     if (etat !== "repos") return;
     setEtat("lecture");
-    setTimeout(() => setEtat("ok"), 750);
-    setTimeout(onEntrer, 1150);
+    setTimeout(() => setEtat("ok"), 220);
+    setTimeout(onEntrer, 420);
   }
 
   return (
     <div className="flex flex-col items-center gap-3">
-      <button type="button" onClick={appuyer} aria-label="Entrer dans Cotiz" className="group relative grid h-[104px] w-[104px] place-items-center rounded-full outline-none">
+      <button type="button" onPointerDown={appuyer} onClick={appuyer} aria-label="Entrer dans Cotiz" className="group relative grid h-[104px] w-[104px] place-items-center rounded-full outline-none">
         {/* Ondes qui pulsent autour */}
         {etat === "repos" && (
           <>
@@ -74,7 +74,7 @@ function BoutonEmpreinte({ onEntrer }: { onEntrer: () => void }) {
           <circle
             cx="52" cy="52" r={R} fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round"
             strokeDasharray={C} strokeDashoffset={etat === "repos" ? C : 0}
-            style={{ transition: "stroke-dashoffset 750ms cubic-bezier(0.65, 0, 0.35, 1)" }}
+            style={{ transition: "stroke-dashoffset 220ms ease-out" }}
           />
         </svg>
         <span className={`relative grid h-[80px] w-[80px] place-items-center rounded-full shadow-xl transition-all duration-300 group-active:scale-95 ${etat === "ok" ? "bg-white text-emerald-700" : "bg-white/15 text-white ring-1 ring-white/30 backdrop-blur-sm"}`}>
@@ -117,7 +117,7 @@ export function Bienvenue({ nom }: { nom: string }) {
   // L'écran reste affiché jusqu'à ce que la personne entre
   function fermer() {
     setSortie(true);
-    setTimeout(() => setVisible(false), 450);
+    setTimeout(() => setVisible(false), 300);
   }
 
   if (!visible) return null;
@@ -126,7 +126,7 @@ export function Bienvenue({ nom }: { nom: string }) {
   const n = notif >= 0 ? NOTIFS[notif] : null;
 
   return (
-    <div className={`fixed inset-0 z-50 mx-auto max-w-md overflow-hidden transition-all duration-[450ms] lg:grid lg:max-w-none lg:place-items-center lg:bg-stone-900/50 lg:backdrop-blur-sm ${sortie ? "scale-[1.04] opacity-0" : "opacity-100"}`}>
+    <div className={`fixed inset-0 z-50 mx-auto max-w-md overflow-hidden transition-all duration-300 lg:grid lg:max-w-none lg:place-items-center lg:bg-stone-900/50 lg:backdrop-blur-sm ${sortie ? "scale-[1.04] opacity-0" : "opacity-100"}`}>
       <section className="degrade-vert relative flex h-full flex-col overflow-hidden px-6 pb-8 pt-10 text-white lg:h-[min(820px,92vh)] lg:w-[460px] lg:rounded-[2rem] lg:shadow-2xl">
         <div className="motif absolute inset-0 opacity-70" />
         <span className="halo pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/10" />
@@ -215,7 +215,7 @@ export function Bienvenue({ nom }: { nom: string }) {
           </div>
         </div>
 
-        <div className="apparait relative mt-auto space-y-4 pt-8" style={{ animationDelay: "1800ms" }}>
+        <div className="apparait relative mt-auto space-y-4 pt-8" style={{ animationDelay: "700ms" }}>
           <p className="text-center text-sm text-emerald-50/80">Tout le monde voit qui a payé. Personne ne garde l’argent seul.</p>
           <BoutonEmpreinte onEntrer={fermer} />
         </div>
