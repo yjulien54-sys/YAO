@@ -93,7 +93,7 @@ export function Bienvenue({ nom }: { nom: string }) {
   const [visible, setVisible] = useState(false);
   const [sortie, setSortie] = useState(false);
   const [notif, setNotif] = useState(-1);
-  const montant = useCompteur(400000, 1600, 700);
+  const montant = useCompteur(400000, 1600, 1900);
 
   useEffect(() => {
     try {
@@ -106,7 +106,7 @@ export function Bienvenue({ nom }: { nom: string }) {
   // Les notifications arrivent l'une après l'autre, en boucle
   useEffect(() => {
     if (!visible) return;
-    const debut = setTimeout(() => setNotif(0), 2200);
+    const debut = setTimeout(() => setNotif(0), 3600);
     const boucle = setInterval(() => setNotif((n) => (n + 1) % NOTIFS.length), 3200);
     return () => {
       clearTimeout(debut);
@@ -133,22 +133,38 @@ export function Bienvenue({ nom }: { nom: string }) {
         <span className="halo pointer-events-none absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-white/[0.06]" style={{ animationDelay: "-3s" }} />
         <div className="bande-kente kente-defile absolute inset-x-0 top-0" />
 
-        <div className="apparait relative flex items-center justify-between" style={{ animationDelay: "0ms" }}>
-          <span className="inline-flex items-center gap-2 text-xl font-extrabold tracking-tight">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src="/icons/logo.svg" alt="" width={40} height={40} className="h-10 w-10 rounded-xl shadow-md" />
-            Cotiz
+        <div className="relative flex items-center justify-between">
+          <span className="inline-flex items-center gap-2.5 text-xl font-extrabold tracking-tight">
+            <span className="logo-entre relative block h-11 w-11 overflow-hidden rounded-xl shadow-lg shadow-emerald-950/40">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icons/logo.svg" alt="" width={44} height={44} className="h-11 w-11" />
+              <span className="logo-brille pointer-events-none absolute inset-0" />
+            </span>
+            <span aria-label="Cotiz" className="flex">
+              {"Cotiz".split("").map((l, i) => (
+                <span key={i} aria-hidden className="lettre inline-block" style={{ animationDelay: `${450 + i * 70}ms` }}>{l}</span>
+              ))}
+            </span>
           </span>
-          <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold ring-1 ring-white/20">
+          <span className="glisse-droite inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold ring-1 ring-white/20" style={{ animationDelay: "650ms" }}>
             <Drapeau /> Côte d’Ivoire
           </span>
         </div>
 
-        <p className="apparait relative mt-9 text-base font-semibold text-emerald-50/85" style={{ animationDelay: "120ms" }}>
+        <p className="apparait relative mt-9 text-base font-semibold text-emerald-50/85" style={{ animationDelay: "800ms" }}>
           {salut} {prenom(nom)},
         </p>
-        <h1 className="apparait relative mt-1 text-[2rem] font-extrabold leading-[1.1] tracking-tight" style={{ animationDelay: "220ms" }}>
-          Tes tontines et cotisations, <span className="text-orange-300">sans palabres.</span>
+        <h1 className="relative mt-1 text-[2rem] font-extrabold leading-[1.15] tracking-tight" aria-label="Tes tontines et cotisations, sans palabres.">
+          {["Tes", "tontines", "et", "cotisations,"].map((m, i) => (
+            <span key={m} aria-hidden className="mot mr-[0.25em] inline-block" style={{ animationDelay: `${950 + i * 110}ms` }}>{m}</span>
+          ))}
+          <span aria-hidden className="relative inline-block whitespace-nowrap">
+            <span className="mot or-brille mr-[0.25em] inline-block" style={{ animationDelay: "1400ms" }}>sans</span>
+            <span className="mot or-brille inline-block" style={{ animationDelay: "1510ms" }}>palabres.</span>
+            <svg viewBox="0 0 200 12" preserveAspectRatio="none" className="absolute -bottom-2 left-0 h-3 w-full overflow-visible" aria-hidden>
+              <path d="M2 8 C 40 2, 80 2, 110 6 S 170 11, 198 4" fill="none" stroke="#f7c948" strokeWidth="3.5" strokeLinecap="round" className="trait-dore" pathLength={1} />
+            </svg>
+          </span>
         </h1>
 
         {/* Carte de démonstration vivante */}
@@ -169,7 +185,7 @@ export function Bienvenue({ nom }: { nom: string }) {
             )}
           </div>
 
-          <div className="apparait flotte rounded-3xl bg-white p-4 pt-5 text-stone-900 shadow-2xl shadow-emerald-950/40" style={{ animationDelay: "380ms" }}>
+          <div className="apparait flotte rounded-3xl bg-white p-4 pt-5 text-stone-900 shadow-2xl shadow-emerald-950/40" style={{ animationDelay: "1500ms" }}>
             <div className="flex items-center gap-3">
               <IconBadge icon={Repeat} ton="orange" />
               <div className="min-w-0 flex-1">
@@ -187,19 +203,19 @@ export function Bienvenue({ nom }: { nom: string }) {
             <div className="mt-3 flex items-center">
               <div className="flex -space-x-2">
                 {MEMBRES.map(([x, c], i) => (
-                  <span key={x} className={`pop grid h-7 w-7 place-items-center rounded-full border-2 border-white text-[0.7rem] font-bold ${c}`} style={{ animationDelay: `${900 + i * 140}ms` }}>
+                  <span key={x} className={`pop grid h-7 w-7 place-items-center rounded-full border-2 border-white text-[0.7rem] font-bold ${c}`} style={{ animationDelay: `${2000 + i * 140}ms` }}>
                     {x}
                   </span>
                 ))}
               </div>
-              <span className="pop ml-3 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700" style={{ animationDelay: "1700ms" }}>
+              <span className="pop ml-3 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700" style={{ animationDelay: "2800ms" }}>
                 <Check size={14} strokeWidth={2.25} /> 8 ont payé
               </span>
             </div>
           </div>
         </div>
 
-        <div className="apparait relative mt-auto space-y-4 pt-8" style={{ animationDelay: "560ms" }}>
+        <div className="apparait relative mt-auto space-y-4 pt-8" style={{ animationDelay: "1800ms" }}>
           <p className="text-center text-sm text-emerald-50/80">Tout le monde voit qui a payé. Personne ne garde l’argent seul.</p>
           <BoutonEmpreinte onEntrer={fermer} />
         </div>

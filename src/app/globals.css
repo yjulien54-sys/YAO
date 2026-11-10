@@ -87,3 +87,22 @@ body { font-variant-numeric: tabular-nums; }
 @keyframes onde { 0% { transform: scale(1); opacity: 0.9; } 100% { transform: scale(1.55); opacity: 0; } }
 .onde { animation: onde 2.2s ease-out infinite; }
 @media (prefers-reduced-motion: reduce) { .onde { animation: none !important; } }
+
+/* Bienvenue : logo et titre */
+@keyframes logo-entre { 0% { opacity: 0; transform: scale(0.2) rotate(-200deg); } 65% { opacity: 1; transform: scale(1.15) rotate(12deg); } 100% { transform: scale(1) rotate(0); } }
+.logo-entre { animation: logo-entre 900ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes logo-brille { 0%, 70% { transform: translateX(-130%) skewX(-20deg); } 100% { transform: translateX(160%) skewX(-20deg); } }
+.logo-brille { background: linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.75) 50%, transparent 100%); width: 60%; animation: logo-brille 3.8s ease-in-out 1.2s infinite; }
+@keyframes lettre { from { opacity: 0; transform: translateY(12px) scale(0.8); } to { opacity: 1; transform: none; } }
+.lettre { animation: lettre 420ms cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+@keyframes glisse-droite { from { opacity: 0; transform: translateX(40px); } to { opacity: 1; transform: none; } }
+.glisse-droite { animation: glisse-droite 600ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes mot { from { opacity: 0; transform: translateY(22px); filter: blur(8px); } to { opacity: 1; transform: none; filter: blur(0); } }
+.mot { animation: mot 650ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.or-brille { background: linear-gradient(100deg, #fdba74 0%, #fde68a 40%, #fdba74 60%, #fb923c 100%); background-size: 250% 100%; -webkit-background-clip: text; background-clip: text; color: transparent; animation: mot 650ms cubic-bezier(0.22, 1, 0.36, 1) both, brille 3s linear 2.2s infinite; }
+@keyframes trait { 0% { stroke-dashoffset: 1; opacity: 0; } 2% { opacity: 1; } 100% { stroke-dashoffset: 0; opacity: 1; } }
+.trait-dore { stroke-dasharray: 1; stroke-dashoffset: 1; opacity: 0; animation: trait 700ms ease-out 1.9s forwards; }
+@media (prefers-reduced-motion: reduce) {
+  .logo-entre, .logo-brille, .lettre, .glisse-droite, .mot, .or-brille { animation: none !important; }
+  .trait-dore { animation: none !important; stroke-dashoffset: 0; opacity: 1; }
+}
