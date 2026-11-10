@@ -41,7 +41,7 @@ export function SideNav() {
         })}
         <Link
           href="/groupes/nouveau"
-          className="mt-4 flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-emerald-500 to-emerald-700 px-3 py-3 text-sm font-bold text-white shadow-lg shadow-emerald-900/20"
+          className="mt-4 flex items-center justify-center gap-2 rounded-[14px] bg-emerald-700 px-3 py-3 text-sm font-bold text-white hover:bg-emerald-800"
         >
           <Plus size={18} strokeWidth={2} /> Créer un groupe
         </Link>

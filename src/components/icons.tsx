@@ -36,7 +36,7 @@ export {
 } from "lucide-react";
 
 const TONS = {
-  vert: "bg-white text-emerald-700 ring-emerald-200/70 shadow-sm",
+  vert: "bg-emerald-50 text-emerald-700 ring-emerald-100",
   orange: "bg-orange-50 text-orange-600 ring-orange-100",
   bleu: "bg-sky-50 text-sky-700 ring-sky-100",
   violet: "bg-violet-50 text-violet-700 ring-violet-100",

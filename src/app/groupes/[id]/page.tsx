@@ -99,16 +99,15 @@ export default function GroupeDetail() {
         {/* Résumé */}
         <Card className="overflow-hidden !p-0">
           <div className="degrade-vert relative overflow-hidden p-5 text-white">
-            <div className="motif pointer-events-none absolute inset-0" />
+            <div className="motif pointer-events-none absolute inset-0 opacity-40" />
             <div className="bande-kente pointer-events-none absolute inset-x-0 bottom-0" />
-            <div className="pointer-events-none absolute -right-12 -top-12 h-40 w-40 rounded-full bg-white/20 blur-2xl" />
             <div className="relative">
-            <div className="flex items-center justify-between text-xs font-semibold uppercase tracking-wide text-emerald-100">
+            <div className="flex items-center justify-between text-[0.8rem] font-medium text-emerald-50/80">
               <span>{TYPE_LABEL[g.type]}</span>
               {g.type !== "collecte" && <span>Tour {g.currentRound}{g.type === "tontine" && ` sur ${g.order.length}`}</span>}
             </div>
             <p className="mt-2 text-sm text-emerald-100">{g.type === "collecte" ? "Collecté" : "Dans la caisse du tour"}</p>
-            <p className="text-4xl font-extrabold tracking-tight">{fcfa(st.collected)}</p>
+            <p className="mt-0.5 text-[2.1rem] font-extrabold leading-tight tracking-tight">{fcfa(st.collected)}</p>
             <p className="text-sm text-emerald-100">sur {fcfa(st.expected)} {g.type === "collecte" ? "d’objectif" : "attendus"}</p>
             <Progress value={st.progress} className="mt-3 bg-white/25" />
             {(g.type === "collecte" ? cs.frais : fraisTour) > 0 && (
@@ -328,7 +327,7 @@ export default function GroupeDetail() {
                           {ROLE_LABEL[m.role]}
                         </span>
                       )}
-                      {telAffiche(m.phone)}{paid > 0 && g.type === "collecte" && ` · ${fcfa(paid)}`}
+                      <span className="whitespace-nowrap">{telAffiche(m.phone)}</span>{paid > 0 && g.type === "collecte" && ` · ${fcfa(paid)}`}
                     </p>
                     {g.type !== "collecte" && paidUntil(g, m.id) > g.currentRound && (
                       <p className="inline-flex items-center gap-1 text-[0.8125rem] font-semibold text-emerald-700"><ChevronsRight size={12} strokeWidth={2.25} />Payé jusqu’au tour {paidUntil(g, m.id)}</p>

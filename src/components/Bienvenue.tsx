@@ -80,7 +80,7 @@ export function Bienvenue({ nom }: { nom: string }) {
         </div>
 
         <div className="relative mt-auto space-y-3 pt-8">
-          <p className="text-center text-lg font-bold">Bonjour {prenom(nom)} 👋</p>
+          <p className="text-center text-lg font-bold">Bonjour {prenom(nom)}</p>
           <button onClick={fermer} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-4 text-base font-extrabold text-emerald-800 shadow-lg">
             Entrer <ArrowRight size={20} strokeWidth={2.25} />
           </button>

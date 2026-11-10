@@ -6,12 +6,12 @@ import { useState } from "react";
 import { Button, Card, Header, Loading, Page, Progress, inputClass, useRequireUser } from "@/components/ui";
 import { ActionRapide } from "@/components/ActionRapide";
 import { dateCourte, fcfa, prenom } from "@/lib/format";
-import { TYPE_LABEL, amountDue, beneficiary, impayes, memberStatus, parFrequence, dueDate, isLate, roundStats } from "@/lib/logic";
+import { TYPE_LABEL, amountDue, beneficiary, impayes, memberStatus, dueDate, isLate, roundStats } from "@/lib/logic";
 import { useStore } from "@/lib/store";
 import { BottomNav } from "@/components/BottomNav";
 import { Annonces } from "@/components/Annonces";
 import { Bienvenue } from "@/components/Bienvenue";
-import { AlertCircle, CalendarDays, ClipboardPaste, Gift, HandCoins, Headset, Link2, Plus, Repeat, Users, Wallet } from "lucide-react";
+import { AlertCircle, ChevronRight, ClipboardPaste, HandCoins, Headset, Link2, Plus, Repeat, Users, Wallet } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 
 const TYPE_ICON = { tontine: Repeat, association: Users, collecte: HandCoins };
@@ -80,21 +80,22 @@ export default function Groupes() {
         }
       />
       <div className="space-y-5 p-4 pb-28">
-        <div className="degrade-vert relative overflow-hidden rounded-3xl p-5 text-white shadow-lg shadow-emerald-900/15">
-          <div className="motif absolute inset-0 opacity-80" />
-          <div className="bande-kente absolute inset-x-0 bottom-0" />
-          <p className="relative text-sm text-emerald-50/90">Bonjour,</p>
-          <h2 className="relative text-2xl font-extrabold tracking-tight">{prenom(user!.name)}</h2>
-          <div className="relative mt-4 grid grid-cols-2 gap-2">
-            <div className="rounded-2xl bg-white/[0.12] p-3 ring-1 ring-white/15">
-              <p className="text-[0.8125rem] font-semibold uppercase tracking-wide text-emerald-50/80">Total collecté</p>
-              <p className="mt-0.5 text-lg font-extrabold">{fcfa(totalCaisse)}</p>
-            </div>
-            <div className="rounded-2xl bg-white/[0.12] p-3 ring-1 ring-white/15">
-              <p className="text-[0.8125rem] font-semibold uppercase tracking-wide text-emerald-50/80">À relancer</p>
-              <p className={`mt-0.5 text-lg font-extrabold ${enRetard ? "text-orange-200" : ""}`}>{enRetard} retard{enRetard > 1 ? "s" : ""}</p>
-            </div>
+        <div className="degrade-vert relative overflow-hidden rounded-[22px] text-white">
+          <div className="motif absolute inset-0 opacity-40" />
+          <div className="relative px-5 pb-5 pt-5">
+            <p className="text-sm text-emerald-50/80">Bonjour {prenom(user!.name)}</p>
+            <p className="mt-4 text-[0.8rem] text-emerald-50/75">Total des cotisations enregistrées</p>
+            <p className="mt-0.5 text-[2rem] font-extrabold leading-none tracking-tight">{fcfa(totalCaisse)}</p>
           </div>
+          <div className="relative grid grid-cols-3 divide-x divide-white/15 border-t border-white/15 bg-black/10 text-center">
+            {([["Groupes", String(groups.length), false], ["À payer", String(aPayer.length), aPayer.length > 0], ["En retard", String(enRetard), enRetard > 0]] as const).map(([l, v, alerte]) => (
+              <div key={l} className="px-2 py-3">
+                <p className={`text-lg font-extrabold leading-tight ${alerte ? "text-orange-200" : ""}`}>{v}</p>
+                <p className="text-[0.75rem] text-emerald-50/75">{l}</p>
+              </div>
+            ))}
+          </div>
+          <div className="bande-kente relative" />
         </div>
 
         {/* Actions rapides */}
@@ -118,8 +119,8 @@ export default function Groupes() {
         {/* À payer */}
         <section id="a-payer" className="scroll-mt-20 space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="font-bold text-stone-800">À payer</h3>
-            <span className="text-sm text-stone-500">{aPayer.length}</span>
+            <h3 className="text-[0.95rem] font-bold text-stone-900">À payer</h3>
+            {aPayer.length > 0 && <span className="text-sm text-stone-500">{aPayer.length} échéance{aPayer.length > 1 ? "s" : ""}</span>}
           </div>
           {aPayer.length === 0 ? (
             <Card className="!p-3.5 text-sm text-stone-500">Tu es à jour dans tous tes groupes.</Card>
@@ -133,7 +134,7 @@ export default function Groupes() {
                       {retard ? "En retard" : `Avant le ${dateCourte(echeance)}`} · {fcfa(montant)}
                     </p>
                   </div>
-                  <Link href={`/groupes/${g.id}/payer?membre=${me.id}`} className="shrink-0 rounded-xl bg-emerald-600 px-3.5 py-2 text-sm font-bold text-white">
+                  <Link href={`/groupes/${g.id}/payer?membre=${me.id}`} className="shrink-0 rounded-[12px] bg-emerald-700 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-800">
                     Payer
                   </Link>
                 </div>
@@ -143,8 +144,8 @@ export default function Groupes() {
         </section>
 
         <div className="flex items-center justify-between">
-          <h3 className="font-bold text-stone-800">Mes groupes</h3>
-          <span className="text-sm text-stone-500">{groups.length}</span>
+          <h3 className="text-[0.95rem] font-bold text-stone-900">Mes groupes</h3>
+          <Link href="/groupes/nouveau" className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700"><Plus size={16} strokeWidth={2.2} /> Nouveau</Link>
         </div>
 
         {groups.length === 0 && (
@@ -153,50 +154,41 @@ export default function Groupes() {
           </Card>
         )}
 
-        <div className="grid gap-3 md:grid-cols-2">
-          {groups.map((g) => {
-            const st = roundStats(g);
-            const ben = beneficiary(g);
-            const late = isLate(g, g.currentRound);
-            return (
-              <Link key={g.id} href={`/groupes/${g.id}`} className="block">
-                <Card className="transition active:scale-[0.99] hover:border-emerald-300">
-                  <div className="flex items-start gap-3">
-                    <IconBadge icon={TYPE_ICON[g.type]} ton={TYPE_TON[g.type]} taille="lg" />
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate font-bold text-stone-900">{g.name}</p>
-                      <p className="text-xs text-stone-500">
-                        {TYPE_LABEL[g.type]} · {g.members.length} membres
-                        {g.type !== "collecte" && ` · ${fcfa(g.amount)}/${parFrequence(g.frequency)}`}
-                      </p>
+        {groups.length > 0 && (
+          <Card className="divide-y divide-stone-100 overflow-hidden !p-0">
+            {groups.map((g) => {
+              const st = roundStats(g);
+              const ben = beneficiary(g);
+              const late = isLate(g, g.currentRound);
+              const infos =
+                g.type === "collecte"
+                  ? `${st.counts.paye} participant${st.counts.paye > 1 ? "s" : ""} · jusqu’au ${dateCourte(g.startDate)}`
+                  : `Tour ${g.currentRound}${g.type === "tontine" ? `/${g.order.length}` : ""}${ben ? ` · ${prenom(ben.name)} reçoit` : ""}`;
+              return (
+                <Link key={g.id} href={`/groupes/${g.id}`} className="flex items-center gap-3 px-4 py-3.5 transition hover:bg-stone-50 active:bg-stone-100">
+                  <IconBadge icon={TYPE_ICON[g.type]} ton={TYPE_TON[g.type]} />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate font-bold text-stone-900">{g.name}</p>
+                    <p className="truncate text-[0.8125rem] text-stone-500">{TYPE_LABEL[g.type]} · {infos}</p>
+                    <Progress value={st.progress} className="mt-2.5 !h-1.5" />
+                    <div className="mt-1.5 flex items-baseline justify-between gap-3 text-[0.8125rem]">
+                      <p className="font-bold text-stone-900">{fcfa(st.collected)}</p>
+                      <p className="text-stone-500">sur {fcfa(st.expected)}</p>
                     </div>
-                  </div>
-                  <div className="mt-3 flex items-baseline justify-between text-sm">
-                    <span className="font-bold text-stone-900">{fcfa(st.collected)}</span>
-                    <span className="text-stone-500">sur {fcfa(st.expected)}</span>
-                  </div>
-                  <Progress value={st.progress} className="mt-1.5" />
-                  <div className="mt-2.5 flex flex-wrap gap-x-3 gap-y-1 text-xs text-stone-600">
-                    {g.type === "collecte" ? (
-                      <span>{st.counts.paye} participant(s) · jusqu’au {dateCourte(g.startDate)}</span>
-                    ) : (
-                      <>
-                        <span>Tour {g.currentRound}{g.type === "tontine" && `/${g.order.length}`}</span>
-                        {ben && <span className="inline-flex items-center gap-1"><Gift size={13} strokeWidth={1.75} />{prenom(ben.name)}</span>}
-                        <span className={`inline-flex items-center gap-1 ${late ? "font-semibold text-red-600" : ""}`}>
-                          {late ? <AlertCircle size={13} strokeWidth={1.75} /> : <CalendarDays size={13} strokeWidth={1.75} />}
-                          {late ? "Échéance passée" : dateCourte(dueDate(g, g.currentRound).toISOString())}
-                        </span>
-                        {st.counts.retard > 0 && <span className="font-semibold text-red-600">{st.counts.retard} en retard</span>}
-                      </>
+                    {g.type !== "collecte" && (late || st.counts.retard > 0) && (
+                      <p className="mt-1.5 inline-flex items-center gap-1 text-xs font-semibold text-red-600">
+                        <AlertCircle size={13} strokeWidth={2} />
+                        {late ? "Échéance passée" : `Échéance le ${dateCourte(dueDate(g, g.currentRound).toISOString())}`}
+                        {st.counts.retard > 0 && ` · ${st.counts.retard} en retard`}
+                      </p>
                     )}
                   </div>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
-
+                  <ChevronRight size={18} strokeWidth={1.8} className="shrink-0 text-stone-300" />
+                </Link>
+              );
+            })}
+          </Card>
+        )}
       </div>
 
       {rejoindre && (

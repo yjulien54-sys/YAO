@@ -17,7 +17,7 @@ export function ServiceClient({ sujet = "Bonjour, j’ai besoin d’aide avec Co
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
-        <a href={wa(sujet)} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-gradient-to-b from-[#2fe076] to-[#1fb857] px-3 py-3 text-sm font-bold text-white shadow-lg shadow-green-900/15">
+        <a href={wa(sujet)} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-[14px] bg-[#1fa855] px-3 py-3 text-sm font-bold text-white hover:bg-[#178f47]">
           <WhatsAppIcon size={18} /> Écrire
         </a>
         <a href={`tel:${SUPPORT_PHONE}`} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-white px-3 py-3 text-sm font-bold text-stone-800 shadow-sm ring-1 ring-stone-200">

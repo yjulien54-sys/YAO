@@ -39,14 +39,14 @@ body {
     background: repeating-linear-gradient(90deg, #009e60 0 14px, #f7c948 14px 20px, #f77f00 20px 34px, #1c1917 34px 38px, #f7c948 38px 44px);
   }
   .carte {
-    @apply rounded-3xl border border-stone-200/70 bg-white shadow-[0_1px_2px_rgba(0,0,0,0.04),0_10px_30px_-18px_rgba(6,78,59,0.35)];
+    @apply rounded-[18px] border border-stone-200/80 bg-white shadow-[0_1px_2px_rgba(28,25,23,0.05)];
   }
   /* Vert et orange du drapeau ivoirien */
   .degrade-vert {
-    background: radial-gradient(110% 90% at 0% 0%, #2ee88f 0%, transparent 50%), linear-gradient(140deg, #00c46f 0%, #009e60 50%, #008752 100%);
+    background: linear-gradient(160deg, #0a8452 0%, #066c43 55%, #04552f 100%);
   }
   .degrade-or {
-    background: linear-gradient(135deg, #ffb35c 0%, #f77f00 60%, #e06f00 100%);
+    background: linear-gradient(160deg, #f68a1e 0%, #e57300 60%, #cc6200 100%);
   }
 }
 
@@ -64,3 +64,6 @@ body {
 .juridique a { color: #047857; font-weight: 600; text-decoration: underline; }
 
 @keyframes remplir { from { width: 0%; } to { width: 100%; } }
+
+/* Chiffres alignés, comme sur un relevé bancaire */
+body { font-variant-numeric: tabular-nums; }

@@ -52,9 +52,9 @@ export function Card({ children, className = "" }: { children: React.ReactNode; 
 
 export function Progress({ value, className = "" }: { value: number; className?: string }) {
   return (
-    <div className={`h-2.5 w-full overflow-hidden rounded-full bg-stone-200 ${className}`}>
+    <div className={`h-2 w-full overflow-hidden rounded-full bg-stone-100 ${className}`}>
       <div
-        className="h-full rounded-full bg-gradient-to-r from-amber-300 via-orange-400 to-orange-500 transition-all duration-700"
+        className="h-full rounded-full bg-orange-500 transition-all duration-700"
         style={{ width: `${Math.round(value * 100)}%` }}
       />
     </div>
@@ -69,7 +69,7 @@ const STATUS: Record<MemberStatus, { label: string; cls: string }> = {
 
 export function StatusBadge({ status }: { status: MemberStatus }) {
   const s = STATUS[status];
-  return <span className={`rounded-full px-2 py-0.5 text-xs font-semibold ring-1 ${s.cls}`}>{s.label}</span>;
+  return <span className={`rounded-md px-2 py-0.5 text-xs font-semibold ring-1 ring-inset ${s.cls}`}>{s.label}</span>;
 }
 
 const AVATAR_COLORS = ["bg-orange-100 text-orange-700", "bg-emerald-100 text-emerald-700", "bg-sky-100 text-sky-700", "bg-violet-100 text-violet-700", "bg-rose-100 text-rose-700", "bg-amber-100 text-amber-800"];
@@ -86,14 +86,14 @@ export function Avatar({ name, size = 40 }: { name: string; size?: number }) {
 type BtnProps = React.ButtonHTMLAttributes<HTMLButtonElement> & { variant?: "primary" | "secondary" | "ghost" | "whatsapp" };
 
 const VARIANTS = {
-  primary: "bg-gradient-to-b from-emerald-500 to-emerald-700 text-white shadow-lg shadow-emerald-900/20 hover:from-emerald-600 hover:to-emerald-800 disabled:from-stone-300 disabled:to-stone-300 disabled:shadow-none",
-  secondary: "bg-white text-stone-800 ring-1 ring-stone-200 shadow-sm hover:bg-stone-50",
+  primary: "bg-emerald-700 text-white shadow-sm hover:bg-emerald-800 disabled:bg-stone-300 disabled:shadow-none",
+  secondary: "bg-white text-stone-800 ring-1 ring-stone-300/80 hover:bg-stone-50",
   ghost: "text-stone-600 hover:bg-stone-100",
-  whatsapp: "bg-gradient-to-b from-[#2fe076] to-[#1fb857] text-white shadow-lg shadow-green-900/15 hover:to-[#169e4a]",
+  whatsapp: "bg-[#1fa855] text-white shadow-sm hover:bg-[#178f47]",
 };
 
 export const btnClass = (variant: keyof typeof VARIANTS = "primary", extra = "") =>
-  `inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3.5 text-sm font-bold transition active:scale-[0.97] disabled:cursor-not-allowed ${VARIANTS[variant]} ${extra}`;
+  `inline-flex items-center justify-center gap-2 rounded-[14px] px-4 py-3.5 text-[0.9rem] font-bold transition active:scale-[0.98] disabled:cursor-not-allowed ${VARIANTS[variant]} ${extra}`;
 
 export function Button({ variant = "primary", className = "", ...props }: BtnProps) {
   return <button className={btnClass(variant, className)} {...props} />;
@@ -108,7 +108,7 @@ export function WhatsAppIcon({ size = 18 }: { size?: number }) {
 }
 
 export const inputClass =
-  "w-full rounded-2xl border border-stone-200 bg-white px-4 py-3 text-base text-stone-900 shadow-sm outline-none transition placeholder:text-stone-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100";
+  "w-full rounded-[14px] border border-stone-300/80 bg-white px-4 py-3 text-base text-stone-900 outline-none transition placeholder:text-stone-400 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100";
 
 export function Field({ label, hint, children }: { label: string; hint?: string; children: React.ReactNode }) {
   return (
