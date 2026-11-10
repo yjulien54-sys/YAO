@@ -123,3 +123,6 @@ body { font-variant-numeric: tabular-nums; }
 @keyframes secoue { 0%, 100% { transform: none; } 20%, 60% { transform: translateX(-10px); } 40%, 80% { transform: translateX(10px); } }
 .secoue { animation: secoue 400ms ease; }
 @media (prefers-reduced-motion: reduce) { .feuille, .secoue { animation: none !important; } }
+
+@keyframes feuille-droite { from { transform: translateX(100%); } to { transform: none; } }
+.feuille-droite { animation: feuille-droite 280ms cubic-bezier(0.22, 1, 0.36, 1) both; }

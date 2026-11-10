@@ -4,6 +4,7 @@ import { ServiceWorker } from "@/components/ServiceWorker";
 import { Glisser } from "@/components/Glisser";
 import { Bienvenue } from "@/components/Bienvenue";
 import { NotificationsProvider } from "@/lib/notifications";
+import { CompteBloque } from "@/components/CompteBloque";
 import "@fontsource-variable/plus-jakarta-sans";
 import "./globals.css";
 
@@ -29,6 +30,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           <NotificationsProvider>
             {children}
             <Bienvenue />
+            <CompteBloque />
           </NotificationsProvider>
         </StoreProvider>
         <ServiceWorker />

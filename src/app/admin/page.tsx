@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
-  BarChart3, Clock, Eye, EyeOff, KeyRound, LogOut, Megaphone, Plus, RefreshCw, Search, ShieldAlert, Trash2, Users, UsersRound, Wallet,
+  Ban, BarChart3, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LogOut, Megaphone, Plus, RefreshCw, Search, ShieldAlert, Trash2, Users, UsersRound, Wallet, X,
 } from "lucide-react";
 import { supabaseAdmin as db } from "@/lib/supabaseAdmin";
 import { dateCourte, fcfa, telAffiche } from "@/lib/format";
@@ -134,6 +134,7 @@ function TableauDeBord({ email }: { email: string }) {
   const [annonces, setAnnonces] = useState<Annonce[]>([]);
   const [charge, setCharge] = useState(false);
   const [msg, setMsg] = useState("");
+  const [fiche, setFiche] = useState<{ type: "utilisateur" | "groupe"; id: string } | null>(null);
 
   const charger = useCallback(async () => {
     setCharge(true);
@@ -196,12 +197,14 @@ function TableauDeBord({ email }: { email: string }) {
       <main className="mx-auto max-w-6xl space-y-4 px-4 py-5">
         {msg && <p className="rounded-xl bg-red-50 p-3 text-sm font-medium text-red-700">{msg}</p>}
         {onglet === "apercu" && <Apercu stats={stats} attente={attente} demandes={demandes} aller={setOnglet} />}
-        {onglet === "inscrits" && <Inscrits liste={inscrits} />}
-        {onglet === "groupes" && <Groupes liste={groupes} recharger={charger} />}
+        {onglet === "inscrits" && <Inscrits liste={inscrits} ouvrir={(id) => setFiche({ type: "utilisateur", id })} />}
+        {onglet === "groupes" && <Groupes liste={groupes} recharger={charger} ouvrir={(id) => setFiche({ type: "groupe", id })} />}
         {onglet === "paiements" && <Paiements liste={attente} />}
         {onglet === "codes" && <Codes liste={demandes} recharger={charger} />}
         {onglet === "annonces" && <Annonces liste={annonces} recharger={charger} />}
       </main>
+      {fiche?.type === "utilisateur" && <FicheUtilisateur id={fiche.id} fermer={() => setFiche(null)} ouvrirGroupe={(id) => setFiche({ type: "groupe", id })} recharger={charger} />}
+      {fiche?.type === "groupe" && <FicheGroupe id={fiche.id} fermer={() => setFiche(null)} ouvrirUtilisateur={(id) => setFiche({ type: "utilisateur", id })} recharger={charger} />}
     </div>
   );
 }
@@ -259,7 +262,7 @@ function Recherche({ valeur, onChange, placeholder }: { valeur: string; onChange
 
 const norm = (s: string | null | undefined) => (s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "");
 
-function Inscrits({ liste }: { liste: Inscrit[] }) {
+function Inscrits({ liste, ouvrir }: { liste: Inscrit[]; ouvrir: (id: string) => void }) {
   const [q, setQ] = useState("");
   const vus = useMemo(() => liste.filter((i) => !q || norm(i.nom).includes(norm(q)) || i.telephone.replace(/\D/g, "").includes(q.replace(/\D/g, "") || "§")), [liste, q]);
   return (
@@ -273,8 +276,8 @@ function Inscrits({ liste }: { liste: Inscrit[] }) {
           </thead>
           <tbody className="divide-y divide-stone-100">
             {vus.map((i) => (
-              <tr key={i.id}>
-                <td className="py-2.5 font-semibold">{i.nom}</td>
+              <tr key={i.id} onClick={() => ouvrir(i.id)} className="cursor-pointer hover:bg-emerald-50/60">
+                <td className={`py-2.5 font-semibold ${i.nom.endsWith("(bloqué)") ? "text-red-600" : "text-emerald-800 underline decoration-emerald-200 underline-offset-2"}`}>{i.nom}</td>
                 <td className="whitespace-nowrap">{telAffiche(i.telephone)}</td>
                 <td>{i.naissance ? dateCourte(i.naissance) : <span className="text-stone-400">—</span>}</td>
                 <td className="whitespace-nowrap">{dateCourte(i.inscrit_le)}</td>
@@ -289,7 +292,7 @@ function Inscrits({ liste }: { liste: Inscrit[] }) {
   );
 }
 
-function Groupes({ liste, recharger }: { liste: Groupe[]; recharger: () => void }) {
+function Groupes({ liste, recharger, ouvrir }: { liste: Groupe[]; recharger: () => void; ouvrir: (id: string) => void }) {
   const [q, setQ] = useState("");
   const [msg, setMsg] = useState("");
   const vus = liste.filter((g) => !q || norm(g.nom).includes(norm(q)) || norm(g.tresorier).includes(norm(q)));
@@ -320,12 +323,12 @@ function Groupes({ liste, recharger }: { liste: Groupe[]; recharger: () => void 
       {msg && <p className="text-sm font-medium text-emerald-800">{msg}</p>}
       <div className="grid gap-3 md:grid-cols-2">
         {vus.map((g) => (
-          <div key={g.id} className="rounded-2xl border border-stone-200 p-3">
+          <div key={g.id} className="rounded-2xl border border-stone-200 p-3 transition hover:border-emerald-300">
             <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="truncate font-bold">{g.nom}</p>
+              <button type="button" onClick={() => ouvrir(g.id)} className="min-w-0 text-left">
+                <p className="inline-flex items-center gap-1 truncate font-bold text-emerald-800">{g.nom} <ChevronRight size={15} /></p>
                 <p className="text-xs text-stone-500">{TYPE[g.type] ?? g.type} · {fcfa(g.montant)} · {g.frequence} · tour {g.tour}</p>
-              </div>
+              </button>
               {g.en_attente > 0 && <span className="shrink-0 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-800">{g.en_attente} à confirmer</span>}
             </div>
             <div className="mt-2 grid grid-cols-3 gap-2 text-xs">
@@ -472,5 +475,330 @@ function Annonces({ liste, recharger }: { liste: Annonce[]; recharger: () => voi
         {msg && <p className="text-sm font-medium text-emerald-800 md:col-span-2">{msg}</p>}
       </form>
     </>
+  );
+}
+
+/* ===================== Fiches détaillées ===================== */
+
+type FicheU = {
+  profil: { id: string; name: string; phone: string; date_naissance: string | null; created_at: string; bloque: boolean; bloque_motif: string | null; bloque_le: string | null } | null;
+  compte: { email: string | null; is_anonymous: boolean; created_at: string; last_sign_in_at: string | null } | null;
+  code: { defini: boolean; modifie_le: string; bloque_jusqua: string | null } | null;
+  historique_code: { action: string; le: string }[];
+  groupes: { id: string; name: string; type: string; membre_id: string; role: string; en_attente: boolean; archive: boolean; createur: boolean }[];
+  paiements: { id: string; created_at: string; amount: number; penalty: number; method: string; status: string; round: number; groupe: string }[];
+  tentatives: { reussie: boolean; le: string }[];
+  demandes_code: { resultat: string; le: string }[];
+};
+type FicheG = {
+  groupe: { id: string; name: string; type: string; amount: number; frequency: string; current_round: number; created_at: string; createur_nom: string | null; createur_tel: string | null; payment_phone: string | null } | null;
+  membres: { id: string; name: string; phone: string; role: string; en_attente: boolean; archive: boolean; profile_id: string | null; bloque: boolean | null; nb_paiements: number }[];
+  paiements: { id: string; created_at: string; amount: number; penalty: number; method: string; status: string; round: number; membre: string | null; transaction_id: string | null }[];
+  versements: { id: string; created_at: string; amount: number; beneficiary_name: string; method: string; nature: string; round: number }[];
+  demandes_versement: { id: string; cree_le: string; amount: number; beneficiary_name: string; statut: string; requis: number; validations: number }[];
+};
+
+const STATUT_PAIEMENT: Record<string, [string, string]> = {
+  reussi: ["Confirmé", "bg-emerald-50 text-emerald-700"],
+  en_attente: ["À confirmer", "bg-amber-50 text-amber-800"],
+  echoue: ["Refusé", "bg-red-50 text-red-700"],
+};
+const ROLE: Record<string, string> = { tresorier: "Trésorier", gestionnaire: "Co-gestionnaire", membre: "Membre" };
+
+function Volet({ titre, sousTitre, fermer, children }: { titre: string; sousTitre?: string; fermer: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-40 flex justify-end bg-stone-900/40" onClick={fermer}>
+      <div className="feuille-droite flex h-full w-full max-w-2xl flex-col bg-[#f7f5f0] shadow-2xl" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-start gap-3 border-b border-stone-200 bg-white px-5 py-4">
+          <div className="min-w-0 flex-1">
+            <p className="truncate text-lg font-extrabold">{titre}</p>
+            {sousTitre && <p className="truncate text-xs text-stone-500">{sousTitre}</p>}
+          </div>
+          <button onClick={fermer} className="grid h-9 w-9 place-items-center rounded-full bg-stone-100 text-stone-600" aria-label="Fermer"><X size={18} /></button>
+        </div>
+        <div className="flex-1 space-y-4 overflow-y-auto p-5">{children}</div>
+      </div>
+    </div>
+  );
+}
+
+const Bloc = ({ titre, children, action }: { titre: string; children: React.ReactNode; action?: React.ReactNode }) => (
+  <section className="carte p-4">
+    <div className="mb-2 flex items-center justify-between gap-2"><p className="font-bold">{titre}</p>{action}</div>
+    {children}
+  </section>
+);
+
+function Identifiant({ id }: { id: string }) {
+  const [copie, setCopie] = useState(false);
+  return (
+    <button onClick={() => { navigator.clipboard?.writeText(id); setCopie(true); setTimeout(() => setCopie(false), 1500); }} className="inline-flex items-center gap-1 rounded-md bg-stone-100 px-2 py-0.5 font-mono text-[0.7rem] text-stone-600" title="Copier l’identifiant">
+      <Copy size={11} /> {copie ? "copié !" : id}
+    </button>
+  );
+}
+
+function FicheUtilisateur({ id, fermer, ouvrirGroupe, recharger }: { id: string; fermer: () => void; ouvrirGroupe: (id: string) => void; recharger: () => void }) {
+  const [f, setF] = useState<FicheU | null>(null);
+  const [erreur, setErreur] = useState("");
+  const [msg, setMsg] = useState("");
+  const [form, setForm] = useState({ nom: "", tel: "", naissance: "" });
+
+  const charger = useCallback(async () => {
+    const { data, error } = await db.rpc("admin_utilisateur", { p: id });
+    if (error) return setErreur(error.message.includes("admin_utilisateur") ? "Lance d’abord la mise à jour SQL n°14." : error.message);
+    const d = data as FicheU;
+    setF(d);
+    if (d.profil) setForm({ nom: d.profil.name, tel: d.profil.phone, naissance: d.profil.date_naissance ?? "" });
+  }, [id]);
+  useEffect(() => { charger(); }, [charger]);
+
+  const action = async (fn: () => Promise<{ error: { message: string } | null }>, ok: string) => {
+    setMsg("");
+    const { error } = await fn();
+    setMsg(error ? "Erreur : " + error.message : ok);
+    await charger();
+    recharger();
+  };
+
+  const bannir = async (bannir: boolean) => {
+    const { data } = await db.auth.getSession();
+    await fetch("/api/admin/bannir", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` }, body: JSON.stringify({ profileId: id, bannir }) }).catch(() => null);
+  };
+
+  const p = f?.profil;
+  return (
+    <Volet titre={p ? p.name : "Utilisateur"} sousTitre={p ? `${telAffiche(p.phone)} · inscrit le ${dateCourte(p.created_at)}` : undefined} fermer={fermer}>
+      {erreur && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{erreur}</p>}
+      {!f && !erreur && <p className="text-sm text-stone-500">Chargement…</p>}
+      {msg && <p className="rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-800">{msg}</p>}
+      {f && !p && <p className="text-sm text-stone-500">Ce compte n’existe plus.</p>}
+      {p && (
+        <>
+          {p.bloque && (
+            <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800">
+              <p className="flex items-center gap-2 font-bold"><Ban size={16} /> Compte bloqué {p.bloque_le ? `le ${dateCourte(p.bloque_le)}` : ""}</p>
+              {p.bloque_motif && <p className="mt-1">Motif : {p.bloque_motif}</p>}
+            </div>
+          )}
+
+          <Bloc titre="Identité">
+            <div className="space-y-1 text-sm">
+              <p>Identifiant : <Identifiant id={p.id} /></p>
+              <p>Compte : {f.compte?.email?.startsWith("compte-") ? "retrouvé sur un nouveau téléphone" : f.compte?.is_anonymous === false ? f.compte?.email : "créé dans l’application"}</p>
+              {f.compte?.last_sign_in_at && <p>Dernière connexion : {dateCourte(f.compte.last_sign_in_at)}</p>}
+            </div>
+            <form
+              className="mt-3 grid gap-2 sm:grid-cols-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                action(async () => await db.rpc("admin_modifier_profil", { p: id, nom: form.nom, telephone: form.tel, naissance: form.naissance || null }), "Informations modifiées.");
+              }}
+            >
+              <label className="text-xs font-semibold text-stone-500">Nom<input value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} className={champ} /></label>
+              <label className="text-xs font-semibold text-stone-500">Téléphone<input value={form.tel} onChange={(e) => setForm({ ...form, tel: e.target.value })} inputMode="tel" className={champ} /></label>
+              <label className="text-xs font-semibold text-stone-500">Naissance<input type="date" value={form.naissance} onChange={(e) => setForm({ ...form, naissance: e.target.value })} className={champ} /></label>
+              <button className="rounded-xl bg-emerald-700 py-2.5 text-sm font-bold text-white sm:col-span-3">Enregistrer les modifications</button>
+            </form>
+          </Bloc>
+
+          <Bloc titre="Sécurité">
+            <p className="text-sm">Code secret : {f.code?.defini ? <b className="text-emerald-700">créé</b> : <b className="text-stone-500">pas encore créé</b>}{f.code?.modifie_le && ` · modifié le ${dateCourte(f.code.modifie_le)}`}</p>
+            <div className="mt-3 flex flex-wrap gap-2">
+              <button onClick={() => confirm("Réinitialiser son code secret ? La personne en créera un nouveau à sa prochaine ouverture.") && action(async () => await db.rpc("admin_reinitialiser_code_profil", { p: id }), "Code réinitialisé.")} className="rounded-xl border border-stone-200 px-3 py-2 text-sm font-bold">
+                <KeyRound size={15} className="mr-1 inline" /> Réinitialiser le code
+              </button>
+              {p.bloque ? (
+                <button onClick={() => confirm(`Débloquer ${p.name} ?`) && action(async () => { const r = await db.rpc("admin_bloquer", { p: id, bloquer: false }); await bannir(false); return r; }, "Compte débloqué.")} className="rounded-xl bg-emerald-700 px-3 py-2 text-sm font-bold text-white">
+                  Débloquer
+                </button>
+              ) : (
+                <button
+                  onClick={() => {
+                    const motif = prompt(`Bloquer ${p.name} À VIE ? Il ne pourra plus rien faire sur Cotiz, ni recréer un compte avec ce numéro.\n\nMotif (facultatif) :`);
+                    if (motif === null) return;
+                    action(async () => { const r = await db.rpc("admin_bloquer", { p: id, bloquer: true, motif }); await bannir(true); return r; }, "Compte bloqué à vie.");
+                  }}
+                  className="rounded-xl bg-red-600 px-3 py-2 text-sm font-bold text-white"
+                >
+                  <Ban size={15} className="mr-1 inline" /> Bloquer à vie
+                </button>
+              )}
+            </div>
+            {f.historique_code.length > 0 && <p className="mt-3 text-xs text-stone-500">Historique du code : {f.historique_code.slice(0, 6).map((h) => `${h.action} (${dateCourte(h.le)})`).join(" · ")}</p>}
+            {f.tentatives.length > 0 && <p className="mt-1 text-xs text-stone-500">Connexions sur un autre téléphone : {f.tentatives.filter((t) => t.reussie).length} réussie(s), {f.tentatives.filter((t) => !t.reussie).length} échouée(s)</p>}
+          </Bloc>
+
+          <Bloc titre={`Groupes (${f.groupes.length})`}>
+            {f.groupes.length === 0 ? <p className="text-sm text-stone-500">Aucun groupe.</p> : (
+              <Liste>
+                {f.groupes.map((g) => (
+                  <button key={g.membre_id} onClick={() => ouvrirGroupe(g.id)} className="flex w-full items-center gap-2 py-2.5 text-left text-sm hover:bg-stone-50">
+                    <span className="min-w-0 flex-1 truncate font-semibold">{g.name}</span>
+                    <span className="text-xs text-stone-500">{g.createur ? "Créateur" : ROLE[g.role] ?? g.role}{g.en_attente ? " · en attente" : ""}{g.archive ? " · parti" : ""}</span>
+                    <ChevronRight size={15} className="text-stone-400" />
+                  </button>
+                ))}
+              </Liste>
+            )}
+          </Bloc>
+
+          <Bloc titre={`Paiements (${f.paiements.length})`}>
+            {f.paiements.length === 0 ? <p className="text-sm text-stone-500">Aucun paiement.</p> : (
+              <Liste>
+                {f.paiements.map((x) => {
+                  const [l, c] = STATUT_PAIEMENT[x.status] ?? [x.status, "bg-stone-100"];
+                  return (
+                    <div key={x.id} className="flex items-center gap-2 py-2 text-sm">
+                      <span className="min-w-0 flex-1 truncate">{x.groupe} · tour {x.round} · {x.method}</span>
+                      <span className="text-xs text-stone-500">{dateCourte(x.created_at)}</span>
+                      <b>{fcfa(x.amount + x.penalty)}</b>
+                      <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${c}`}>{l}</span>
+                    </div>
+                  );
+                })}
+              </Liste>
+            )}
+          </Bloc>
+        </>
+      )}
+    </Volet>
+  );
+}
+
+function FicheGroupe({ id, fermer, ouvrirUtilisateur, recharger }: { id: string; fermer: () => void; ouvrirUtilisateur: (id: string) => void; recharger: () => void }) {
+  const [f, setF] = useState<FicheG | null>(null);
+  const [erreur, setErreur] = useState("");
+  const [msg, setMsg] = useState("");
+
+  const charger = useCallback(async () => {
+    const { data, error } = await db.rpc("admin_groupe", { g: id });
+    if (error) return setErreur(error.message.includes("admin_groupe") ? "Lance d’abord la mise à jour SQL n°14." : error.message);
+    setF(data as FicheG);
+  }, [id]);
+  useEffect(() => { charger(); }, [charger]);
+
+  const action = async (fn: () => Promise<{ error: { message: string } | null }>, ok: string) => {
+    setMsg("");
+    const { error } = await fn();
+    setMsg(error ? "Erreur : " + error.message : ok);
+    await charger();
+    recharger();
+  };
+
+  const g = f?.groupe;
+  return (
+    <Volet titre={g ? g.name : "Groupe"} sousTitre={g ? `${TYPE[g.type] ?? g.type} · ${fcfa(g.amount)} · ${g.frequency} · tour ${g.current_round}` : undefined} fermer={fermer}>
+      {erreur && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{erreur}</p>}
+      {!f && !erreur && <p className="text-sm text-stone-500">Chargement…</p>}
+      {msg && <p className="rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-800">{msg}</p>}
+      {f && !g && <p className="text-sm text-stone-500">Ce groupe n’existe plus.</p>}
+      {g && f && (
+        <>
+          <Bloc titre="Informations">
+            <div className="space-y-1 text-sm">
+              <p>Identifiant : <Identifiant id={g.id} /></p>
+              <p>Créé le {dateCourte(g.created_at)} par <b>{g.createur_nom ?? "—"}</b>{g.createur_tel && ` · ${telAffiche(g.createur_tel)}`}</p>
+              {g.payment_phone && <p>Numéro qui reçoit l’argent : <b>{telAffiche(g.payment_phone)}</b></p>}
+            </div>
+          </Bloc>
+
+          <Bloc titre={`Membres (${f.membres.filter((m) => !m.archive).length})`}>
+            <div className="overflow-x-auto">
+              <table className="w-full min-w-[560px] text-sm">
+                <thead className="text-left text-xs uppercase tracking-wide text-stone-500">
+                  <tr><th className="py-2">Nom</th><th>Téléphone</th><th>Rôle</th><th className="text-right">Payés</th><th></th></tr>
+                </thead>
+                <tbody className="divide-y divide-stone-100">
+                  {f.membres.map((m) => (
+                    <tr key={m.id} className={m.archive ? "opacity-50" : ""}>
+                      <td className="py-2">
+                        {m.profile_id ? (
+                          <button onClick={() => ouvrirUtilisateur(m.profile_id!)} className={`font-semibold underline underline-offset-2 ${m.bloque ? "text-red-600" : "text-emerald-800 decoration-emerald-200"}`}>{m.name}</button>
+                        ) : (
+                          <span className="font-semibold">{m.name}</span>
+                        )}
+                        <span className="block text-xs text-stone-500">{!m.profile_id ? "pas encore inscrit" : m.en_attente ? "demande en attente" : m.archive ? "a quitté le groupe" : m.bloque ? "bloqué" : "inscrit"}</span>
+                      </td>
+                      <td className="whitespace-nowrap">{telAffiche(m.phone)}</td>
+                      <td>
+                        <select
+                          value={m.role}
+                          disabled={m.archive}
+                          onChange={(e) => action(async () => await db.rpc("admin_modifier_membre", { membre: m.id, nom: null, telephone: null, nouveau_role: e.target.value }), "Rôle modifié.")}
+                          className="rounded-lg border border-stone-200 bg-white px-2 py-1 text-xs"
+                        >
+                          {Object.entries(ROLE).map(([k, v]) => <option key={k} value={k}>{v}</option>)}
+                        </select>
+                      </td>
+                      <td className="text-right">{m.nb_paiements}</td>
+                      <td className="text-right">
+                        {!m.archive && (
+                          <button onClick={() => confirm(`Retirer ${m.name} du groupe ?`) && action(async () => await db.rpc("admin_retirer_membre", { membre: m.id }), `${m.name} retiré du groupe.`)} className="rounded-lg px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50">Retirer</button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </Bloc>
+
+          <Bloc titre={`Paiements (${f.paiements.length})`}>
+            {f.paiements.length === 0 ? <p className="text-sm text-stone-500">Aucun paiement.</p> : (
+              <Liste>
+                {f.paiements.map((x) => {
+                  const [l, c] = STATUT_PAIEMENT[x.status] ?? [x.status, "bg-stone-100"];
+                  return (
+                    <div key={x.id} className="flex flex-wrap items-center gap-2 py-2 text-sm">
+                      <span className="min-w-0 flex-1 truncate font-semibold">{x.membre ?? "—"} <span className="font-normal text-stone-500">· tour {x.round} · {x.method}{x.transaction_id && !x.transaction_id.startsWith("DECL-") ? ` · réf. ${x.transaction_id}` : ""}</span></span>
+                      <span className="text-xs text-stone-500">{dateCourte(x.created_at)}</span>
+                      <b>{fcfa(x.amount + x.penalty)}</b>
+                      <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${c}`}>{l}</span>
+                      {x.status === "en_attente" && (
+                        <span className="flex gap-1">
+                          <button onClick={() => action(async () => await db.rpc("admin_paiement_statut", { paiement: x.id, statut: "reussi" }), "Paiement confirmé.")} className="rounded-lg bg-emerald-700 px-2 py-1 text-xs font-bold text-white">Confirmer</button>
+                          <button onClick={() => confirm("Refuser ce paiement (argent non reçu) ?") && action(async () => await db.rpc("admin_paiement_statut", { paiement: x.id, statut: "echoue" }), "Paiement refusé.")} className="rounded-lg bg-stone-100 px-2 py-1 text-xs font-bold text-stone-700">Refuser</button>
+                        </span>
+                      )}
+                    </div>
+                  );
+                })}
+              </Liste>
+            )}
+          </Bloc>
+
+          <Bloc titre={`Versements (${f.versements.length})`}>
+            {f.demandes_versement.filter((d) => d.statut === "en_attente").map((d) => (
+              <p key={d.id} className="mb-2 rounded-xl bg-violet-50 p-2 text-sm text-violet-900">En attente de validation : {fcfa(d.amount)} pour {d.beneficiary_name} ({d.validations}/{d.requis})</p>
+            ))}
+            {f.versements.length === 0 ? <p className="text-sm text-stone-500">Aucun versement.</p> : (
+              <Liste>
+                {f.versements.map((v) => (
+                  <div key={v.id} className="flex items-center gap-2 py-2 text-sm">
+                    <span className="min-w-0 flex-1 truncate">{v.beneficiary_name} · tour {v.round} · {v.method}</span>
+                    <span className="text-xs text-stone-500">{dateCourte(v.created_at)}</span>
+                    <b>{fcfa(v.amount)}</b>
+                  </div>
+                ))}
+              </Liste>
+            )}
+          </Bloc>
+
+          <button
+            onClick={async () => {
+              if (!confirm(`Supprimer définitivement « ${g.name} » ?`)) return;
+              const { error } = await db.rpc("admin_supprimer_groupe", { g: g.id });
+              if (error) return setMsg("Erreur : " + error.message);
+              recharger();
+              fermer();
+            }}
+            className="w-full rounded-xl border border-red-200 py-3 text-sm font-bold text-red-600 hover:bg-red-50"
+          >
+            <Trash2 size={15} className="mr-1 inline" /> Supprimer ce groupe
+          </button>
+        </>
+      )}
+    </Volet>
   );
 }

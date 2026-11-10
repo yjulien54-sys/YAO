@@ -40,7 +40,8 @@ export interface GroupUpdate {
 }
 
 interface Ctx {
-  ready: boolean; // session vérifiée
+  ready: boolean;
+  bloque: { motif: string | null } | null; // session vérifiée
   loaded: boolean; // groupes chargés
   user: User | null;
   userId: string | null;
@@ -116,6 +117,16 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [userId, setUserId] = useState<string | null>(null);
   const [groups, setGroups] = useState<Group[]>([]);
+  const [bloque, setBloque] = useState<{ motif: string | null } | null>(null);
+
+  // Compte bloqué par l'administrateur ? (mise à jour SQL n°14 ; sans elle, rien ne change)
+  useEffect(() => {
+    if (!userId) return setBloque(null);
+    supabase.rpc("mon_blocage").then(({ data, error }) => {
+      const d = data as { bloque?: boolean; motif?: string | null } | null;
+      setBloque(!error && d?.bloque ? { motif: d.motif ?? null } : null);
+    });
+  }, [userId, groups]);
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const reload = useCallback(async () => {
@@ -712,7 +723,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider
-      value={{ ready, loaded, user, userId, groups, login, envoyerCode, verifierCode, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, setWaveLink, updateGroup, updateMember, removeMember, setOrder, deleteGroup, setTiragePrevu, lancerTirage, updateProfile, accepterReglement, recordPayout, nextRound, joinGroup, repondreDemande, annulerDeclaration, retrouverCompte, quitterGroupe, validerVersement, annulerVersement }}
+      value={{ ready, bloque, loaded, user, userId, groups, login, envoyerCode, verifierCode, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, setWaveLink, updateGroup, updateMember, removeMember, setOrder, deleteGroup, setTiragePrevu, lancerTirage, updateProfile, accepterReglement, recordPayout, nextRound, joinGroup, repondreDemande, annulerDeclaration, retrouverCompte, quitterGroupe, validerVersement, annulerVersement }}
     >
       {children}
     </StoreContext.Provider>
