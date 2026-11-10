@@ -12,7 +12,7 @@ export const runtime = "nodejs";
 export async function POST(req: Request) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const cle = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !cle) return NextResponse.json({ ok: false, raison: "indisponible" }, { status: 503 });
+  if (!url || !cle) return NextResponse.json({ ok: false, raison: "indisponible", detail: "cle_absente" }, { status: 503 });
 
   const corps = await req.json().catch(() => null);
   const telephone = String(corps?.telephone ?? "").replace(/\D/g, "").slice(-10);
@@ -25,8 +25,9 @@ export async function POST(req: Request) {
   const admin = createClient(url, cle, { auth: { persistSession: false, autoRefreshToken: false } });
   const { data, error } = await admin.rpc("connexion_verifier", { telephone, code, naissance });
   if (error) {
-    console.error("connexion_verifier", error.message);
-    return NextResponse.json({ ok: false, raison: /function|PGRST202/i.test(error.message) ? "indisponible" : "erreur" }, { status: 500 });
+    console.error("connexion_verifier", error.code, error.message);
+    const detail = error.code === "PGRST202" ? "sql_absent" : error.code === "42501" ? "permission" : /api key|jwt/i.test(error.message) ? "cle_invalide" : "autre";
+    return NextResponse.json({ ok: false, raison: detail === "sql_absent" ? "indisponible" : "erreur", detail }, { status: 500 });
   }
   const r = data as { ok: boolean; id?: string; raison?: string; restants?: number };
   if (!r.ok || !r.id) return NextResponse.json({ ok: false, raison: r.raison ?? "faux", restants: r.restants }, { status: 401 });
