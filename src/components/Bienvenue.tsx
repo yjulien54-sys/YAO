@@ -89,7 +89,7 @@ function BoutonRond({ etat, onAppui, libelle, aria, icone: Icone, principal }: {
   );
 }
 
-const PAGES_PUBLIQUES = ["/", "/cgu", "/confidentialite", "/mentions-legales", "/telecharger", "/suppression-compte"];
+const PAGES_PUBLIQUES = ["/", "/cgu", "/confidentialite", "/mentions-legales", "/telecharger", "/suppression-compte", "/admin"];
 const RE_VERROUILLER_MS = 3 * 60_000; // l'application se reverrouille après 3 min en arrière-plan
 
 /** Écran d'accueil sécurisé : code secret à 4 chiffres ou empreinte du téléphone */
