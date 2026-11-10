@@ -1,11 +1,14 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { usePathname, useRouter } from "next/navigation";
+import { useStore } from "@/lib/store";
+import { CLE_SESSION, aEmpreinte, aUnCode, supprimerVerrou, verifierEmpreinte } from "@/lib/verrou";
+import { ClavierCode } from "./ClavierCode";
 import { Check, Fingerprint, Gift, Repeat, Shuffle, Wallet } from "lucide-react";
 import { IconBadge } from "./icons";
 import { prenom } from "@/lib/format";
 
-const CLE = "cotiz:bienvenue-vue";
 
 const Drapeau = () => (
   <span className="inline-flex h-3 w-[18px] overflow-hidden rounded-[2px] ring-1 ring-black/10" aria-hidden>
@@ -46,17 +49,12 @@ function useCompteur(cible: number, duree: number, depart: number) {
   return v;
 }
 
-/** Bouton empreinte : un appui remplit le cercle, affiche une coche, puis on entre */
-function BoutonEmpreinte({ onEntrer }: { onEntrer: () => void }) {
-  const [etat, setEtat] = useState<"repos" | "lecture" | "ok">("repos");
-  const R = 46, C = 2 * Math.PI * R;
+type EtatBouton = "repos" | "lecture" | "ok";
 
-  function appuyer() {
-    if (etat !== "repos") return;
-    setEtat("lecture");
-    setTimeout(() => setEtat("ok"), 220);
-    setTimeout(onEntrer, 420);
-  }
+/** Bouton empreinte : lance l'empreinte du téléphone ou ouvre le code secret */
+function BoutonEmpreinte({ etat, onAppui, libelle }: { etat: EtatBouton; onAppui: () => void; libelle: string }) {
+  const R = 46, C = 2 * Math.PI * R;
+  const appuyer = () => etat === "repos" && onAppui();
 
   return (
     <div className="flex flex-col items-center gap-3">
@@ -74,7 +72,7 @@ function BoutonEmpreinte({ onEntrer }: { onEntrer: () => void }) {
           <circle
             cx="52" cy="52" r={R} fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round"
             strokeDasharray={C} strokeDashoffset={etat === "repos" ? C : 0}
-            style={{ transition: "stroke-dashoffset 220ms ease-out" }}
+            style={{ transition: etat === "lecture" ? "stroke-dashoffset 1200ms ease-out" : "stroke-dashoffset 220ms ease-out" }}
           />
         </svg>
         <span className={`relative grid h-[80px] w-[80px] place-items-center rounded-full shadow-xl transition-all duration-300 group-active:scale-95 ${etat === "ok" ? "bg-white text-emerald-700" : "bg-white/15 text-white ring-1 ring-white/30 backdrop-blur-sm"}`}>
@@ -82,26 +80,55 @@ function BoutonEmpreinte({ onEntrer }: { onEntrer: () => void }) {
         </span>
       </button>
       <p className="glisse-texte text-[0.95rem] font-bold tracking-wide">
-        {etat === "repos" ? "Appuie pour entrer" : etat === "lecture" ? "Vérification…" : "Bienvenue !"}
+        {etat === "repos" ? libelle : etat === "lecture" ? "Vérification…" : "Bienvenue !"}
       </p>
     </div>
   );
 }
 
-/** Écran d'accueil affiché à l'ouverture de l'application (une fois par session) */
-export function Bienvenue({ nom }: { nom: string }) {
+const PAGES_PUBLIQUES = ["/", "/cgu", "/confidentialite", "/mentions-legales", "/telecharger", "/suppression-compte"];
+const RE_VERROUILLER_MS = 3 * 60_000; // l'application se reverrouille après 3 min en arrière-plan
+
+/** Écran d'accueil sécurisé : code secret à 4 chiffres ou empreinte du téléphone */
+export function Bienvenue() {
+  const { ready, user, userId, logout } = useStore();
+  const path = usePathname();
+  const router = useRouter();
   const [visible, setVisible] = useState(false);
   const [sortie, setSortie] = useState(false);
   const [notif, setNotif] = useState(-1);
-  const montant = useCompteur(400000, 1600, 1900);
+  const [etat, setEtat] = useState<EtatBouton>("repos");
+  const [clavier, setClavier] = useState(false);
+  const montant = useCompteur(visible ? 400000 : 0, 1600, 1900);
+  const nom = user?.name ?? "";
+  const actif = ready && !!user && !!userId && !PAGES_PUBLIQUES.includes(path);
 
   useEffect(() => {
+    if (!actif) return;
     try {
-      if (sessionStorage.getItem(CLE)) return;
-      sessionStorage.setItem(CLE, "1");
+      if (sessionStorage.getItem(CLE_SESSION)) return;
     } catch {}
+    setSortie(false);
+    setEtat("repos");
     setVisible(true);
-  }, []);
+  }, [actif]);
+
+  // Reverrouillage après un moment en arrière-plan (téléphone posé, autre application…)
+  useEffect(() => {
+    let cache = 0;
+    const vu = () => {
+      if (document.hidden) cache = Date.now();
+      else if (cache && Date.now() - cache > RE_VERROUILLER_MS && actif) {
+        try { sessionStorage.removeItem(CLE_SESSION); } catch {}
+        setClavier(false);
+        setSortie(false);
+        setEtat("repos");
+        setVisible(true);
+      }
+    };
+    document.addEventListener("visibilitychange", vu);
+    return () => document.removeEventListener("visibilitychange", vu);
+  }, [actif]);
 
   // Les notifications arrivent l'une après l'autre, en boucle
   useEffect(() => {
@@ -114,12 +141,35 @@ export function Bienvenue({ nom }: { nom: string }) {
     };
   }, [visible]);
 
-  // L'écran reste affiché jusqu'à ce que la personne entre
-  function fermer() {
-    setSortie(true);
-    setTimeout(() => setVisible(false), 300);
+  function entrer() {
+    try { sessionStorage.setItem(CLE_SESSION, "1"); } catch {}
+    setClavier(false);
+    setEtat("ok");
+    setTimeout(() => setSortie(true), 250);
+    setTimeout(() => setVisible(false), 550);
   }
 
+  // Appui sur l'empreinte : vraie empreinte du téléphone si elle est activée, sinon le code secret
+  async function appui() {
+    if (!userId) return;
+    if (aEmpreinte(userId)) {
+      setEtat("lecture");
+      if (await verifierEmpreinte(userId)) return entrer();
+      setEtat("repos");
+    }
+    setClavier(true);
+  }
+
+  async function oubli() {
+    const uid = userId;
+    await logout();
+    if (uid) supprimerVerrou(uid);
+    try { sessionStorage.removeItem(CLE_SESSION); } catch {}
+    setVisible(false);
+    router.replace("/");
+  }
+
+  if (!actif) return null;
   if (!visible) return null;
   const heure = new Date().getHours();
   const salut = heure >= 18 || heure < 4 ? "Bonsoir" : "Bonjour";
@@ -217,8 +267,11 @@ export function Bienvenue({ nom }: { nom: string }) {
 
         <div className="apparait relative mt-auto space-y-4 pt-8" style={{ animationDelay: "700ms" }}>
           <p className="text-center text-sm text-emerald-50/80">Tout le monde voit qui a payé. Personne ne garde l’argent seul.</p>
-          <BoutonEmpreinte onEntrer={fermer} />
+          <BoutonEmpreinte etat={etat} onAppui={appui} libelle={userId && aEmpreinte(userId) ? "Pose ton doigt pour entrer" : userId && aUnCode(userId) ? "Appuie et entre ton code" : "Appuie pour créer ton code"} />
         </div>
+        {clavier && userId && (
+          <ClavierCode uid={userId} nom={nom} tel={user?.phone ?? ""} onOk={entrer} onFermer={() => setClavier(false)} onOubli={oubli} />
+        )}
       </section>
     </div>
   );

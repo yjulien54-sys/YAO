@@ -73,6 +73,7 @@ export function Progress({ value, className = "" }: { value: number; className?:
 
 const STATUS: Record<MemberStatus, { label: string; cls: string }> = {
   paye: { label: "Payé", cls: "bg-emerald-50 text-emerald-700 ring-emerald-200" },
+  a_confirmer: { label: "À confirmer", cls: "bg-sky-50 text-sky-700 ring-sky-200" },
   attente: { label: "En attente", cls: "bg-amber-50 text-amber-700 ring-amber-200" },
   retard: { label: "En retard", cls: "bg-red-50 text-red-700 ring-red-200" },
 };

@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { StoreProvider } from "@/lib/store";
 import { ServiceWorker } from "@/components/ServiceWorker";
 import { Glisser } from "@/components/Glisser";
+import { Bienvenue } from "@/components/Bienvenue";
 import "@fontsource-variable/plus-jakarta-sans";
 import "./globals.css";
 
@@ -23,7 +24,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr">
       <body className="antialiased">
-        <StoreProvider>{children}</StoreProvider>
+        <StoreProvider>
+          {children}
+          <Bienvenue />
+        </StoreProvider>
         <ServiceWorker />
         <Glisser />
       </body>

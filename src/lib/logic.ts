@@ -38,8 +38,14 @@ export const paymentsOf = (g: Group, memberId: string, round = g.currentRound) =
     (p) => p.memberId === memberId && (g.type === "collecte" || p.round === round)
   );
 
+/** Paiement déclaré par le membre, pas encore confirmé par le trésorier */
+export const isDeclared = (g: Group, memberId: string, round: number) =>
+  g.pending.some((p) => p.memberId === memberId && (g.type === "collecte" || p.round === round));
+
 export function memberStatus(g: Group, memberId: string): MemberStatus {
   if (paymentsOf(g, memberId).length > 0) return "paye";
+  // Un membre qui a déclaré son paiement n'est jamais « en retard » à cause d'une confirmation tardive
+  if (isDeclared(g, memberId, g.currentRound)) return "a_confirmer";
   return isLate(g, g.currentRound) ? "retard" : "attente";
 }
 
@@ -56,7 +62,7 @@ export function roundStats(g: Group) {
     g.type === "collecte" ? g.payments : g.payments.filter((p) => p.round === g.currentRound);
   const collected = sum(roundPayments);
   const expected = g.type === "collecte" ? g.target ?? 0 : g.amount * g.members.length;
-  const counts = { paye: 0, attente: 0, retard: 0 };
+  const counts = { paye: 0, a_confirmer: 0, attente: 0, retard: 0 };
   g.members.forEach((m) => counts[memberStatus(g, m.id)]++);
   return { collected, expected, counts, progress: expected ? Math.min(1, collected / expected) : 0 };
 }
@@ -90,7 +96,7 @@ export function roundsToPay(g: Group, memberId: string): number[] {
   if (g.type === "collecte") return [];
   const start = g.type === "tontine" ? 1 : g.currentRound;
   const out: number[] = [];
-  for (let r = start; r <= maxRound(g); r++) if (!isPaid(g, memberId, r)) out.push(r);
+  for (let r = start; r <= maxRound(g); r++) if (!isPaid(g, memberId, r) && !isDeclared(g, memberId, r)) out.push(r);
   return out;
 }
 
@@ -179,7 +185,7 @@ export function impayes(g: Group, memberId: string): number[] {
   const out: number[] = [];
   for (let r = 1; r <= g.currentRound; r++) {
     if (r === g.currentRound && !isLate(g, r)) break;
-    if (!isPaid(g, memberId, r)) out.push(r);
+    if (!isPaid(g, memberId, r) && !isDeclared(g, memberId, r)) out.push(r);
   }
   return out;
 }

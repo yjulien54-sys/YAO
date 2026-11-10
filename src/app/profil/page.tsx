@@ -1,8 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { ChevronRight, Download, Headset, FileText, HelpCircle, Landmark, LogOut, Pencil, Share2, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ChevronRight, Download, Fingerprint, Headset, FileText, HelpCircle, KeyRound, Landmark, LogOut, Pencil, Share2, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
+import { CLE_SESSION, aEmpreinte, activerEmpreinte, desactiverEmpreinte, empreinteDisponible, supprimerVerrou } from "@/lib/verrou";
 import { BottomNav } from "@/components/BottomNav";
 import { IconBadge } from "@/components/icons";
 import { Avatar, Button, Card, Field, Header, Loading, Page, inputClass, useRequireUser } from "@/components/ui";
@@ -31,7 +32,13 @@ function Ligne({ href, icon, label, detail, externe, onClick }: { href?: string;
 
 export default function ProfilPage() {
   const ok = useRequireUser();
-  const { user, groups, loaded, logout, updateProfile } = useStore();
+  const { user, userId, groups, loaded, logout, updateProfile } = useStore();
+  const [bioDispo, setBioDispo] = useState(false);
+  const [bioActive, setBioActive] = useState(false);
+  useEffect(() => {
+    empreinteDisponible().then(setBioDispo);
+    if (userId) setBioActive(aEmpreinte(userId));
+  }, [userId]);
   const [edition, setEdition] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -98,6 +105,46 @@ export default function ProfilPage() {
             <Ligne href="/aide#iphone" icon={Smartphone} label="Installer sur iPhone" detail="Ajoute Cotiz sur l’écran d’accueil" />
             <Ligne href={partage} externe icon={Share2} label="Partager Cotiz" detail="Envoie l’application à tes proches sur WhatsApp" />
           </Card>
+        </div>
+
+        <div>
+          <h2 className="mb-2 px-1 text-xs font-bold uppercase tracking-wide text-stone-500">Sécurité</h2>
+          <Card className="divide-y divide-stone-100 !p-0">
+            <Ligne
+              icon={KeyRound}
+              label="Changer mon code secret"
+              detail="Le code à 4 chiffres demandé à l’ouverture"
+              onClick={() => {
+                if (!userId || !confirm("Créer un nouveau code secret maintenant ?")) return;
+                supprimerVerrou(userId);
+                try { sessionStorage.removeItem(CLE_SESSION); } catch {}
+                window.location.reload();
+              }}
+            />
+            {bioDispo && (
+              <Ligne
+                icon={Fingerprint}
+                label={bioActive ? "Désactiver l’empreinte" : "Activer l’empreinte"}
+                detail={bioActive ? "Activée : tu entres avec ton doigt ou ton visage" : "Entre plus vite avec ton doigt ou ton visage"}
+                onClick={async () => {
+                  if (!userId) return;
+                  if (bioActive) {
+                    desactiverEmpreinte(userId);
+                    setBioActive(false);
+                    return setMsg("Empreinte désactivée.");
+                  }
+                  try {
+                    await activerEmpreinte(userId, user!.name, user!.phone);
+                    setBioActive(aEmpreinte(userId));
+                    setMsg(aEmpreinte(userId) ? "Empreinte activée." : "Crée d’abord ton code secret.");
+                  } catch {
+                    setMsg("L’empreinte n’a pas pu être activée.");
+                  }
+                }}
+              />
+            )}
+          </Card>
+          {msg && <p className="mt-2 px-1 text-sm font-medium text-emerald-700">{msg}</p>}
         </div>
 
         <div>

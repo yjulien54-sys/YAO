@@ -13,7 +13,7 @@ export type PenaltyDestination = "beneficiaire" | "solidarite" | "recompense" | 
 export type PayoutNature = "versement" | "don" | "solidarite" | "recompense";
 
 export type AddPolicy = "tresorier" | "gestionnaires" | "tous";
-export type MemberStatus = "paye" | "attente" | "retard";
+export type MemberStatus = "paye" | "a_confirmer" | "attente" | "retard";
 
 export interface User {
   name: string;

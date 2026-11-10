@@ -10,7 +10,6 @@ import { TYPE_LABEL, amountDue, beneficiary, impayes, memberStatus, dueDate, isL
 import { useStore } from "@/lib/store";
 import { BottomNav } from "@/components/BottomNav";
 import { Annonces } from "@/components/Annonces";
-import { Bienvenue } from "@/components/Bienvenue";
 import { AlertCircle, ChevronRight, ClipboardPaste, HandCoins, Headset, Link2, Plus, Repeat, Users, Wallet } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 
@@ -264,7 +263,6 @@ export default function Groupes() {
           </div>
         </div>
       )}
-      <Bienvenue nom={user!.name} />
       <BottomNav />
     </Page>
   );

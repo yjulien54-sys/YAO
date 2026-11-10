@@ -77,7 +77,7 @@ export default function GroupeDetail() {
   };
 
   const sortedMembers = [...g.members].sort((a, b) => {
-    const rank = { retard: 0, attente: 1, paye: 2 };
+    const rank = { retard: 0, attente: 1, a_confirmer: 2, paye: 3 };
     return rank[memberStatus(g, a.id)] - rank[memberStatus(g, b.id)];
   });
 
@@ -122,7 +122,7 @@ export default function GroupeDetail() {
           </div>
           <div className="grid grid-cols-3 divide-x divide-stone-200 text-center">
             <Stat n={st.counts.paye} label="Payé" cls="text-emerald-700" />
-            <Stat n={st.counts.attente} label="En attente" cls="text-amber-600" />
+            <Stat n={st.counts.attente + st.counts.a_confirmer} label="En attente" cls="text-amber-600" />
             <Stat n={st.counts.retard} label="En retard" cls="text-red-600" />
           </div>
         </Card>
@@ -270,6 +270,11 @@ export default function GroupeDetail() {
                       )}
                     </div>
                   </div>
+                  {g.type !== "collecte" && g.penalty > 0 && d.every((p) => p.penalty === 0) && (
+                    <p className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-[0.8125rem] font-semibold text-emerald-800">
+                      <Check size={13} strokeWidth={2.4} /> Déclaré à temps : aucune pénalité, même si tu confirmes après l’échéance
+                    </p>
+                  )}
                   <p className="mt-1.5 text-[0.8125rem] text-stone-500">Confirme seulement si tu as reçu <b>{fcfa(sum(d))}</b> au total. S’il manque de l’argent, touche « Pas reçu » et préviens le membre.</p>
                   <div className="mt-2 grid grid-cols-2 gap-2">
                     <Button
