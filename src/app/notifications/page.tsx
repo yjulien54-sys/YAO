@@ -5,7 +5,7 @@ import { Bell, CheckCircle2, Clock, ShieldCheck, UserPlus, XCircle } from "lucid
 import { BottomNav } from "@/components/BottomNav";
 import { IconBadge } from "@/components/icons";
 import { Card, Header, Loading, Page, useRequireUser } from "@/components/ui";
-import { useNotifications } from "@/lib/notifications";
+import { montantsLisibles, useNotifications } from "@/lib/notifications";
 
 const ICONE: Record<string, [typeof Bell, "vert" | "ambre" | "rouge" | "bleu" | "violet"]> = {
   paiement_declare: [Clock, "ambre"],
@@ -56,7 +56,7 @@ export default function Notifications() {
                   <IconBadge icon={I} ton={ton} taille="sm" />
                   <div className="min-w-0 flex-1">
                     <p className={`text-sm ${n.lue ? "font-semibold text-stone-700" : "font-bold text-stone-900"}`}>{n.titre}</p>
-                    {n.texte && <p className="text-[0.8125rem] leading-snug text-stone-600">{n.texte}</p>}
+                    {n.texte && <p className="text-[0.8125rem] leading-snug text-stone-600">{montantsLisibles(n.texte)}</p>}
                     <p className="mt-0.5 text-xs text-stone-400">{ilYa(n.le)}</p>
                   </div>
                   {!n.lue && <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-orange-500" aria-label="Non lue" />}

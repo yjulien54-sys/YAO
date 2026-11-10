@@ -7,6 +7,9 @@ import { supabase } from "./supabase";
 import { useStore } from "./store";
 import { vibrer } from "./haptique";
 
+/** « 10000 F » → « 10 000 F » dans les textes de notifications */
+export const montantsLisibles = (t: string | null) => (t ?? "").replace(/\d{4,}(?= F)/g, (n) => n.replace(/\B(?=(\d{3})+(?!\d))/g, " "));
+
 export type Notif = { id: number; type: string; titre: string; texte: string | null; lien: string | null; lue: boolean; le: string };
 
 type Ctx = { liste: Notif[]; nonLues: number; dispo: boolean; marquerLue: (id: number) => Promise<void>; marquerToutLu: () => Promise<void> };
@@ -91,7 +94,7 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700"><Bell size={19} strokeWidth={2} /></span>
               <span className="min-w-0">
                 <span className="block text-sm font-bold text-stone-900">{alerte.titre}</span>
-                {alerte.texte && <span className="block text-[0.8125rem] leading-snug text-stone-600">{alerte.texte}</span>}
+                {alerte.texte && <span className="block text-[0.8125rem] leading-snug text-stone-600">{montantsLisibles(alerte.texte)}</span>}
               </span>
             </button>
             <button type="button" onClick={() => setAlerte(null)} aria-label="Fermer" className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-stone-400 hover:bg-stone-100">
