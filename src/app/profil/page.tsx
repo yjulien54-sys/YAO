@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ChevronRight, Download, Headset, FileText, HelpCircle, KeyRound, Landmark, LogOut, Pencil, Share2, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
-import { etatCode, type Etat } from "@/lib/verrou";
+import { ChevronRight, Download, Fingerprint, Headset, FileText, HelpCircle, KeyRound, Landmark, LogOut, Pencil, Share2, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
+import { aEmpreinte, activerEmpreinte, desactiverEmpreinte, empreinteDisponible, etatCode, type Etat } from "@/lib/verrou";
 import { ClavierCode } from "@/components/ClavierCode";
 import { dateLongue } from "@/lib/format";
 import { BottomNav } from "@/components/BottomNav";
@@ -38,9 +38,15 @@ export default function ProfilPage() {
   const [etatC, setEtatC] = useState<Etat | null>(null);
   const [changerCode, setChangerCode] = useState(false);
   const [msgCode, setMsgCode] = useState("");
+  const [bioDispo, setBioDispo] = useState(false);
+  const [bioActive, setBioActive] = useState(false);
   useEffect(() => {
     if (userId) etatCode(userId).then(setEtatC);
   }, [userId, changerCode]);
+  useEffect(() => {
+    empreinteDisponible().then(setBioDispo);
+    if (userId) setBioActive(aEmpreinte(userId));
+  }, [userId]);
   const [edition, setEdition] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -118,6 +124,29 @@ export default function ProfilPage() {
               detail={etatC?.modifieLe ? `Dernière modification : ${dateLongue(etatC.modifieLe)}` : "Le code à 4 chiffres demandé à l’ouverture de Cotiz"}
               onClick={() => setChangerCode(true)}
             />
+            {bioDispo && (
+              <Ligne
+                icon={Fingerprint}
+                label={bioActive ? "Désactiver l’empreinte" : "Activer l’empreinte"}
+                detail={bioActive ? "Activée sur ce téléphone" : "Entrer aussi avec ton doigt, en plus du code"}
+                onClick={async () => {
+                  if (!userId) return;
+                  if (bioActive) {
+                    desactiverEmpreinte(userId);
+                    setBioActive(false);
+                    return setMsgCode("Empreinte désactivée sur ce téléphone.");
+                  }
+                  if (!etatC?.defini) return setMsgCode("Crée d’abord ton code secret.");
+                  try {
+                    await activerEmpreinte(userId, user!.name, user!.phone);
+                    setBioActive(true);
+                    setMsgCode("Empreinte activée.");
+                  } catch {
+                    setMsgCode("L’empreinte n’a pas pu être activée.");
+                  }
+                }}
+              />
+            )}
           </Card>
           {msgCode && <p className="mt-2 px-1 text-sm font-medium text-emerald-700">{msgCode}</p>}
         </div>

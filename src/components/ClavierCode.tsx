@@ -1,24 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Delete, Headset, Lock, ShieldCheck, X } from "lucide-react";
-import { ESSAIS_MAX, definirCode, verifierCode } from "@/lib/verrou";
+import { Delete, Fingerprint, Headset, Lock, ShieldCheck, X } from "lucide-react";
+import { ESSAIS_MAX, aEmpreinte, activerEmpreinte, definirCode, empreinteDisponible, verifierCode, verifierEmpreinte } from "@/lib/verrou";
+import { vibrer } from "@/lib/haptique";
 import { SUPPORT_PHONE } from "@/lib/support";
 import { waLink } from "@/lib/whatsapp";
 
-type Mode = "creation" | "confirmation" | "saisie" | "ancien" | "oubli";
-
-const vibrer = (ms: number | number[]) => {
-  try { navigator.vibrate?.(ms); } catch {}
-};
+type Mode = "creation" | "confirmation" | "saisie" | "ancien" | "oubli" | "empreinte";
 
 /**
  * Panneau du code secret Cotiz.
  * - defini = false : création du code ; true : saisie du code.
  * - changement : on demande l'ancien code, puis le nouveau deux fois.
  */
-export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, onOk, onFermer, onOubli, tel }: {
-  uid: string; defini: boolean; changement?: boolean; attenteInitiale?: number; tel?: string;
+export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, activerApres, onOk, onFermer, onOubli, tel, nom = "" }: {
+  uid: string; defini: boolean; changement?: boolean; attenteInitiale?: number; activerApres?: boolean; tel?: string; nom?: string;
   onOk: () => void; onFermer?: () => void; onOubli?: () => void;
 }) {
   const [mode, setMode] = useState<Mode>(changement ? "ancien" : defini ? "saisie" : "creation");
@@ -29,6 +26,41 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, onOk
   const [secoue, setSecoue] = useState(false);
   const [attente, setAttente] = useState(attenteInitiale);
   const [occupe, setOccupe] = useState(false);
+  const [bioDispo, setBioDispo] = useState(false);
+  const [bioActive, setBioActive] = useState(() => aEmpreinte(uid));
+
+  useEffect(() => {
+    empreinteDisponible().then(setBioDispo);
+  }, []);
+
+  async function parEmpreinte() {
+    vibrer("touche");
+    setOccupe(true);
+    const ok = await verifierEmpreinte(uid);
+    setOccupe(false);
+    if (ok) {
+      vibrer("ok");
+      return onOk();
+    }
+    setErreur("Empreinte non reconnue. Tape ton code.");
+    vibrer("erreur");
+  }
+
+  async function activer() {
+    vibrer("touche");
+    setOccupe(true);
+    try {
+      await activerEmpreinte(uid, nom, tel ?? "");
+      setBioActive(true);
+      vibrer("ok");
+      onOk();
+    } catch {
+      setErreur("L’empreinte n’a pas pu être activée. Tu pourras réessayer dans ton profil.");
+      vibrer("erreur");
+    } finally {
+      setOccupe(false);
+    }
+  }
 
   // Compte à rebours après trop d'erreurs
   useEffect(() => {
@@ -40,7 +72,7 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, onOk
   const echec = (msg: string) => {
     setErreur(msg);
     setSecoue(true);
-    vibrer([40, 60, 40]);
+    vibrer("erreur");
     setTimeout(() => {
       setSecoue(false);
       setCode("");
@@ -75,7 +107,9 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, onOk
         setMode(changement ? "ancien" : "creation");
         return echec(r.erreur ?? "Le code n’a pas pu être enregistré.");
       }
-      vibrer(30);
+      vibrer("ok");
+      // Première création : on propose l'empreinte si le téléphone en a une
+      if (!changement && bioDispo && !bioActive) return setMode("empreinte");
       return onOk();
     }
     if (mode === "saisie") {
@@ -83,7 +117,9 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, onOk
       const r = await verifierCode(uid, c);
       setOccupe(false);
       if (r.ok) {
-        vibrer(30);
+        vibrer("ok");
+        // Appui sur « Empreinte » alors qu'elle n'est pas activée : on la propose après le code
+        if (activerApres && bioDispo && !bioActive) return setMode("empreinte");
         return onOk();
       }
       if (r.attente) {
@@ -96,7 +132,7 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, onOk
 
   function touche(t: string) {
     if (occupe || attente > 0 || code.length >= 4) return;
-    vibrer(10);
+    vibrer("touche");
     setErreur("");
     const c = code + t;
     setCode(c);
@@ -107,8 +143,9 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, onOk
     ancien: ["Ton code actuel", "Tape d’abord ton code secret actuel."],
     creation: [changement ? "Nouveau code" : "Crée ton code secret", "4 chiffres pour ouvrir Cotiz. Ce n’est pas le code de ton téléphone."],
     confirmation: ["Confirme ton code", "Tape le même code une deuxième fois."],
-    saisie: ["Entre ton code Cotiz", "Ton code secret à 4 chiffres pour accéder à tes groupes."],
+    saisie: ["Entre ton code Cotiz", activerApres && !bioActive ? "Tape ton code une fois pour activer l’empreinte." : "Ton code secret à 4 chiffres pour accéder à tes groupes."],
     oubli: ["Code oublié ?", ""],
+    empreinte: ["Activer l’empreinte ?", "Entre aussi avec ton doigt. Ton code Cotiz reste valable."],
   };
   const [titre, sous] = titres[mode];
   const fermable = !!onFermer && (mode === "saisie" || mode === "oubli" || changement);
@@ -120,7 +157,7 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, onOk
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
-              {mode === "oubli" ? <ShieldCheck size={22} strokeWidth={1.9} /> : <Lock size={21} strokeWidth={2} />}
+              {mode === "oubli" ? <ShieldCheck size={22} strokeWidth={1.9} /> : mode === "empreinte" ? <Fingerprint size={22} strokeWidth={1.9} /> : <Lock size={21} strokeWidth={2} />}
             </span>
             <div>
               <p className="text-lg font-extrabold leading-tight">{titre}</p>
@@ -134,7 +171,15 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, onOk
           )}
         </div>
 
-        {mode === "oubli" ? (
+        {mode === "empreinte" ? (
+          <div className="mt-6 space-y-2.5">
+            <button type="button" disabled={occupe} onClick={activer} className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-emerald-700 py-3.5 text-[0.95rem] font-bold text-white disabled:opacity-60">
+              <Fingerprint size={20} strokeWidth={2} /> {occupe ? "Pose ton doigt…" : "Activer l’empreinte"}
+            </button>
+            <button type="button" onClick={() => { vibrer("touche"); onOk(); }} className="w-full rounded-[14px] py-3 text-sm font-semibold text-stone-500">Plus tard</button>
+            {erreur && <p className="text-center text-sm font-medium text-red-600">{erreur}</p>}
+          </div>
+        ) : mode === "oubli" ? (
           <div className="mt-4 space-y-3 text-sm text-stone-600">
             <p>Pour ta sécurité, personne ne peut lire ton code, même pas l’équipe Cotiz. Le service client peut le <b>réinitialiser</b> après avoir vérifié ton identité. Tu en créeras alors un nouveau.</p>
             <a
@@ -168,13 +213,17 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, onOk
               {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((t) => (
                 <Touche key={t} onClick={() => touche(t)} disabled={attente > 0}>{t}</Touche>
               ))}
-              <span />
+              {mode === "saisie" && bioActive && bioDispo ? (
+                <Touche onClick={parEmpreinte} label="Entrer avec l’empreinte" discret><Fingerprint size={28} strokeWidth={1.8} className="text-emerald-700" /></Touche>
+              ) : (
+                <span />
+              )}
               <Touche onClick={() => touche("0")} disabled={attente > 0}>0</Touche>
-              <Touche onClick={() => { vibrer(10); setCode((c) => c.slice(0, -1)); }} label="Effacer" discret><Delete size={24} strokeWidth={1.8} /></Touche>
+              <Touche onClick={() => { vibrer("touche"); setCode((c) => c.slice(0, -1)); }} label="Effacer" discret><Delete size={24} strokeWidth={1.8} /></Touche>
             </div>
 
             {(mode === "saisie" || mode === "ancien") && (
-              <button type="button" onClick={() => setMode("oubli")} className="mx-auto mt-3 block text-sm font-semibold text-emerald-700">Code oublié ?</button>
+              <button type="button" onClick={() => { vibrer("touche"); setMode("oubli"); }} className="mx-auto mt-3 block text-sm font-semibold text-emerald-700">Code oublié ?</button>
             )}
           </>
         )}
@@ -189,8 +238,9 @@ function Touche({ children, onClick, disabled, label, discret }: { children: Rea
       type="button"
       aria-label={label}
       disabled={disabled}
-      onClick={onClick}
-      className={`mx-auto grid h-[62px] w-[62px] place-items-center rounded-full text-[1.6rem] font-semibold transition active:scale-90 disabled:opacity-30 ${discret ? "text-stone-500 active:bg-stone-100" : "bg-stone-100 text-stone-900 active:bg-emerald-100"}`}
+      onPointerDown={(e) => { e.preventDefault(); if (!disabled) onClick(); }}
+      onClick={(e) => { if (e.detail === 0) onClick(); }}
+      className={`mx-auto grid h-[62px] w-[62px] select-none [touch-action:manipulation] place-items-center rounded-full text-[1.6rem] font-semibold transition active:scale-90 disabled:opacity-30 ${discret ? "text-stone-500 active:bg-stone-100" : "bg-stone-100 text-stone-900 active:bg-emerald-100"}`}
     >
       {children}
     </button>

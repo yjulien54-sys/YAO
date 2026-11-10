@@ -118,4 +118,60 @@ export async function verifierCode(uid: string, code: string): Promise<Resultat>
 export function oublierSurCeTelephone(uid: string) {
   ecrire(cle(uid), null);
   ecrire(cleEssais(uid), null);
+  ecrire(`cotiz:empreinte:${uid}`, null);
+}
+
+/* ---------- Empreinte (ou visage) : option propre à ce téléphone ---------- */
+
+const cleEmpreinte = (uid: string) => `cotiz:empreinte:${uid}`;
+const b64 = (b: ArrayBuffer) => btoa(String.fromCharCode(...new Uint8Array(b)));
+const deB64 = (s: string) => Uint8Array.from(atob(s), (c) => c.charCodeAt(0));
+
+export const aEmpreinte = (uid: string) => !!lire<string>(cleEmpreinte(uid));
+
+export async function empreinteDisponible() {
+  try {
+    return typeof window !== "undefined" && !!window.PublicKeyCredential && (await PublicKeyCredential.isUserVerifyingPlatformAuthenticatorAvailable());
+  } catch {
+    return false;
+  }
+}
+
+/** Associe l'empreinte de ce téléphone au compte Cotiz (le téléphone demande le doigt) */
+export async function activerEmpreinte(uid: string, nom: string, tel: string) {
+  const cred = (await navigator.credentials.create({
+    publicKey: {
+      challenge: crypto.getRandomValues(new Uint8Array(32)),
+      rp: { name: "Cotiz" },
+      user: { id: new TextEncoder().encode(uid).slice(0, 64), name: tel || nom, displayName: nom },
+      pubKeyCredParams: [
+        { type: "public-key", alg: -7 },
+        { type: "public-key", alg: -257 },
+      ],
+      authenticatorSelection: { authenticatorAttachment: "platform", userVerification: "required", residentKey: "discouraged" },
+      timeout: 60_000,
+    },
+  })) as PublicKeyCredential | null;
+  if (!cred) throw new Error("Empreinte non enregistrée");
+  ecrire(cleEmpreinte(uid), b64(cred.rawId));
+}
+
+export const desactiverEmpreinte = (uid: string) => ecrire(cleEmpreinte(uid), null);
+
+/** Demande l'empreinte au téléphone : true si c'est bien la personne */
+export async function verifierEmpreinte(uid: string) {
+  const id = lire<string>(cleEmpreinte(uid));
+  if (!id) return false;
+  try {
+    return !!(await navigator.credentials.get({
+      publicKey: {
+        challenge: crypto.getRandomValues(new Uint8Array(32)),
+        allowCredentials: [{ type: "public-key", id: deB64(id) }],
+        userVerification: "required",
+        timeout: 60_000,
+      },
+    }));
+  } catch {
+    return false;
+  }
 }

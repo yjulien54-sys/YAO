@@ -3,9 +3,10 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
-import { CLE_SESSION, etatCode, oublierSurCeTelephone, type Etat } from "@/lib/verrou";
+import { CLE_SESSION, aEmpreinte, empreinteDisponible, etatCode, oublierSurCeTelephone, verifierEmpreinte, type Etat } from "@/lib/verrou";
+import { vibrer } from "@/lib/haptique";
 import { ClavierCode } from "./ClavierCode";
-import { Check, Fingerprint, Gift, Repeat, Shuffle, Wallet } from "lucide-react";
+import { Check, Fingerprint, Gift, Grid3x3, Repeat, Shuffle, Wallet } from "lucide-react";
 import { IconBadge } from "./icons";
 import { prenom } from "@/lib/format";
 
@@ -51,35 +52,37 @@ function useCompteur(cible: number, duree: number, depart: number) {
 
 type EtatBouton = "repos" | "lecture" | "ok";
 
-/** Bouton empreinte : lance l'empreinte du téléphone ou ouvre le code secret */
-function BoutonEmpreinte({ etat, onAppui, libelle }: { etat: EtatBouton; onAppui: () => void; libelle: string }) {
-  const R = 46, C = 2 * Math.PI * R;
-  const appuyer = () => etat === "repos" && onAppui();
+/** Bouton rond animé (empreinte ou code) */
+function BoutonRond({ etat, onAppui, libelle, aria, icone: Icone, principal }: { etat: EtatBouton; onAppui: () => void; libelle: string; aria: string; icone: typeof Fingerprint; principal?: boolean }) {
+  const R = 40, C = 2 * Math.PI * R;
+  const appuyer = () => {
+    if (etat !== "repos") return;
+    vibrer("touche");
+    onAppui();
+  };
 
   return (
-    <div className="flex flex-col items-center gap-3">
-      <button type="button" onPointerDown={appuyer} onClick={appuyer} aria-label="Entrer dans Cotiz" className="group relative grid h-[104px] w-[104px] place-items-center rounded-full outline-none">
-        {/* Ondes qui pulsent autour */}
-        {etat === "repos" && (
+    <div className="flex w-[110px] flex-col items-center gap-2.5">
+      <button type="button" onPointerDown={appuyer} onClick={(e) => e.detail === 0 && appuyer()} aria-label={aria} className="group relative grid h-[92px] w-[92px] place-items-center rounded-full outline-none [touch-action:manipulation]">
+        {etat === "repos" && principal && (
           <>
             <span className="onde absolute inset-0 rounded-full ring-2 ring-white/40" />
             <span className="onde absolute inset-0 rounded-full ring-2 ring-white/30" style={{ animationDelay: "1.1s" }} />
           </>
         )}
-        {/* Cercle de lecture */}
-        <svg viewBox="0 0 104 104" className="absolute inset-0 -rotate-90" aria-hidden>
-          <circle cx="52" cy="52" r={R} fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="4" />
+        <svg viewBox="0 0 92 92" className="absolute inset-0 -rotate-90" aria-hidden>
+          <circle cx="46" cy="46" r={R} fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="3.5" />
           <circle
-            cx="52" cy="52" r={R} fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round"
+            cx="46" cy="46" r={R} fill="none" stroke="#fff" strokeWidth="3.5" strokeLinecap="round"
             strokeDasharray={C} strokeDashoffset={etat === "repos" ? C : 0}
             style={{ transition: etat === "lecture" ? "stroke-dashoffset 1200ms ease-out" : "stroke-dashoffset 220ms ease-out" }}
           />
         </svg>
-        <span className={`relative grid h-[80px] w-[80px] place-items-center rounded-full shadow-xl transition-all duration-300 group-active:scale-95 ${etat === "ok" ? "bg-white text-emerald-700" : "bg-white/15 text-white ring-1 ring-white/30 backdrop-blur-sm"}`}>
-          {etat === "ok" ? <Check size={40} strokeWidth={2.6} className="pop" /> : <Fingerprint size={44} strokeWidth={1.6} className={etat === "lecture" ? "animate-pulse" : ""} />}
+        <span className={`relative grid h-[72px] w-[72px] place-items-center rounded-full shadow-xl transition-all duration-300 group-active:scale-90 ${etat === "ok" ? "bg-white text-emerald-700" : "bg-white/15 text-white ring-1 ring-white/30 backdrop-blur-sm"}`}>
+          {etat === "ok" ? <Check size={36} strokeWidth={2.6} className="pop" /> : <Icone size={38} strokeWidth={1.6} className={etat === "lecture" ? "animate-pulse" : ""} />}
         </span>
       </button>
-      <p className="glisse-texte text-[0.95rem] font-bold tracking-wide">
+      <p className="glisse-texte text-center text-[0.9rem] font-bold leading-tight tracking-wide">
         {etat === "repos" ? libelle : etat === "lecture" ? "Vérification…" : "Bienvenue !"}
       </p>
     </div>
@@ -100,6 +103,12 @@ export function Bienvenue() {
   const [etat, setEtat] = useState<EtatBouton>("repos");
   const [clavier, setClavier] = useState(false);
   const [etatC, setEtatC] = useState<Etat | null>(null);
+  const [etatE, setEtatE] = useState<EtatBouton>("repos");
+  const [bioDispo, setBioDispo] = useState(false);
+  const [activerApres, setActiverApres] = useState(false);
+  useEffect(() => {
+    empreinteDisponible().then(setBioDispo);
+  }, []);
   const montant = useCompteur(visible ? 400000 : 0, 1600, 1900);
   const nom = user?.name ?? "";
   const actif = ready && !!user && !!userId && !PAGES_PUBLIQUES.includes(path);
@@ -124,6 +133,7 @@ export function Bienvenue() {
         setClavier(false);
         setSortie(false);
         setEtat("repos");
+        setEtatE("repos");
         setVisible(true);
       }
     };
@@ -145,19 +155,35 @@ export function Bienvenue() {
   function entrer() {
     try { sessionStorage.setItem(CLE_SESSION, "1"); } catch {}
     setClavier(false);
-    setEtat("ok");
+    setEtat((x) => (etatE === "ok" ? x : "ok"));
     setTimeout(() => setSortie(true), 250);
     setTimeout(() => setVisible(false), 550);
   }
 
-  // Appui sur le rond : ouvre le clavier du code Cotiz (création la première fois)
-  async function appui() {
+  // Bouton « Code » : ouvre le clavier du code Cotiz (création la première fois)
+  async function appuiCode(activer = false) {
     if (!userId) return;
     setEtat("lecture");
     const e = await etatCode(userId);
     setEtatC(e);
     setEtat("repos");
+    setActiverApres(activer);
     setClavier(true);
+  }
+
+  // Bouton « Empreinte » : le téléphone demande le doigt. Pas encore activée : on passe d'abord par le code
+  async function appuiEmpreinte() {
+    if (!userId) return;
+    if (!aEmpreinte(userId)) return appuiCode(true);
+    setEtatE("lecture");
+    if (await verifierEmpreinte(userId)) {
+      vibrer("ok");
+      setEtatE("ok");
+      return entrer();
+    }
+    vibrer("erreur");
+    setEtatE("repos");
+    appuiCode();
   }
 
   async function oubli() {
@@ -267,10 +293,13 @@ export function Bienvenue() {
 
         <div className="apparait relative mt-auto space-y-4 pt-8" style={{ animationDelay: "700ms" }}>
           <p className="text-center text-sm text-emerald-50/80">Tout le monde voit qui a payé. Personne ne garde l’argent seul.</p>
-          <BoutonEmpreinte etat={etat} onAppui={appui} libelle="Appuie pour entrer" />
+          <div className="flex items-start justify-center gap-6">
+            {bioDispo && <BoutonRond etat={etatE} onAppui={appuiEmpreinte} libelle="Empreinte" aria="Entrer avec l’empreinte" icone={Fingerprint} principal />}
+            <BoutonRond etat={etatE === "ok" ? "repos" : etat} onAppui={() => appuiCode()} libelle="Code secret" aria="Entrer avec le code" icone={Grid3x3} principal={!bioDispo} />
+          </div>
         </div>
         {clavier && userId && (
-          <ClavierCode uid={userId} defini={!!etatC?.defini} attenteInitiale={etatC?.attente ?? 0} tel={user?.phone ?? ""} onOk={entrer} onFermer={() => setClavier(false)} onOubli={oubli} />
+          <ClavierCode uid={userId} defini={!!etatC?.defini} attenteInitiale={etatC?.attente ?? 0} activerApres={activerApres} tel={user?.phone ?? ""} nom={nom} onOk={entrer} onFermer={() => setClavier(false)} onOubli={oubli} />
         )}
       </section>
     </div>
