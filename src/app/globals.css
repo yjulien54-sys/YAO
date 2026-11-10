@@ -56,3 +56,11 @@ body {
 }
 .flotte { animation: flotte 5s ease-in-out infinite; }
 @media (prefers-reduced-motion: reduce) { .flotte { animation: none; } }
+
+/* Documents juridiques */
+.juridique ul { list-style: disc; padding-left: 1.25rem; }
+.juridique ul > li + li { margin-top: 0.35rem; }
+.juridique b { color: #1c1917; }
+.juridique a { color: #047857; font-weight: 600; text-decoration: underline; }
+
+@keyframes remplir { from { width: 0%; } to { width: 100%; } }

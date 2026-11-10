@@ -45,7 +45,7 @@ export default function Aide() {
           Un souci avec un paiement dans un groupe ? Tu peux aussi contacter ton trésorier avec les boutons « Appeler » ou « Écrire » dans le groupe.
         </p>
         <p className="text-center text-xs text-stone-400">
-          <Link href="/confidentialite" className="underline">Confidentialité</Link> · <Link href="/suppression-compte" className="underline">Supprimer mon compte</Link>
+          <Link href="/cgu" className="underline">Conditions d’utilisation</Link> · <Link href="/confidentialite" className="underline">Confidentialité</Link> · <Link href="/mentions-legales" className="underline">Mentions légales</Link>
         </p>
       </div>
       <BottomNav />

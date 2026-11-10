@@ -178,7 +178,7 @@ function Accueil() {
           Cotiz ne garde jamais ton argent : les paiements passent par un opérateur agréé BCEAO et arrivent directement sur le compte du groupe.
         </p>
         <p className="mt-4 text-center text-xs text-stone-400">
-          <a href="/confidentialite" className="underline">Confidentialité</a> · <a href="/suppression-compte" className="underline">Supprimer mon compte</a>
+          <a href="/cgu" className="underline">Conditions d’utilisation</a> · <a href="/confidentialite" className="underline">Confidentialité</a> · <a href="/mentions-legales" className="underline">Mentions légales</a>
         </p>
       </div>
       </div>

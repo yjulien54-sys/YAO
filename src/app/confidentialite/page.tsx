@@ -1,53 +1,134 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { ACompleter, DocumentLegal, type Article } from "@/components/DocumentLegal";
+import { SUPPORT_AFFICHE } from "@/lib/support";
 
 export const metadata: Metadata = { title: "Politique de confidentialité — Cotiz" };
 
-const MAJ = "9 novembre 2026";
+const ARTICLES: Article[] = [
+  {
+    id: "responsable",
+    titre: "Responsable du traitement",
+    contenu: (
+      <p>
+        Le responsable du traitement des données est l’Éditeur de Cotiz, identifié dans les <Link href="/mentions-legales">mentions légales</Link>. Cotiz aide
+        les tontines, associations et familles de Côte d’Ivoire à suivre leurs cotisations en toute transparence.
+      </p>
+    ),
+  },
+  {
+    id: "collecte",
+    titre: "Données collectées",
+    contenu: (
+      <>
+        <ul>
+          <li><b>Identité</b> : votre nom et votre numéro de téléphone.</li>
+          <li><b>Groupes</b> : nom, montant et fréquence des cotisations, échéances, membres, ordre des tours.</li>
+          <li><b>Opérations</b> : paiements déclarés ou confirmés (montant, date, moyen de paiement, référence de transaction), versements, pénalités.</li>
+          <li><b>Engagements</b> : acceptation du règlement intérieur et reconnaissances de dette, avec leur date.</li>
+          <li><b>Données techniques</b> : journal de sécurité des actions importantes.</li>
+        </ul>
+        <p className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
+          Nous ne collectons <b className="text-emerald-900">jamais</b> votre code secret Mobile Money ni vos identifiants Wave, Orange Money, MTN ou Moov.
+        </p>
+      </>
+    ),
+  },
+  {
+    id: "finalites",
+    titre: "Finalités et bases légales",
+    contenu: (
+      <ul>
+        <li>Fournir le service : afficher qui a payé, la caisse et le bénéficiaire (exécution des CGU).</li>
+        <li>Permettre au trésorier de confirmer les paiements et d’enregistrer les versements (exécution des CGU).</li>
+        <li>Préparer les messages de rappel que vous choisissez d’envoyer (exécution des CGU).</li>
+        <li>Assurer la sécurité, prévenir la fraude et traiter les litiges (intérêt légitime).</li>
+        <li>Répondre aux obligations légales et aux demandes des autorités (obligation légale).</li>
+      </ul>
+    ),
+  },
+  {
+    id: "destinataires",
+    titre: "Destinataires des données",
+    contenu: (
+      <>
+        <p>
+          Vos données sont visibles uniquement par les <b>membres des groupes dont vous faites partie</b>. Les autres utilisateurs de Cotiz ne voient rien de vos
+          groupes. Nous ne vendons pas vos données et ne les utilisons pas à des fins publicitaires.
+        </p>
+        <p>Nos prestataires techniques y ont accès dans la stricte limite de leur mission :</p>
+        <ul>
+          <li>Supabase (hébergement de la base de données et authentification) ;</li>
+          <li>Vercel (hébergement du site) ;</li>
+          <li>un service d’intelligence artificielle, qui reçoit seulement les éléments utiles à la rédaction d’un rappel (prénom, nom du groupe, montant, date) ;</li>
+          <li>un prestataire d’envoi de SMS, lorsque la vérification par code est activée.</li>
+        </ul>
+      </>
+    ),
+  },
+  {
+    id: "transferts",
+    titre: "Transferts hors de Côte d’Ivoire",
+    contenu: (
+      <p>
+        Certains prestataires hébergent les données hors de Côte d’Ivoire. Ces transferts sont encadrés conformément à la loi n° 2013-450 et aux exigences de
+        l’ARTCI, avec des garanties de sécurité adaptées.
+      </p>
+    ),
+  },
+  {
+    id: "securite",
+    titre: "Sécurité",
+    contenu: (
+      <ul>
+        <li>Connexions chiffrées (HTTPS) ;</li>
+        <li>règles d’accès qui limitent chaque utilisateur à ses propres groupes ;</li>
+        <li>paiements confirmés impossibles à effacer ;</li>
+        <li>alerte à tous les membres en cas de changement du numéro qui reçoit l’argent ;</li>
+        <li>journal horodaté des actions importantes, consultable uniquement par l’équipe Cotiz pour la sécurité et l’assistance.</li>
+      </ul>
+    ),
+  },
+  {
+    id: "conservation",
+    titre: "Durée de conservation",
+    contenu: (
+      <p>
+        Vos données sont conservées tant que votre compte est actif. L’historique des paiements d’un groupe est conservé pour la transparence envers ses
+        membres, même après votre départ, puis archivé pendant la durée nécessaire au règlement d’éventuels litiges.
+      </p>
+    ),
+  },
+  {
+    id: "droits",
+    titre: "Vos droits",
+    contenu: (
+      <>
+        <p>Vous disposez d’un droit d’accès, de rectification, d’opposition et de suppression de vos données.</p>
+        <ul>
+          <li>Supprimer votre compte : page <Link href="/suppression-compte">Supprimer mon compte</Link> ;</li>
+          <li>Toute autre demande : service client au <b>{SUPPORT_AFFICHE}</b> ou par e-mail à <ACompleter>adresse e-mail de contact</ACompleter>.</li>
+        </ul>
+        <p>Vous pouvez également saisir l’ARTCI si vous estimez que vos droits ne sont pas respectés.</p>
+      </>
+    ),
+  },
+  {
+    id: "modification",
+    titre: "Modification de la politique",
+    contenu: <p>Cette politique peut évoluer. Toute modification importante vous sera signalée dans l’application.</p>,
+  },
+];
 
 export default function Confidentialite() {
   return (
-    <main className="mx-auto min-h-dvh max-w-2xl bg-white px-5 py-8 text-base leading-relaxed text-stone-800">
-      <Link href="/" className="text-sm font-semibold text-emerald-700">← Retour à Cotiz</Link>
-      <h1 className="mt-4 text-2xl font-extrabold">Politique de confidentialité</h1>
-      <p className="text-sm text-stone-500">Dernière mise à jour : {MAJ}</p>
-
-      <h2 className="mt-6 text-lg font-bold">1. Qui sommes-nous ?</h2>
-      <p>Cotiz est une application qui aide les tontines, associations et familles de Côte d’Ivoire à suivre leurs cotisations en toute transparence.</p>
-
-      <h2 className="mt-6 text-lg font-bold">2. Données que nous collectons</h2>
-      <ul className="list-disc pl-5">
-        <li><b>Ton nom et ton numéro de téléphone</b>, que tu saisis pour utiliser l’application.</li>
-        <li><b>Les groupes</b> que tu crées ou rejoins (nom, montant des cotisations, échéances, membres).</li>
-        <li><b>Les paiements déclarés ou confirmés</b> (montant, date, moyen de paiement, référence de transaction si tu la saisis) et les versements enregistrés par le trésorier.</li>
-      </ul>
-      <p>Nous ne collectons <b>ni ton code secret Mobile Money, ni tes identifiants Wave, Orange Money, MTN ou Moov</b>. Les paiements se font dans ton application de paiement, en dehors de Cotiz.</p>
-
-      <h2 className="mt-6 text-lg font-bold">3. Pourquoi nous utilisons ces données</h2>
-      <ul className="list-disc pl-5">
-        <li>Afficher à chaque membre d’un groupe qui a payé, combien il y a dans la caisse et qui est le bénéficiaire.</li>
-        <li>Permettre au trésorier de confirmer les paiements et d’enregistrer les versements.</li>
-        <li>Préparer des messages de rappel que <b>tu choisis</b> d’envoyer sur WhatsApp.</li>
-      </ul>
-      <p>Nous ne vendons pas tes données et nous ne les utilisons pas pour de la publicité.</p>
-
-      <h2 className="mt-6 text-lg font-bold">4. Qui peut voir tes données ?</h2>
-      <p>Uniquement les <b>membres des groupes dont tu fais partie</b>. Les autres utilisateurs de Cotiz ne voient rien de tes groupes.</p>
-
-      <h2 className="mt-6 text-lg font-bold">5. Hébergement et sécurité</h2>
-      <p>Les données sont hébergées par notre prestataire Supabase, dans des centres de données sécurisés. L’accès est protégé par des règles qui limitent chaque utilisateur à ses propres groupes. Les messages de rappel peuvent être rédigés à l’aide d’un service d’intelligence artificielle, qui reçoit seulement les informations nécessaires au message (prénom, nom du groupe, montant, date).</p>
-
-      <h2 className="mt-6 text-lg font-bold">Journal des actions (traçabilité)</h2>
-      <p>Pour la sécurité de tous et pour régler les litiges, chaque action importante (création ou modification d’un groupe, ajout ou retrait d’un membre, paiement, versement, acceptation du règlement) est enregistrée avec sa date, son auteur et son contenu. Ce journal n’est accessible qu’à l’équipe de Cotiz, uniquement pour la sécurité, la lutte contre la fraude et l’assistance.</p>
-
-      <h2 className="mt-6 text-lg font-bold">6. Durée de conservation</h2>
-      <p>Tes données sont conservées tant que ton compte existe. L’historique des paiements d’un groupe est conservé pour la transparence du groupe, même si un membre quitte l’application.</p>
-
-      <h2 className="mt-6 text-lg font-bold">7. Tes droits et la suppression de ton compte</h2>
-      <p>Tu peux demander l’accès, la correction ou la suppression de tes données. Pour supprimer ton compte, rends-toi sur la page <Link href="/suppression-compte" className="font-semibold text-emerald-700 underline">Supprimer mon compte</Link>.</p>
-
-      <h2 className="mt-6 text-lg font-bold">8. Contact</h2>
-      <p>Pour toute question, écris-nous à l’adresse e-mail indiquée sur la fiche de Cotiz dans Google Play.</p>
-    </main>
+    <DocumentLegal
+      actuel="/confidentialite"
+      titre="Politique de confidentialité"
+      chapeau="Quelles données Cotiz utilise, pourquoi, qui peut les voir, et comment exercer vos droits."
+      version="2.0"
+      maj="10 novembre 2026"
+      articles={ARTICLES}
+    />
   );
 }

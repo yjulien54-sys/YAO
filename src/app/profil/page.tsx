@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useState } from "react";
-import { ChevronRight, Download, Headset, FileText, HelpCircle, LogOut, Pencil, Share2, Smartphone, Trash2 } from "lucide-react";
+import { ChevronRight, Download, Headset, FileText, HelpCircle, Landmark, LogOut, Pencil, Share2, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
 import { BottomNav } from "@/components/BottomNav";
 import { IconBadge } from "@/components/icons";
 import { Avatar, Button, Card, Field, Header, Loading, Page, inputClass, useRequireUser } from "@/components/ui";
@@ -105,7 +105,9 @@ export default function ProfilPage() {
           <Card className="divide-y divide-stone-100 !p-0">
             <Ligne href="/aide" icon={Headset} label="Service client" detail={`WhatsApp ou appel · ${SUPPORT_AFFICHE}`} />
             <Ligne href="/aide" icon={HelpCircle} label="Questions fréquentes" detail="Paiements, trésorier, rappels…" />
-            <Ligne href="/confidentialite" icon={FileText} label="Confidentialité" />
+            <Ligne href="/cgu" icon={FileText} label="Conditions d’utilisation" />
+            <Ligne href="/confidentialite" icon={ShieldCheck} label="Confidentialité" />
+            <Ligne href="/mentions-legales" icon={Landmark} label="Mentions légales" />
           </Card>
         </div>
 
