@@ -94,7 +94,7 @@ export function Annonces() {
   const diapos = n > 1 ? [...liste, liste[0]] : liste;
 
   return (
-    <section aria-label="Annonces" aria-roledescription="carrousel">
+    <section aria-label="Annonces" aria-roledescription="carrousel" data-pas-glisser>
       <div
         className="overflow-hidden rounded-[22px] shadow-[0_10px_30px_-12px_rgba(6,78,59,0.35)] ring-1 ring-black/5"
         onMouseEnter={() => setPause(true)}

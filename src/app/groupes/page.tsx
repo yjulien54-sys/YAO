@@ -68,6 +68,19 @@ export default function Groupes() {
   };
 
   const enRetard = groups.reduce((n, g) => n + roundStats(g).counts.retard, 0);
+  const retards = groups
+    .map((g) => ({ g, membres: g.members.filter((m) => memberStatus(g, m.id) === "retard") }))
+    .filter((x) => x.membres.length > 0);
+
+  // Bouton de la carte verte : descend jusqu'à la bonne liste et la fait clignoter
+  const allerA = (id: string) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    el.classList.remove("eclair");
+    void el.offsetWidth;
+    el.classList.add("eclair");
+  };
   const totalCaisse = groups.reduce((n, g) => n + g.payments.reduce((s, p) => s + p.amount + p.penalty, 0), 0);
 
   return (
@@ -88,11 +101,13 @@ export default function Groupes() {
             <p className="mt-0.5 text-[2rem] font-extrabold leading-none tracking-tight">{fcfa(totalCaisse)}</p>
           </div>
           <div className="relative grid grid-cols-3 divide-x divide-white/15 border-t border-white/15 bg-black/10 text-center">
-            {([["Groupes", String(groups.length), false], ["À payer", String(aPayer.length), aPayer.length > 0], ["En retard", String(enRetard), enRetard > 0]] as const).map(([l, v, alerte]) => (
-              <div key={l} className="px-2 py-3">
+            {([["Groupes", String(groups.length), false, "mes-groupes"], ["À payer", String(aPayer.length), aPayer.length > 0, "a-payer"], ["En retard", String(enRetard), enRetard > 0, "en-retard"]] as const).map(([l, v, alerte, cible]) => (
+              <button key={l} type="button" onClick={() => allerA(cible)} className="group px-2 py-3 transition hover:bg-white/10 active:bg-white/15">
                 <p className={`text-lg font-extrabold leading-tight ${alerte ? "text-orange-200" : ""}`}>{v}</p>
-                <p className="text-[0.75rem] text-emerald-50/75">{l}</p>
-              </div>
+                <p className="inline-flex items-center gap-0.5 text-[0.75rem] text-emerald-50/75">
+                  {l} <ChevronRight size={12} strokeWidth={2.4} className="opacity-60 transition group-hover:translate-x-0.5" />
+                </p>
+              </button>
             ))}
           </div>
           <div className="bande-kente relative" />
@@ -143,6 +158,31 @@ export default function Groupes() {
           )}
         </section>
 
+        {/* En retard */}
+        <section id="en-retard" className="scroll-mt-20 space-y-2">
+          <div className="flex items-center justify-between">
+            <h3 className="text-[0.95rem] font-bold text-stone-900">En retard</h3>
+            {enRetard > 0 && <span className="text-sm font-semibold text-red-600">{enRetard} membre{enRetard > 1 ? "s" : ""}</span>}
+          </div>
+          {retards.length === 0 ? (
+            <Card className="!p-3.5 text-sm text-stone-500">Personne n’est en retard dans tes groupes.</Card>
+          ) : (
+            <Card className="divide-y divide-stone-100 !p-0">
+              {retards.map(({ g, membres }) => (
+                <Link key={g.id} href={`/groupes/${g.id}`} className="flex items-center gap-3 px-4 py-3 transition hover:bg-stone-50">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-red-50 text-red-600"><AlertCircle size={18} strokeWidth={2} /></span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-semibold">{g.name}</p>
+                    <p className="truncate text-[0.8125rem] text-red-600">{membres.map((m) => prenom(m.name)).join(", ")}</p>
+                  </div>
+                  <span className="shrink-0 rounded-[12px] bg-red-50 px-3 py-1.5 text-xs font-bold text-red-700">Relancer</span>
+                </Link>
+              ))}
+            </Card>
+          )}
+        </section>
+
+        <section id="mes-groupes" className="scroll-mt-20 space-y-2">
         <div className="flex items-center justify-between">
           <h3 className="text-[0.95rem] font-bold text-stone-900">Mes groupes</h3>
           <Link href="/groupes/nouveau" className="inline-flex items-center gap-1 text-sm font-semibold text-emerald-700"><Plus size={16} strokeWidth={2.2} /> Nouveau</Link>
@@ -189,6 +229,7 @@ export default function Groupes() {
             })}
           </Card>
         )}
+        </section>
       </div>
 
       {rejoindre && (

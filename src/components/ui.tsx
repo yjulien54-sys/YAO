@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { initiales } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { SideNav } from "./SideNav";
@@ -38,10 +38,20 @@ export function Header({ title, back, right }: { title?: string; back?: string; 
 }
 
 export function Page({ children, large }: { children: React.ReactNode; large?: boolean }) {
+  const [entree, setEntree] = useState("");
+  useEffect(() => {
+    try {
+      const sens = sessionStorage.getItem("cotiz:glisse");
+      if (!sens) return;
+      setEntree(sens === "gauche" ? "entre-droite" : "entre-gauche");
+      const t = setTimeout(() => sessionStorage.removeItem("cotiz:glisse"), 500);
+      return () => clearTimeout(t);
+    } catch {}
+  }, []);
   return (
-    <div className="mx-auto min-h-dvh max-w-md bg-[#f7f5f0] pb-24 shadow-xl shadow-stone-900/5 lg:max-w-none lg:pb-10 lg:pl-64 lg:shadow-none">
+    <div className="mx-auto min-h-dvh max-w-md overflow-x-hidden bg-[#f7f5f0] pb-24 shadow-xl shadow-stone-900/5 lg:max-w-none lg:pb-10 lg:pl-64 lg:shadow-none">
       <SideNav />
-      <div className={`lg:mx-auto ${large ? "lg:max-w-5xl" : "lg:max-w-3xl"} lg:px-6`}>{children}</div>
+      <div className={`lg:mx-auto ${large ? "lg:max-w-5xl" : "lg:max-w-3xl"} lg:px-6 ${entree}`}>{children}</div>
     </div>
   );
 }
