@@ -25,7 +25,7 @@ type Tab = "membres" | "historique" | "tours";
 export default function GroupeDetail() {
   const ok = useRequireUser();
   const { id } = useParams<{ id: string }>();
-  const { getGroup, recordPayment, recordPayout, confirmPayments, setPaymentPhone, addMember, nextRound, joinGroup, loaded, userId } = useStore();
+  const { getGroup, recordPayment, recordPayout, confirmPayments, setPaymentPhone, addMember, nextRound, joinGroup, repondreDemande, annulerDeclaration, loaded, userId } = useStore();
   const g = getGroup(id);
   const me = useMe(g);
   const [tab, setTab] = useState<Tab>("membres");
@@ -151,6 +151,38 @@ export default function GroupeDetail() {
           </div>
         </Card>
 
+        {dr.gestionnaire && g.demandes.length > 0 && (
+          <Card className="space-y-3 border-sky-200 bg-sky-50/60">
+            <div>
+              <p className="flex items-center gap-2 text-sm font-bold"><IconBadge icon={UserPlus} ton="bleu" taille="sm" />Demandes pour rejoindre ({g.demandes.length})</p>
+              <p className="text-xs text-stone-600">Ces personnes ont ouvert le lien du groupe. Accepte seulement celles que tu connais.</p>
+            </div>
+            {g.demandes.map((d) => (
+              <div key={d.id} className="flex items-center gap-3 rounded-xl bg-white p-3 ring-1 ring-stone-200">
+                <Avatar name={d.name} size={36} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold">{d.name}</p>
+                  <p className="whitespace-nowrap text-xs text-stone-500">{telAffiche(d.phone)}</p>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => confirm(`Refuser la demande de ${d.name} ?`) && repondreDemande(d.id, false).then(() => flash("Demande refusée")).catch((e) => flash("Erreur : " + e.message))}
+                  className="shrink-0 rounded-lg bg-stone-100 px-3 py-2 text-xs font-bold text-stone-700"
+                >
+                  Refuser
+                </button>
+                <button
+                  type="button"
+                  onClick={() => repondreDemande(d.id, true).then(() => flash(`${prenom(d.name)} fait maintenant partie du groupe`)).catch((e) => flash("Erreur : " + e.message))}
+                  className="shrink-0 rounded-lg bg-emerald-700 px-3 py-2 text-xs font-bold text-white"
+                >
+                  Accepter
+                </button>
+              </div>
+            ))}
+          </Card>
+        )}
+
         {isTreasurer && declarations.length > 0 && (
           <div id="a-confirmer" className="scroll-mt-20 rounded-[18px]">
           <Card className="space-y-3 border-amber-300 bg-amber-50/60">
@@ -275,6 +307,18 @@ export default function GroupeDetail() {
           {me && mesDeclarations.length > 0 && (
             <div className="rounded-xl bg-amber-50 px-4 py-3 text-center text-sm font-semibold text-amber-800 ring-1 ring-amber-200">
               <Clock size={16} strokeWidth={2} className="mr-1 inline -mt-0.5" />Ton paiement de {fcfa(sum(mesDeclarations))} est en attente de confirmation{tresorier ? ` par ${prenom(tresorier.name)}` : ""}
+              <button
+                type="button"
+                onClick={() => {
+                  if (!confirm(`Annuler ta déclaration de ${fcfa(sum(mesDeclarations))} ? Fais-le seulement si tu t’es trompé (montant, tour) ou si tu n’as pas encore envoyé l’argent.`)) return;
+                  annulerDeclaration(mesDeclarations.map((p) => p.id))
+                    .then(() => flash("Déclaration annulée"))
+                    .catch((e) => flash("Impossible d’annuler : " + e.message));
+                }}
+                className="mt-1.5 block w-full text-xs font-semibold text-amber-900 underline underline-offset-2"
+              >
+                Je me suis trompé : annuler ma déclaration
+              </button>
             </div>
           )}
           {me && mesArrieres.length === 0 && myStatus !== "paye" && !(tourEnAttente && g.type !== "collecte") && (
@@ -359,7 +403,7 @@ export default function GroupeDetail() {
                           {ROLE_LABEL[m.role]}
                         </span>
                       )}
-                      <span className="whitespace-nowrap">{telAffiche(m.phone)}</span>{paid > 0 && g.type === "collecte" && ` · ${fcfa(paid)}`}
+                      {(dr.gestionnaire || m.id === me?.id) && <span className="whitespace-nowrap">{telAffiche(m.phone)}</span>}{paid > 0 && g.type === "collecte" && ` · ${fcfa(paid)}`}
                     </p>
                     {g.type !== "collecte" && paidUntil(g, m.id) > g.currentRound && (
                       <p className="inline-flex items-center gap-1 text-[0.8125rem] font-semibold text-emerald-700"><ChevronsRight size={12} strokeWidth={2.25} />Payé jusqu’au tour {paidUntil(g, m.id)}</p>

@@ -10,7 +10,7 @@ import { TYPE_LABEL, amountDue, droits, beneficiary, impayes, memberStatus, dueD
 import { useStore } from "@/lib/store";
 import { BottomNav } from "@/components/BottomNav";
 import { Annonces } from "@/components/Annonces";
-import { AlertCircle, ChevronRight, ClipboardPaste, Clock, HandCoins, Headset, Link2, Plus, Repeat, Users, Wallet } from "lucide-react";
+import { AlertCircle, ChevronRight, ClipboardPaste, Clock, HandCoins, UserPlus, Headset, Link2, Plus, Repeat, Users, Wallet } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 
 const TYPE_ICON = { tontine: Repeat, association: Users, collecte: HandCoins };
@@ -66,10 +66,14 @@ export default function Groupes() {
     collerDepuisPressePapiers();
   };
 
-  const enRetard = groups.reduce((n, g) => n + roundStats(g).counts.retard, 0);
-  const retards = groups
+  // Groupes que je gère (trésorier ou co-gestionnaire) : seuls ceux-là montrent les retards des autres
+  const geres = groups.filter((g) => droits(g, g.members.find((m) => !!userId && m.profileId === userId), userId).gestionnaire);
+  const jeGere = geres.length > 0;
+  const retards = geres
     .map((g) => ({ g, membres: g.members.filter((m) => memberStatus(g, m.id) === "retard") }))
     .filter((x) => x.membres.length > 0);
+  const enRetard = retards.reduce((n, x) => n + x.membres.length, 0);
+  const mesRetards = aPayer.filter((x) => x.retard).length;
 
   // Paiements déclarés que je dois confirmer (groupes où je suis trésorier)
   const aConfirmer = groups
@@ -85,7 +89,17 @@ export default function Groupes() {
     void el.offsetWidth;
     el.classList.add("eclair");
   };
-  const totalCaisse = groups.reduce((n, g) => n + g.payments.reduce((s, p) => s + p.amount + p.penalty, 0), 0);
+  const chiffres: [string, string, boolean, string][] = [
+    ["Groupes", String(groups.length), false, "mes-groupes"],
+    ["À payer", String(aPayer.length), aPayer.length > 0, "a-payer"],
+    jeGere ? ["Membres en retard", String(enRetard), enRetard > 0, "en-retard"] : ["Mes retards", String(mesRetards), mesRetards > 0, "a-payer"],
+  ];
+
+  // Ce que J'AI payé, dans tous mes groupes (paiements confirmés)
+  const mesPaiements = groups.reduce((n, g) => {
+    const mesParts = new Set(g.members.filter((m) => !!userId && m.profileId === userId).map((m) => m.id));
+    return n + g.payments.filter((p) => mesParts.has(p.memberId)).reduce((s, p) => s + p.amount + p.penalty, 0);
+  }, 0);
 
   return (
     <Page large>
@@ -101,11 +115,11 @@ export default function Groupes() {
           <div className="motif absolute inset-0 opacity-40" />
           <div className="relative px-5 pb-5 pt-5">
             <p className="text-sm text-emerald-50/80">Bonjour {prenom(user!.name)}</p>
-            <p className="mt-4 text-[0.8rem] text-emerald-50/75">Total des cotisations enregistrées</p>
-            <p className="mt-0.5 text-[2rem] font-extrabold leading-none tracking-tight">{fcfa(totalCaisse)}</p>
+            <p className="mt-4 text-[0.8rem] text-emerald-50/75">Mes cotisations payées</p>
+            <p className="mt-0.5 text-[2rem] font-extrabold leading-none tracking-tight">{fcfa(mesPaiements)}</p>
           </div>
           <div className="relative grid grid-cols-3 divide-x divide-white/15 border-t border-white/15 bg-black/10 text-center">
-            {([["Groupes", String(groups.length), false, "mes-groupes"], ["À payer", String(aPayer.length), aPayer.length > 0, "a-payer"], ["En retard", String(enRetard), enRetard > 0, "en-retard"]] as const).map(([l, v, alerte, cible]) => (
+            {chiffres.map(([l, v, alerte, cible]) => (
               <button key={l} type="button" onClick={() => allerA(cible)} className="group px-2 py-3 transition hover:bg-white/10 active:bg-white/15">
                 <p className={`text-lg font-extrabold leading-tight ${alerte ? "text-orange-200" : ""}`}>{v}</p>
                 <p className="inline-flex items-center gap-0.5 text-[0.75rem] text-emerald-50/75">
@@ -116,6 +130,17 @@ export default function Groupes() {
           </div>
           <div className="bande-kente relative" />
         </div>
+
+        {geres.filter((g) => g.demandes.length > 0).map((g) => (
+          <Link key={`d-${g.id}`} href={`/groupes/${g.id}`} className="flex items-center gap-3 rounded-[18px] border border-sky-200 bg-sky-50 px-4 py-3 transition active:scale-[0.99]">
+            <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-sky-100 text-sky-700"><UserPlus size={19} strokeWidth={2} /></span>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-bold text-stone-900">{g.demandes.length} demande{g.demandes.length > 1 ? "s" : ""} pour rejoindre</p>
+              <p className="truncate text-[0.8125rem] text-stone-600">{g.name} · {g.demandes.map((d) => prenom(d.name)).join(", ")}</p>
+            </div>
+            <span className="shrink-0 rounded-[12px] bg-sky-600 px-3 py-1.5 text-xs font-bold text-white">Voir</span>
+          </Link>
+        ))}
 
         {aConfirmer.length > 0 && (
           <div className="space-y-2">
@@ -177,14 +202,14 @@ export default function Groupes() {
           )}
         </section>
 
-        {/* En retard */}
-        <section id="en-retard" className="scroll-mt-20 space-y-2">
+        {/* En retard : seulement pour les groupes que je gère */}
+        {jeGere && <section id="en-retard" className="scroll-mt-20 space-y-2">
           <div className="flex items-center justify-between">
-            <h3 className="text-[0.95rem] font-bold text-stone-900">En retard</h3>
+            <h3 className="text-[0.95rem] font-bold text-stone-900">Membres en retard</h3>
             {enRetard > 0 && <span className="text-sm font-semibold text-red-600">{enRetard} membre{enRetard > 1 ? "s" : ""}</span>}
           </div>
           {retards.length === 0 ? (
-            <Card className="!p-3.5 text-sm text-stone-500">Personne n’est en retard dans tes groupes.</Card>
+            <Card className="!p-3.5 text-sm text-stone-500">Personne n’est en retard dans les groupes que tu gères.</Card>
           ) : (
             <Card className="divide-y divide-stone-100 !p-0">
               {retards.map(({ g, membres }) => (
@@ -199,7 +224,7 @@ export default function Groupes() {
               ))}
             </Card>
           )}
-        </section>
+        </section>}
 
         <section id="mes-groupes" className="scroll-mt-20 space-y-2">
         <div className="flex items-center justify-between">

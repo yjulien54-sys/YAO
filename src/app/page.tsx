@@ -183,7 +183,7 @@ function Accueil() {
           )}
         </Card>
         <p className="mt-6 text-center text-xs leading-relaxed text-stone-500">
-          Cotiz ne garde jamais ton argent : les paiements passent par un opérateur agréé BCEAO et arrivent directement sur le compte du groupe.
+          Cotiz ne touche jamais à ton argent : tu paies directement le trésorier de ton groupe par Wave, Orange Money, MTN ou Moov, et tout le monde voit qui a payé.
         </p>
         <p className="mt-4 text-center text-xs text-stone-400">
           <a href="/cgu" className="underline">Conditions d’utilisation</a> · <a href="/confidentialite" className="underline">Confidentialité</a> · <a href="/mentions-legales" className="underline">Mentions légales</a>

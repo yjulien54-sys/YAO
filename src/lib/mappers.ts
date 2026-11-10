@@ -30,11 +30,12 @@ export const mapPayout = (p: any): Payout => ({
 });
 
 export const mapGroup = (r: any): Group => {
-  const tous: (Member & { pos: number })[] = (r.members ?? [])
-    .map((m: any) => ({ id: m.id, profileId: m.profile_id, name: m.name, phone: m.phone, role: m.role, archive: !!m.archive, pos: m.turn_position }))
+  const tous: (Member & { pos: number; attente: boolean })[] = (r.members ?? [])
+    .map((m: any) => ({ id: m.id, profileId: m.profile_id, name: m.name, phone: m.phone, role: m.role, archive: !!m.archive, attente: !!m.en_attente, pos: m.turn_position }))
     .sort((a: any, b: any) => a.pos - b.pos);
-  const members = tous.filter((m) => !m.archive);
-  const anciens = tous.filter((m) => m.archive).map(({ pos: _p, ...m }) => m); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const members = tous.filter((m) => !m.archive && !m.attente).map(({ attente: _a, ...m }) => m); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const anciens = tous.filter((m) => m.archive).map(({ pos: _p, attente: _a, ...m }) => m); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const demandes = tous.filter((m) => m.attente && !m.archive).map(({ pos: _p, attente: _a, ...m }) => m); // eslint-disable-line @typescript-eslint/no-unused-vars
   return {
     id: r.id,
     name: r.name,
@@ -56,6 +57,7 @@ export const mapGroup = (r: any): Group => {
     paymentPhone: r.payment_phone ?? undefined,
     paymentPhoneChangedAt: r.payment_phone_changed_at ?? undefined,
     anciens,
+    demandes,
     waveLink: r.wave_link ?? undefined,
     addPolicy: r.add_policy ?? "tresorier",
     createdBy: r.created_by ?? undefined,

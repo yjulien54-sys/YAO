@@ -168,7 +168,7 @@ export default function ProfilPage() {
             <Ligne
               icon={LogOut}
               label="Se déconnecter"
-              onClick={() => confirm("Te déconnecter ? En phase de test, tu devras rejoindre à nouveau tes groupes avec leur lien d’invitation.") && logout()}
+              onClick={() => confirm("Attention : ton compte est enregistré sur ce téléphone. Si tu te déconnectes, tu ne pourras PAS revenir sur ce compte : tu devras en créer un nouveau et rouvrir le lien de chaque groupe. Te déconnecter quand même ?") && logout()}
             />
             <Ligne href="/suppression-compte" icon={Trash2} label="Supprimer mon compte" />
           </Card>

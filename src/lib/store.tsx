@@ -74,13 +74,15 @@ interface Ctx {
   setWaveLink: (groupId: string, link: string) => Promise<void>;
   recordPayout: (groupId: string, p: { round: number; memberId?: string | null; beneficiaryName: string; amount: number; method: PayoutMethod; note?: string; nature?: PayoutNature }) => Promise<void>;
   nextRound: (groupId: string) => Promise<void>;
-  joinGroup: (groupId: string) => Promise<void>;
+  joinGroup: (groupId: string) => Promise<"membre" | "en_attente" | "aucun">;
+  repondreDemande: (memberId: string, accepter: boolean) => Promise<void>;
+  annulerDeclaration: (paymentIds: string[]) => Promise<void>;
 }
 
 const StoreContext = createContext<Ctx | null>(null);
 
 /* Cache local : affiche tout de suite les groupes déjà connus, puis les met à jour */
-const CACHE = "cotiz:cache:v1";
+const CACHE = "cotiz:cache:v2";
 type Cache = { userId: string; user: User; groups: Group[] };
 const lireCache = (): Cache | null => {
   try {
@@ -604,13 +606,38 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       const { error } = await supabase.rpc("join_group", { g: groupId });
       fail(error);
       await reload();
+      const { data, error: e2 } = await supabase.rpc("etat_adhesion", { g: groupId });
+      return (e2 ? "membre" : data) as "membre" | "en_attente" | "aucun";
+    },
+    [reload]
+  );
+
+  // Le trésorier ou un co-gestionnaire accepte (ou refuse) une personne arrivée par le lien
+  const repondreDemande = useCallback(
+    async (memberId: string, accepter: boolean) => {
+      const { error } = accepter
+        ? await supabase.from("members").update({ en_attente: false }).eq("id", memberId)
+        : await supabase.from("members").delete().eq("id", memberId);
+      fail(error);
+      await reload();
+    },
+    [reload]
+  );
+
+  // Le membre annule sa déclaration tant qu'elle n'est pas confirmée
+  const annulerDeclaration = useCallback(
+    async (paymentIds: string[]) => {
+      const { data, error } = await supabase.from("payments").delete().in("id", paymentIds).eq("status", "en_attente").select("id");
+      fail(error);
+      if (!data?.length) throw new Error("ta déclaration a peut-être déjà été confirmée par le trésorier");
+      await reload();
     },
     [reload]
   );
 
   return (
     <StoreContext.Provider
-      value={{ ready, loaded, user, userId, groups, login, envoyerCode, verifierCode, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, setWaveLink, updateGroup, updateMember, removeMember, setOrder, deleteGroup, setTiragePrevu, lancerTirage, updateProfile, accepterReglement, recordPayout, nextRound, joinGroup }}
+      value={{ ready, loaded, user, userId, groups, login, envoyerCode, verifierCode, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, setWaveLink, updateGroup, updateMember, removeMember, setOrder, deleteGroup, setTiragePrevu, lancerTirage, updateProfile, accepterReglement, recordPayout, nextRound, joinGroup, repondreDemande, annulerDeclaration }}
     >
       {children}
     </StoreContext.Provider>
