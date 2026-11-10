@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { ArrowRight, Check, Gift, Repeat } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import { ChevronsRight, Check, Gift, Repeat, Shuffle, Wallet } from "lucide-react";
 import { IconBadge } from "./icons";
 import { prenom } from "@/lib/format";
 
@@ -15,10 +15,106 @@ const Drapeau = () => (
   </span>
 );
 
+const MEMBRES = [
+  ["AK", "bg-orange-100 text-orange-700"],
+  ["MT", "bg-emerald-100 text-emerald-700"],
+  ["FD", "bg-sky-100 text-sky-700"],
+  ["SB", "bg-violet-100 text-violet-700"],
+  ["AN", "bg-rose-100 text-rose-700"],
+] as const;
+
+const NOTIFS = [
+  { icon: Wallet, texte: "Awa a payé 50 000 F", detail: "Confirmé par le trésorier" },
+  { icon: Check, texte: "Reçu envoyé à Fatou", detail: "Tontine des commerçantes" },
+  { icon: Shuffle, texte: "Tirage au sort effectué", detail: "Tout le groupe voit l’ordre" },
+];
+
+/** Compteur animé de 0 à la valeur cible */
+function useCompteur(cible: number, duree: number, depart: number) {
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    let raf = 0;
+    const t0 = performance.now() + depart;
+    const pas = (t: number) => {
+      const k = Math.min(1, Math.max(0, (t - t0) / duree));
+      setV(Math.round(cible * (1 - Math.pow(1 - k, 3))));
+      if (k < 1) raf = requestAnimationFrame(pas);
+    };
+    raf = requestAnimationFrame(pas);
+    return () => cancelAnimationFrame(raf);
+  }, [cible, duree, depart]);
+  return v;
+}
+
+/** Curseur « Glisser pour entrer » (un simple appui sur le rond fonctionne aussi) */
+function GlisserPourEntrer({ onEntrer }: { onEntrer: () => void }) {
+  const piste = useRef<HTMLDivElement>(null);
+  const [x, setX] = useState(0);
+  const [tire, setTire] = useState(false);
+  const [fini, setFini] = useState(false);
+  const depart = useRef<{ px: number; x: number; bouge: boolean } | null>(null);
+  const BOUTON = 56;
+
+  const max = () => (piste.current ? piste.current.offsetWidth - BOUTON - 8 : 240);
+
+  function terminer() {
+    if (fini) return;
+    setFini(true);
+    setX(max());
+    setTimeout(onEntrer, 220);
+  }
+
+  return (
+    <div
+      ref={piste}
+      className="relative h-[64px] w-full select-none overflow-hidden rounded-full bg-white/15 p-1 ring-1 ring-white/25 backdrop-blur-sm"
+      style={{ touchAction: "none" }}
+    >
+      {/* Remplissage derrière le rond */}
+      <div className="absolute inset-y-1 left-1 rounded-full bg-white/20" style={{ width: x + BOUTON, transition: tire ? "none" : "width 300ms ease" }} />
+      <span
+        className="glisse-texte pointer-events-none absolute inset-0 grid place-items-center pl-12 text-[0.95rem] font-bold tracking-wide"
+        style={{ opacity: Math.max(0, 1 - x / (max() * 0.6)) }}
+      >
+        Glisse pour entrer
+      </span>
+      <button
+        type="button"
+        aria-label="Entrer dans Cotiz"
+        className="relative z-10 grid h-14 w-14 place-items-center rounded-full bg-white text-emerald-800 shadow-lg"
+        style={{ transform: `translateX(${x}px)`, transition: tire ? "none" : "transform 300ms cubic-bezier(0.22, 1, 0.36, 1)" }}
+        onPointerDown={(e) => {
+          (e.target as HTMLElement).setPointerCapture(e.pointerId);
+          depart.current = { px: e.clientX, x, bouge: false };
+          setTire(true);
+        }}
+        onPointerMove={(e) => {
+          if (!depart.current || fini) return;
+          const d = e.clientX - depart.current.px;
+          if (Math.abs(d) > 4) depart.current.bouge = true;
+          setX(Math.min(max(), Math.max(0, depart.current.x + d)));
+        }}
+        onPointerUp={() => {
+          const bouge = depart.current?.bouge;
+          depart.current = null;
+          setTire(false);
+          if (!bouge || x > max() * 0.7) terminer();
+          else setX(0);
+        }}
+        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && terminer()}
+      >
+        {fini ? <Check size={24} strokeWidth={2.5} /> : <ChevronsRight size={26} strokeWidth={2.4} />}
+      </button>
+    </div>
+  );
+}
+
 /** Écran d'accueil affiché à l'ouverture de l'application (une fois par session) */
 export function Bienvenue({ nom }: { nom: string }) {
   const [visible, setVisible] = useState(false);
   const [sortie, setSortie] = useState(false);
+  const [notif, setNotif] = useState(-1);
+  const montant = useCompteur(400000, 1600, 700);
 
   useEffect(() => {
     try {
@@ -28,19 +124,37 @@ export function Bienvenue({ nom }: { nom: string }) {
     setVisible(true);
   }, []);
 
-  // L'écran reste affiché jusqu'à ce que la personne appuie sur « Entrer »
+  // Les notifications arrivent l'une après l'autre, en boucle
+  useEffect(() => {
+    if (!visible) return;
+    const debut = setTimeout(() => setNotif(0), 2200);
+    const boucle = setInterval(() => setNotif((n) => (n + 1) % NOTIFS.length), 3200);
+    return () => {
+      clearTimeout(debut);
+      clearInterval(boucle);
+    };
+  }, [visible]);
+
+  // L'écran reste affiché jusqu'à ce que la personne entre
   function fermer() {
     setSortie(true);
-    setTimeout(() => setVisible(false), 300);
+    setTimeout(() => setVisible(false), 450);
   }
 
   if (!visible) return null;
+  const heure = new Date().getHours();
+  const salut = heure >= 18 || heure < 4 ? "Bonsoir" : "Bonjour";
+  const n = notif >= 0 ? NOTIFS[notif] : null;
+
   return (
-    <div className={`fixed inset-0 z-50 mx-auto max-w-md overflow-hidden transition-opacity duration-300 lg:grid lg:max-w-none lg:place-items-center lg:bg-stone-900/50 lg:backdrop-blur-sm ${sortie ? "opacity-0" : "opacity-100"}`}>
-      <section className="degrade-vert relative flex h-full flex-col px-6 pb-8 pt-10 text-white lg:h-auto lg:max-h-[92vh] lg:w-[460px] lg:overflow-hidden lg:rounded-[2rem] lg:shadow-2xl">
-        <div className="motif absolute inset-0" />
-        <div className="bande-kente absolute inset-x-0 top-0" />
-        <div className="relative flex items-center justify-between">
+    <div className={`fixed inset-0 z-50 mx-auto max-w-md overflow-hidden transition-all duration-[450ms] lg:grid lg:max-w-none lg:place-items-center lg:bg-stone-900/50 lg:backdrop-blur-sm ${sortie ? "scale-[1.04] opacity-0" : "opacity-100"}`}>
+      <section className="degrade-vert relative flex h-full flex-col overflow-hidden px-6 pb-8 pt-10 text-white lg:h-[min(820px,92vh)] lg:w-[460px] lg:rounded-[2rem] lg:shadow-2xl">
+        <div className="motif absolute inset-0 opacity-70" />
+        <span className="halo pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/10" />
+        <span className="halo pointer-events-none absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-white/[0.06]" style={{ animationDelay: "-3s" }} />
+        <div className="bande-kente kente-defile absolute inset-x-0 top-0" />
+
+        <div className="apparait relative flex items-center justify-between" style={{ animationDelay: "0ms" }}>
           <span className="inline-flex items-center gap-2 text-xl font-extrabold tracking-tight">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons/logo.svg" alt="" width={40} height={40} className="h-10 w-10 rounded-xl shadow-md" />
@@ -51,34 +165,64 @@ export function Bienvenue({ nom }: { nom: string }) {
           </span>
         </div>
 
-        <h1 className="relative mt-10 text-[2rem] font-extrabold leading-[1.1] tracking-tight">
+        <p className="apparait relative mt-9 text-base font-semibold text-emerald-50/85" style={{ animationDelay: "120ms" }}>
+          {salut} {prenom(nom)},
+        </p>
+        <h1 className="apparait relative mt-1 text-[2rem] font-extrabold leading-[1.1] tracking-tight" style={{ animationDelay: "220ms" }}>
           Tes tontines et cotisations, <span className="text-orange-300">sans palabres.</span>
         </h1>
-        <p className="relative mt-3 text-base leading-relaxed text-emerald-50/90">Tontines, associations, collectes : tout le monde voit qui a payé.</p>
 
-        <div className="flotte relative mx-auto mt-8 w-[88%] rounded-3xl bg-white p-4 text-stone-900 shadow-2xl shadow-emerald-950/40">
-          <div className="flex items-center gap-3">
-            <IconBadge icon={Repeat} ton="orange" />
-            <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-bold">Tontine des commerçantes</p>
-              <p className="inline-flex items-center gap-1 text-xs text-stone-500">Tour 3 sur 10 · <Gift size={12} strokeWidth={1.75} /> Awa reçoit</p>
+        {/* Carte de démonstration vivante */}
+        <div className="relative mx-auto mt-16 w-[90%]">
+          {/* Notification qui arrive */}
+          <div className="absolute -top-14 left-1/2 z-10 w-[92%] -translate-x-1/2">
+            {n && (
+              <div key={notif} className="notif-entre flex items-center gap-2.5 rounded-2xl bg-white/95 px-3 py-2 text-stone-900 shadow-xl">
+                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-emerald-100 text-emerald-700">
+                  <n.icon size={16} strokeWidth={2.2} />
+                </span>
+                <div className="min-w-0">
+                  <p className="truncate text-[0.8rem] font-bold">{n.texte}</p>
+                  <p className="truncate text-[0.7rem] text-stone-500">{n.detail}</p>
+                </div>
+                <span className="ml-auto text-[0.65rem] text-stone-400">à l’instant</span>
+              </div>
+            )}
+          </div>
+
+          <div className="apparait flotte rounded-3xl bg-white p-4 pt-5 text-stone-900 shadow-2xl shadow-emerald-950/40" style={{ animationDelay: "380ms" }}>
+            <div className="flex items-center gap-3">
+              <IconBadge icon={Repeat} ton="orange" />
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold">Tontine des commerçantes</p>
+                <p className="inline-flex items-center gap-1 text-xs text-stone-500">Tour 3 sur 10 · <Gift size={12} strokeWidth={1.75} /> Awa reçoit</p>
+              </div>
+            </div>
+            <div className="mt-3 flex items-baseline justify-between">
+              <span className="text-xl font-extrabold">{montant.toLocaleString("fr-FR")} F</span>
+              <span className="text-xs text-stone-500">sur 500 000 F</span>
+            </div>
+            <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-stone-100">
+              <div className="h-full rounded-full bg-orange-500" style={{ width: `${(montant / 500000) * 100}%` }} />
+            </div>
+            <div className="mt-3 flex items-center">
+              <div className="flex -space-x-2">
+                {MEMBRES.map(([x, c], i) => (
+                  <span key={x} className={`pop grid h-7 w-7 place-items-center rounded-full border-2 border-white text-[0.7rem] font-bold ${c}`} style={{ animationDelay: `${900 + i * 140}ms` }}>
+                    {x}
+                  </span>
+                ))}
+              </div>
+              <span className="pop ml-3 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700" style={{ animationDelay: "1700ms" }}>
+                <Check size={14} strokeWidth={2.25} /> 8 ont payé
+              </span>
             </div>
           </div>
-          <div className="mt-3 flex items-baseline justify-between">
-            <span className="text-xl font-extrabold">400 000 F</span>
-            <span className="text-xs text-stone-500">sur 500 000 F</span>
-          </div>
-          <div className="mt-1.5 h-2.5 overflow-hidden rounded-full bg-stone-200">
-            <div className="h-full w-4/5 rounded-full bg-gradient-to-r from-orange-300 to-orange-500" />
-          </div>
-          <p className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-emerald-700"><Check size={14} strokeWidth={2.25} /> 8 ont payé</p>
         </div>
 
-        <div className="relative mt-auto space-y-3 pt-8">
-          <p className="text-center text-lg font-bold">Bonjour {prenom(nom)}</p>
-          <button onClick={fermer} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white px-4 py-4 text-base font-extrabold text-emerald-800 shadow-lg">
-            Entrer <ArrowRight size={20} strokeWidth={2.25} />
-          </button>
+        <div className="apparait relative mt-auto space-y-4 pt-8" style={{ animationDelay: "560ms" }}>
+          <p className="text-center text-sm text-emerald-50/80">Tout le monde voit qui a payé. Personne ne garde l’argent seul.</p>
+          <GlisserPourEntrer onEntrer={fermer} />
         </div>
       </section>
     </div>
