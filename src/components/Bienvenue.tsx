@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
-import { ChevronsRight, Check, Gift, Repeat, Shuffle, Wallet } from "lucide-react";
+import { useEffect, useState } from "react";
+import { Check, Fingerprint, Gift, Repeat, Shuffle, Wallet } from "lucide-react";
 import { IconBadge } from "./icons";
 import { prenom } from "@/lib/format";
 
@@ -46,65 +46,44 @@ function useCompteur(cible: number, duree: number, depart: number) {
   return v;
 }
 
-/** Curseur « Glisser pour entrer » (un simple appui sur le rond fonctionne aussi) */
-function GlisserPourEntrer({ onEntrer }: { onEntrer: () => void }) {
-  const piste = useRef<HTMLDivElement>(null);
-  const [x, setX] = useState(0);
-  const [tire, setTire] = useState(false);
-  const [fini, setFini] = useState(false);
-  const depart = useRef<{ px: number; x: number; bouge: boolean } | null>(null);
-  const BOUTON = 56;
+/** Bouton empreinte : un appui remplit le cercle, affiche une coche, puis on entre */
+function BoutonEmpreinte({ onEntrer }: { onEntrer: () => void }) {
+  const [etat, setEtat] = useState<"repos" | "lecture" | "ok">("repos");
+  const R = 46, C = 2 * Math.PI * R;
 
-  const max = () => (piste.current ? piste.current.offsetWidth - BOUTON - 8 : 240);
-
-  function terminer() {
-    if (fini) return;
-    setFini(true);
-    setX(max());
-    setTimeout(onEntrer, 220);
+  function appuyer() {
+    if (etat !== "repos") return;
+    setEtat("lecture");
+    setTimeout(() => setEtat("ok"), 750);
+    setTimeout(onEntrer, 1150);
   }
 
   return (
-    <div
-      ref={piste}
-      className="relative h-[64px] w-full select-none overflow-hidden rounded-full bg-white/15 p-1 ring-1 ring-white/25 backdrop-blur-sm"
-      style={{ touchAction: "none" }}
-    >
-      {/* Remplissage derrière le rond */}
-      <div className="absolute inset-y-1 left-1 rounded-full bg-white/20" style={{ width: x + BOUTON, transition: tire ? "none" : "width 300ms ease" }} />
-      <span
-        className="glisse-texte pointer-events-none absolute inset-0 grid place-items-center pl-12 text-[0.95rem] font-bold tracking-wide"
-        style={{ opacity: Math.max(0, 1 - x / (max() * 0.6)) }}
-      >
-        Glisse pour entrer
-      </span>
-      <button
-        type="button"
-        aria-label="Entrer dans Cotiz"
-        className="relative z-10 grid h-14 w-14 place-items-center rounded-full bg-white text-emerald-800 shadow-lg"
-        style={{ transform: `translateX(${x}px)`, transition: tire ? "none" : "transform 300ms cubic-bezier(0.22, 1, 0.36, 1)" }}
-        onPointerDown={(e) => {
-          (e.target as HTMLElement).setPointerCapture(e.pointerId);
-          depart.current = { px: e.clientX, x, bouge: false };
-          setTire(true);
-        }}
-        onPointerMove={(e) => {
-          if (!depart.current || fini) return;
-          const d = e.clientX - depart.current.px;
-          if (Math.abs(d) > 4) depart.current.bouge = true;
-          setX(Math.min(max(), Math.max(0, depart.current.x + d)));
-        }}
-        onPointerUp={() => {
-          const bouge = depart.current?.bouge;
-          depart.current = null;
-          setTire(false);
-          if (!bouge || x > max() * 0.7) terminer();
-          else setX(0);
-        }}
-        onKeyDown={(e) => (e.key === "Enter" || e.key === " ") && terminer()}
-      >
-        {fini ? <Check size={24} strokeWidth={2.5} /> : <ChevronsRight size={26} strokeWidth={2.4} />}
+    <div className="flex flex-col items-center gap-3">
+      <button type="button" onClick={appuyer} aria-label="Entrer dans Cotiz" className="group relative grid h-[104px] w-[104px] place-items-center rounded-full outline-none">
+        {/* Ondes qui pulsent autour */}
+        {etat === "repos" && (
+          <>
+            <span className="onde absolute inset-0 rounded-full ring-2 ring-white/40" />
+            <span className="onde absolute inset-0 rounded-full ring-2 ring-white/30" style={{ animationDelay: "1.1s" }} />
+          </>
+        )}
+        {/* Cercle de lecture */}
+        <svg viewBox="0 0 104 104" className="absolute inset-0 -rotate-90" aria-hidden>
+          <circle cx="52" cy="52" r={R} fill="none" stroke="rgba(255,255,255,0.22)" strokeWidth="4" />
+          <circle
+            cx="52" cy="52" r={R} fill="none" stroke="#fff" strokeWidth="4" strokeLinecap="round"
+            strokeDasharray={C} strokeDashoffset={etat === "repos" ? C : 0}
+            style={{ transition: "stroke-dashoffset 750ms cubic-bezier(0.65, 0, 0.35, 1)" }}
+          />
+        </svg>
+        <span className={`relative grid h-[80px] w-[80px] place-items-center rounded-full shadow-xl transition-all duration-300 group-active:scale-95 ${etat === "ok" ? "bg-white text-emerald-700" : "bg-white/15 text-white ring-1 ring-white/30 backdrop-blur-sm"}`}>
+          {etat === "ok" ? <Check size={40} strokeWidth={2.6} className="pop" /> : <Fingerprint size={44} strokeWidth={1.6} className={etat === "lecture" ? "animate-pulse" : ""} />}
+        </span>
       </button>
+      <p className="glisse-texte text-[0.95rem] font-bold tracking-wide">
+        {etat === "repos" ? "Appuie pour entrer" : etat === "lecture" ? "Vérification…" : "Bienvenue !"}
+      </p>
     </div>
   );
 }
@@ -222,7 +201,7 @@ export function Bienvenue({ nom }: { nom: string }) {
 
         <div className="apparait relative mt-auto space-y-4 pt-8" style={{ animationDelay: "560ms" }}>
           <p className="text-center text-sm text-emerald-50/80">Tout le monde voit qui a payé. Personne ne garde l’argent seul.</p>
-          <GlisserPourEntrer onEntrer={fermer} />
+          <BoutonEmpreinte onEntrer={fermer} />
         </div>
       </section>
     </div>
