@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import { StoreProvider } from "@/lib/store";
 import { ServiceWorker } from "@/components/ServiceWorker";
+import { Glisser } from "@/components/Glisser";
 import "@fontsource-variable/plus-jakarta-sans";
 import "./globals.css";
 
@@ -24,6 +25,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="antialiased">
         <StoreProvider>{children}</StoreProvider>
         <ServiceWorker />
+        <Glisser />
       </body>
     </html>
   );

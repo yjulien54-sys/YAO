@@ -17,34 +17,10 @@ export function BottomNav() {
   const path = usePathname();
   const router = useRouter();
 
-  // Glisser vers la gauche = onglet suivant, vers la droite = onglet précédent
+  // Les onglets sont préchargés pour un passage instantané (le glissement est géré par <Glisser />)
   useEffect(() => {
     ONGLETS.forEach((o) => router.prefetch(o.href));
-    let depart: { x: number; y: number; t: number } | null = null;
-    const debut = (e: TouchEvent) => {
-      const cible = e.target as HTMLElement;
-      if (e.touches.length !== 1 || cible.closest("[data-pas-glisser], input, textarea, select, .fixed")) return (depart = null);
-      depart = { x: e.touches[0].clientX, y: e.touches[0].clientY, t: Date.now() };
-    };
-    const fin = (e: TouchEvent) => {
-      if (!depart) return;
-      const dx = e.changedTouches[0].clientX - depart.x, dy = e.changedTouches[0].clientY - depart.y;
-      const rapide = Date.now() - depart.t < 700;
-      depart = null;
-      if (!rapide || Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy) * 1.8) return;
-      const i = ONGLETS.findIndex((o) => o.href === path);
-      const j = dx < 0 ? i + 1 : i - 1;
-      if (i < 0 || j < 0 || j >= ONGLETS.length) return;
-      try { sessionStorage.setItem("cotiz:glisse", dx < 0 ? "gauche" : "droite"); } catch {}
-      router.push(ONGLETS[j].href);
-    };
-    window.addEventListener("touchstart", debut, { passive: true });
-    window.addEventListener("touchend", fin, { passive: true });
-    return () => {
-      window.removeEventListener("touchstart", debut);
-      window.removeEventListener("touchend", fin);
-    };
-  }, [path, router]);
+  }, [router]);
 
   return (
     <nav className="fixed inset-x-0 bottom-0 z-20 mx-auto max-w-md border-t lg:hidden border-stone-200/80 bg-white/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md">
