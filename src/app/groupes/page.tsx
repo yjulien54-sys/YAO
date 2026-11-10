@@ -6,11 +6,11 @@ import { useState } from "react";
 import { Button, Card, Header, Loading, Page, Progress, inputClass, useRequireUser } from "@/components/ui";
 import { ActionRapide } from "@/components/ActionRapide";
 import { dateCourte, fcfa, prenom } from "@/lib/format";
-import { TYPE_LABEL, amountDue, beneficiary, impayes, memberStatus, dueDate, isLate, roundStats } from "@/lib/logic";
+import { TYPE_LABEL, amountDue, droits, beneficiary, impayes, memberStatus, dueDate, isLate, roundStats } from "@/lib/logic";
 import { useStore } from "@/lib/store";
 import { BottomNav } from "@/components/BottomNav";
 import { Annonces } from "@/components/Annonces";
-import { AlertCircle, ChevronRight, ClipboardPaste, HandCoins, Headset, Link2, Plus, Repeat, Users, Wallet } from "lucide-react";
+import { AlertCircle, ChevronRight, ClipboardPaste, Clock, HandCoins, Headset, Link2, Plus, Repeat, Users, Wallet } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 
 const TYPE_ICON = { tontine: Repeat, association: Users, collecte: HandCoins };
@@ -71,6 +71,11 @@ export default function Groupes() {
     .map((g) => ({ g, membres: g.members.filter((m) => memberStatus(g, m.id) === "retard") }))
     .filter((x) => x.membres.length > 0);
 
+  // Paiements déclarés que je dois confirmer (groupes où je suis trésorier)
+  const aConfirmer = groups
+    .filter((g) => droits(g, g.members.find((m) => !!userId && m.profileId === userId), userId).tresorier && g.pending.length > 0)
+    .map((g) => ({ g, n: new Set(g.pending.map((p) => p.memberId + (p.transactionId ?? ""))).size }));
+
   // Bouton de la carte verte : descend jusqu'à la bonne liste et la fait clignoter
   const allerA = (id: string) => {
     const el = document.getElementById(id);
@@ -111,6 +116,21 @@ export default function Groupes() {
           </div>
           <div className="bande-kente relative" />
         </div>
+
+        {aConfirmer.length > 0 && (
+          <div className="space-y-2">
+            {aConfirmer.map(({ g, n }) => (
+              <Link key={g.id} href={`/groupes/${g.id}#a-confirmer`} className="flex items-center gap-3 rounded-[18px] border border-amber-300 bg-amber-50 px-4 py-3 transition active:scale-[0.99]">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-amber-100 text-amber-700"><Clock size={19} strokeWidth={2} /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-stone-900">{n} paiement{n > 1 ? "s" : ""} à confirmer</p>
+                  <p className="truncate text-[0.8125rem] text-stone-600">{g.name} · vérifie que tu as reçu l’argent</p>
+                </div>
+                <span className="shrink-0 rounded-[12px] bg-amber-500 px-3 py-1.5 text-xs font-bold text-white">Confirmer</span>
+              </Link>
+            ))}
+          </div>
+        )}
 
         {/* Actions rapides */}
         <div className="grid grid-cols-4 gap-1">

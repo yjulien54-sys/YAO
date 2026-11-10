@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Avatar, Button, Card, Header, Loading, Page, Progress, StatusBadge, WhatsAppIcon, btnClass, inputClass, useRequireUser } from "@/components/ui";
 import { dateCourte, dateLongue, fcfa, prenom, telAffiche } from "@/lib/format";
 import { NATURE_LABEL, ROLE_LABEL, TYPE_LABEL, amountDue, droits, impayes, arrears, beneficiary, caisse, dueDate, isLate, memberStatus, netDuTour, paidUntil, payoutFor, paymentsOf, roundStats, roundsToPay, sum, unpaidMembers } from "@/lib/logic";
@@ -36,6 +36,19 @@ export default function GroupeDetail() {
   const [msg, setMsg] = useState<{ type: "relance" | "groupe"; member?: Member } | null>(null);
   const [versement, setVersement] = useState(false);
   const [numero, setNumero] = useState<string | null>(null);
+  const pret = ok && loaded && !!g;
+
+  // Arrivée depuis l'alerte « à confirmer » de l'accueil : on descend jusqu'au bouton « Reçu »
+  useEffect(() => {
+    if (!pret || window.location.hash !== "#a-confirmer") return;
+    const t = setTimeout(() => {
+      const el = document.getElementById("a-confirmer");
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+      el.classList.add("eclair");
+    }, 350);
+    return () => clearTimeout(t);
+  }, [pret]);
 
   if (!ok || !loaded) return <Loading />;
   if (!g) return <Invitation id={id} onJoin={() => joinGroup(id)} />;
@@ -70,6 +83,17 @@ export default function GroupeDetail() {
     g.type === "collecte"
       ? Date.now() > new Date(g.startDate).getTime() + 24 * 3600 * 1000
       : g.type === "tontine" && g.order.length > 0 && g.currentRound >= g.order.length && !!payoutFor(g, g.order.length);
+
+  // Badge « À confirmer » : le trésorier est emmené au bouton « Reçu »
+  const voirConfirmation = () => {
+    if (!isTreasurer) return flash("Paiement déclaré : le trésorier doit confirmer qu’il a reçu l’argent.");
+    const el = document.getElementById("a-confirmer");
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "start" });
+    el.classList.remove("eclair");
+    void el.offsetWidth;
+    el.classList.add("eclair");
+  };
 
   const flash = (t: string) => {
     setToast(t);
@@ -126,6 +150,69 @@ export default function GroupeDetail() {
             <Stat n={st.counts.retard} label="En retard" cls="text-red-600" />
           </div>
         </Card>
+
+        {isTreasurer && declarations.length > 0 && (
+          <div id="a-confirmer" className="scroll-mt-20 rounded-[18px]">
+          <Card className="space-y-3 border-amber-300 bg-amber-50/60">
+            <div>
+              <p className="flex items-center gap-2 text-sm font-bold"><IconBadge icon={Clock} ton="ambre" taille="sm" />Paiements à confirmer ({declarations.length})</p>
+              <p className="text-xs text-stone-600">Vérifie sur ton téléphone que tu as bien reçu l’argent avant de confirmer.</p>
+            </div>
+            {declarations.map((d) => {
+              const m = g.members.find((x) => x.id === d[0].memberId);
+              const refOperateur = d[0].transactionId && !d[0].transactionId.startsWith("DECL-") ? d[0].transactionId : null;
+              return (
+                <div key={d[0].id} className="rounded-xl bg-white p-3 ring-1 ring-stone-200">
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="truncate font-semibold">{m?.name ?? "Membre"}</p>
+                      <p className="text-xs text-stone-500">
+                        {METHOD_LABEL[d[0].method]} · {dateLongue(d[0].date)}
+                        {g.type !== "collecte" && ` · Tour${d.length > 1 ? "s" : ""} ${d.map((p) => p.round).join(", ")}`}
+                      </p>
+                      {refOperateur && <p className="text-xs font-semibold text-stone-700">Réf. : {refOperateur}</p>}
+                    </div>
+                    <div className="shrink-0 text-right">
+                      <p className="font-extrabold">{fcfa(sum(d))}</p>
+                      {d.some((p) => p.penalty > 0) && (
+                        <p className="text-[0.8125rem] font-semibold text-red-600">dont {fcfa(d.reduce((s, p) => s + p.penalty, 0))} de pénalité</p>
+                      )}
+                    </div>
+                  </div>
+                  {g.type !== "collecte" && g.penalty > 0 && d.every((p) => p.penalty === 0) && (
+                    <p className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-[0.8125rem] font-semibold text-emerald-800">
+                      <Check size={13} strokeWidth={2.4} /> Déclaré à temps : aucune pénalité, même si tu confirmes après l’échéance
+                    </p>
+                  )}
+                  <p className="mt-1.5 text-[0.8125rem] text-stone-500">Confirme seulement si tu as reçu <b>{fcfa(sum(d))}</b> au total. S’il manque de l’argent, touche « Pas reçu » et préviens le membre.</p>
+                  <div className="mt-2 grid grid-cols-2 gap-2">
+                    <Button
+                      variant="secondary"
+                      className="!py-2"
+                      onClick={() => {
+                        if (confirm(`Refuser ce paiement de ${m?.name} ? (argent non reçu)`))
+                          confirmPayments(d.map((p) => p.id), false).then(() => flash("Paiement refusé")).catch((e) => flash("Erreur : " + e.message));
+                      }}
+                    >
+                      <X size={16} strokeWidth={2} /> Pas reçu
+                    </Button>
+                    <Button
+                      className="!py-2"
+                      onClick={() =>
+                        confirmPayments(d.map((p) => p.id), true)
+                          .then(() => flash(`Paiement de ${prenom(m?.name ?? "")} confirmé`))
+                          .catch((e) => flash("Erreur : " + e.message))
+                      }
+                    >
+                      <Check size={16} strokeWidth={2.25} /> Reçu
+                    </Button>
+                  </div>
+                </div>
+              );
+            })}
+          </Card>
+          </div>
+        )}
 
         {g.type !== "collecte" && (
           <Card className="space-y-2 text-sm">
@@ -243,66 +330,6 @@ export default function GroupeDetail() {
 
         <CaissePenalites g={g} tresorier={isTreasurer} />
 
-        {isTreasurer && declarations.length > 0 && (
-          <Card className="space-y-3 border-amber-300 bg-amber-50/60">
-            <div>
-              <p className="flex items-center gap-2 text-sm font-bold"><IconBadge icon={Clock} ton="ambre" taille="sm" />Paiements à confirmer ({declarations.length})</p>
-              <p className="text-xs text-stone-600">Vérifie sur ton téléphone que tu as bien reçu l’argent avant de confirmer.</p>
-            </div>
-            {declarations.map((d) => {
-              const m = g.members.find((x) => x.id === d[0].memberId);
-              const refOperateur = d[0].transactionId && !d[0].transactionId.startsWith("DECL-") ? d[0].transactionId : null;
-              return (
-                <div key={d[0].id} className="rounded-xl bg-white p-3 ring-1 ring-stone-200">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="min-w-0">
-                      <p className="truncate font-semibold">{m?.name ?? "Membre"}</p>
-                      <p className="text-xs text-stone-500">
-                        {METHOD_LABEL[d[0].method]} · {dateLongue(d[0].date)}
-                        {g.type !== "collecte" && ` · Tour${d.length > 1 ? "s" : ""} ${d.map((p) => p.round).join(", ")}`}
-                      </p>
-                      {refOperateur && <p className="text-xs font-semibold text-stone-700">Réf. : {refOperateur}</p>}
-                    </div>
-                    <div className="shrink-0 text-right">
-                      <p className="font-extrabold">{fcfa(sum(d))}</p>
-                      {d.some((p) => p.penalty > 0) && (
-                        <p className="text-[0.8125rem] font-semibold text-red-600">dont {fcfa(d.reduce((s, p) => s + p.penalty, 0))} de pénalité</p>
-                      )}
-                    </div>
-                  </div>
-                  {g.type !== "collecte" && g.penalty > 0 && d.every((p) => p.penalty === 0) && (
-                    <p className="mt-1.5 inline-flex items-center gap-1 rounded-md bg-emerald-50 px-2 py-1 text-[0.8125rem] font-semibold text-emerald-800">
-                      <Check size={13} strokeWidth={2.4} /> Déclaré à temps : aucune pénalité, même si tu confirmes après l’échéance
-                    </p>
-                  )}
-                  <p className="mt-1.5 text-[0.8125rem] text-stone-500">Confirme seulement si tu as reçu <b>{fcfa(sum(d))}</b> au total. S’il manque de l’argent, touche « Pas reçu » et préviens le membre.</p>
-                  <div className="mt-2 grid grid-cols-2 gap-2">
-                    <Button
-                      variant="secondary"
-                      className="!py-2"
-                      onClick={() => {
-                        if (confirm(`Refuser ce paiement de ${m?.name} ? (argent non reçu)`))
-                          confirmPayments(d.map((p) => p.id), false).then(() => flash("Paiement refusé")).catch((e) => flash("Erreur : " + e.message));
-                      }}
-                    >
-                      <X size={16} strokeWidth={2} /> Pas reçu
-                    </Button>
-                    <Button
-                      className="!py-2"
-                      onClick={() =>
-                        confirmPayments(d.map((p) => p.id), true)
-                          .then(() => flash(`Paiement de ${prenom(m?.name ?? "")} confirmé`))
-                          .catch((e) => flash("Erreur : " + e.message))
-                      }
-                    >
-                      <Check size={16} strokeWidth={2.25} /> Reçu
-                    </Button>
-                  </div>
-                </div>
-              );
-            })}
-          </Card>
-        )}
 
         {/* Onglets */}
         <div className="flex gap-1 rounded-xl bg-stone-200/70 p-1 text-sm font-semibold">
@@ -341,7 +368,7 @@ export default function GroupeDetail() {
                       <p className="text-[0.8125rem] font-semibold text-red-600">Doit {fcfa(due.total)}{due.penalty > 0 ? ` (dont ${fcfa(due.penalty)} de pénalité)` : ""}</p>
                     )}
                     {g.pending.some((p) => p.memberId === m.id) && (
-                      <p className="inline-flex items-center gap-1 text-[0.8125rem] font-semibold text-amber-700"><Clock size={12} strokeWidth={2} />Paiement déclaré, à confirmer</p>
+                      <button type="button" onClick={voirConfirmation} className="inline-flex items-center gap-1 text-left text-[0.8125rem] font-semibold text-amber-700 underline decoration-amber-300 underline-offset-2"><Clock size={12} strokeWidth={2} />{isTreasurer ? "Paiement déclaré : confirmer" : "Paiement déclaré, à confirmer"}</button>
                     )}
                     {arrears(g, m.id).length > 0 && (
                       <p className="text-[0.8125rem] font-semibold text-red-600">Doit : tour{arrears(g, m.id).length > 1 ? "s" : ""} {arrears(g, m.id).join(", ")}</p>
@@ -368,7 +395,13 @@ export default function GroupeDetail() {
                     )}
                   </div>
                   <div className="flex flex-col items-end gap-1.5">
-                    <StatusBadge status={s} />
+                    {s === "a_confirmer" ? (
+                      <button type="button" onClick={voirConfirmation} aria-label={isTreasurer ? "Confirmer ce paiement" : "Paiement à confirmer"} className="transition active:scale-95">
+                        <StatusBadge status={s} />
+                      </button>
+                    ) : (
+                      <StatusBadge status={s} />
+                    )}
                     {s !== "paye" && m.id !== me?.id && m.profileId && m.profileId === userId && g.type !== "collecte" && (
                       <Link href={`/groupes/${g.id}/payer?membre=${m.id}`} className="rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-bold text-white">Payer</Link>
                     )}
