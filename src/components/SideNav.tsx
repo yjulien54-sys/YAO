@@ -2,12 +2,14 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Activity, CircleUser, Headset, House, Plus } from "lucide-react";
+import { Activity, Bell, CircleUser, Headset, House, Plus } from "lucide-react";
+import { useNotifications } from "@/lib/notifications";
 import { SUPPORT_AFFICHE } from "@/lib/support";
 
 const ONGLETS = [
   { href: "/groupes", label: "Accueil", icon: House },
   { href: "/activite", label: "Activité", icon: Activity },
+  { href: "/notifications", label: "Notifications", icon: Bell },
   { href: "/aide", label: "Aide et service client", icon: Headset },
   { href: "/profil", label: "Profil", icon: CircleUser },
 ];
@@ -15,6 +17,7 @@ const ONGLETS = [
 /** Menu latéral, affiché uniquement sur ordinateur */
 export function SideNav() {
   const path = usePathname();
+  const { nonLues, dispo } = useNotifications();
   return (
     <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 flex-col border-r border-stone-200 bg-white lg:flex">
       <div className="relative overflow-hidden px-5 pb-5 pt-6">
@@ -35,7 +38,8 @@ export function SideNav() {
               className={`flex items-center gap-3 rounded-2xl px-3 py-2.5 text-[0.95rem] font-semibold transition ${actif ? "bg-emerald-50 text-emerald-800" : "text-stone-600 hover:bg-stone-50"}`}
             >
               <Icon size={20} strokeWidth={actif ? 2.1 : 1.75} />
-              {label}
+              <span className="flex-1">{label}</span>
+              {href === "/notifications" && dispo && nonLues > 0 && <span className="rounded-full bg-orange-500 px-1.5 text-xs font-bold text-white">{nonLues}</span>}
             </Link>
           );
         })}

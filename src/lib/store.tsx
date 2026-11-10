@@ -73,7 +73,9 @@ interface Ctx {
   updateProfile: (u: User) => Promise<void>;
   accepterReglement: (groupId: string, texte: string) => Promise<void>;
   setWaveLink: (groupId: string, link: string) => Promise<void>;
-  recordPayout: (groupId: string, p: { round: number; memberId?: string | null; beneficiaryName: string; amount: number; method: PayoutMethod; note?: string; nature?: PayoutNature }) => Promise<void>;
+  recordPayout: (groupId: string, p: { round: number; memberId?: string | null; beneficiaryName: string; amount: number; method: PayoutMethod; note?: string; nature?: PayoutNature }) => Promise<{ statut: "valide" | "en_attente"; requis: number }>;
+  validerVersement: (demandeId: string, accord: boolean) => Promise<string>;
+  annulerVersement: (demandeId: string) => Promise<void>;
   nextRound: (groupId: string) => Promise<void>;
   joinGroup: (groupId: string) => Promise<"membre" | "en_attente" | "aucun">;
   repondreDemande: (memberId: string, accepter: boolean) => Promise<void>;
@@ -85,7 +87,7 @@ interface Ctx {
 const StoreContext = createContext<Ctx | null>(null);
 
 /* Cache local : affiche tout de suite les groupes déjà connus, puis les met à jour */
-const CACHE = "cotiz:cache:v2";
+const CACHE = "cotiz:cache:v3";
 type Cache = { userId: string; user: User; groups: Group[] };
 const lireCache = (): Cache | null => {
   try {
@@ -119,8 +121,12 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const reload = useCallback(async () => {
     let { data, error } = await supabase
       .from("groups")
-      .select("*, members(*), payments(*), payouts(*), engagements(*)")
+      .select("*, members(*), payments(*), payouts(*), engagements(*), demandes_versement(*, validations_versement(*))")
       .order("created_at", { ascending: false });
+    if (error) {
+      // base pas encore mise à jour (validation des versements absente)
+      ({ data, error } = await supabase.from("groups").select("*, members(*), payments(*), payouts(*), engagements(*)").order("created_at", { ascending: false }));
+    }
     if (error) {
       // base pas encore mise à jour (table engagements absente)
       ({ data, error } = await supabase.from("groups").select("*, members(*), payments(*), payouts(*)").order("created_at", { ascending: false }));
@@ -575,8 +581,19 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     [recordPayments]
   );
 
+  // Versement : demandé par le trésorier, validé par 2 ou 3 responsables (mise à jour SQL n°13)
   const recordPayout = useCallback(
-    async (groupId: string, p: { round: number; memberId?: string | null; beneficiaryName: string; amount: number; method: PayoutMethod; note?: string; nature?: PayoutNature }) => {
+    async (groupId: string, p: { round: number; memberId?: string | null; beneficiaryName: string; amount: number; method: PayoutMethod; note?: string; nature?: PayoutNature }): Promise<{ statut: "valide" | "en_attente"; requis: number }> => {
+      const r = await supabase.rpc("demander_versement", {
+        g: groupId, tour: p.round, membre: p.memberId ?? null, beneficiaire: p.beneficiaryName.trim(),
+        montant: Math.round(p.amount), moyen: p.method, nat: p.nature ?? "versement", remarque: p.note?.trim() || null,
+      });
+      if (!r.error) {
+        await reload();
+        return r.data as { statut: "valide" | "en_attente"; requis: number };
+      }
+      if (r.error.code !== "PGRST202") throw new Error(r.error.message);
+      // Ancienne base (sans la mise à jour n°13) : versement direct
       const { error } = await supabase.from("payouts").insert({
         group_id: groupId,
         round: p.round,
@@ -588,6 +605,26 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
         ...(p.nature && p.nature !== "versement" ? { nature: p.nature } : {}),
         reference: reference().replace("CTZ-", "VRS-"),
       });
+      fail(error);
+      await reload();
+      return { statut: "valide", requis: 1 };
+    },
+    [reload]
+  );
+
+  const validerVersement = useCallback(
+    async (demandeId: string, accord: boolean) => {
+      const { data, error } = await supabase.rpc("valider_versement", { demande: demandeId, accord });
+      fail(error);
+      await reload();
+      return (data as { statut: string }).statut;
+    },
+    [reload]
+  );
+
+  const annulerVersement = useCallback(
+    async (demandeId: string) => {
+      const { error } = await supabase.rpc("annuler_versement", { demande: demandeId });
       fail(error);
       await reload();
     },
@@ -675,7 +712,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <StoreContext.Provider
-      value={{ ready, loaded, user, userId, groups, login, envoyerCode, verifierCode, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, setWaveLink, updateGroup, updateMember, removeMember, setOrder, deleteGroup, setTiragePrevu, lancerTirage, updateProfile, accepterReglement, recordPayout, nextRound, joinGroup, repondreDemande, annulerDeclaration, retrouverCompte, quitterGroupe }}
+      value={{ ready, loaded, user, userId, groups, login, envoyerCode, verifierCode, logout, reload, getGroup, createGroup, addMember, recordPayment, recordPayments, declarePayments, confirmPayments, setPaymentPhone, setWaveLink, updateGroup, updateMember, removeMember, setOrder, deleteGroup, setTiragePrevu, lancerTirage, updateProfile, accepterReglement, recordPayout, nextRound, joinGroup, repondreDemande, annulerDeclaration, retrouverCompte, quitterGroupe, validerVersement, annulerVersement }}
     >
       {children}
     </StoreContext.Provider>

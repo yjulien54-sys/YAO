@@ -10,7 +10,8 @@ import { TYPE_LABEL, amountDue, droits, beneficiary, impayes, memberStatus, dueD
 import { useStore } from "@/lib/store";
 import { BottomNav } from "@/components/BottomNav";
 import { Annonces } from "@/components/Annonces";
-import { AlertCircle, ChevronRight, ClipboardPaste, Clock, HandCoins, UserPlus, Headset, Link2, Plus, Repeat, Users, Wallet } from "lucide-react";
+import { Cloche } from "@/components/Cloche";
+import { AlertCircle, ChevronRight, ClipboardPaste, Clock, HandCoins, ShieldCheck, UserPlus, Headset, Link2, Plus, Repeat, Users, Wallet } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 
 const TYPE_ICON = { tontine: Repeat, association: Users, collecte: HandCoins };
@@ -105,9 +106,12 @@ export default function Groupes() {
     <Page large>
       <Header
         right={
-          <Link href="/aide" aria-label="Service client" className="rounded-full p-2 text-emerald-700 hover:bg-emerald-50">
-            <Headset size={22} strokeWidth={1.9} />
-          </Link>
+          <div className="flex items-center">
+            <Cloche />
+            <Link href="/aide" aria-label="Service client" className="rounded-full p-2 text-emerald-700 hover:bg-emerald-50">
+              <Headset size={22} strokeWidth={1.9} />
+            </Link>
+          </div>
         }
       />
       <div className="space-y-5 p-4 pb-28">
@@ -130,6 +134,22 @@ export default function Groupes() {
           </div>
           <div className="bande-kente relative" />
         </div>
+
+        {geres
+          .filter((g) => (g.demandesVersement ?? []).some((d) => d.statut === "en_attente" && !d.validations.some((v) => v.profileId === userId)))
+          .map((g) => {
+            const d = g.demandesVersement.find((x) => x.statut === "en_attente")!;
+            return (
+              <Link key={`v-${g.id}`} href={`/groupes/${g.id}#a-valider`} className="flex items-center gap-3 rounded-[18px] border border-violet-200 bg-violet-50 px-4 py-3 transition active:scale-[0.99]">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-violet-100 text-violet-700"><ShieldCheck size={19} strokeWidth={2} /></span>
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-bold text-stone-900">Versement à valider</p>
+                  <p className="truncate text-[0.8125rem] text-stone-600">{fcfa(d.amount)} pour {d.beneficiaryName} · {g.name}</p>
+                </div>
+                <span className="shrink-0 rounded-[12px] bg-violet-600 px-3 py-1.5 text-xs font-bold text-white">Valider</span>
+              </Link>
+            );
+          })}
 
         {geres.filter((g) => g.demandes.length > 0).map((g) => (
           <Link key={`d-${g.id}`} href={`/groupes/${g.id}`} className="flex items-center gap-3 rounded-[18px] border border-sky-200 bg-sky-50 px-4 py-3 transition active:scale-[0.99]">

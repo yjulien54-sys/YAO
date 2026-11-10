@@ -75,6 +75,7 @@ export interface Group {
   payments: Payment[]; // paiements réussis uniquement
   pending: Payment[]; // paiements déclarés, en attente de confirmation du trésorier
   payouts: Payout[];
+  demandesVersement: DemandeVersement[]; // versements en attente de validation (et historique)
   paymentPhone?: string; // numéro Wave qui reçoit les cotisations
   paymentPhoneChangedAt?: string; // dernier changement du numéro de réception
   anciens: Member[]; // membres retirés (archivés), pour l'historique
@@ -90,3 +91,20 @@ export interface Group {
   donCause?: string; // cause soutenue si les pénalités deviennent des dons
   createdAt: string;
 }
+
+/** Versement demandé par le trésorier, en attente de validation par les responsables */
+export type DemandeVersement = {
+  id: string;
+  round: number;
+  memberId?: string | null;
+  beneficiaryName: string;
+  amount: number;
+  method: string;
+  nature: string;
+  note?: string;
+  demandePar: string;
+  statut: "en_attente" | "valide" | "refuse" | "annule";
+  requis: number;
+  date: string;
+  validations: { profileId: string; accord: boolean; date: string }[];
+};

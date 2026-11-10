@@ -3,6 +3,7 @@ import { StoreProvider } from "@/lib/store";
 import { ServiceWorker } from "@/components/ServiceWorker";
 import { Glisser } from "@/components/Glisser";
 import { Bienvenue } from "@/components/Bienvenue";
+import { NotificationsProvider } from "@/lib/notifications";
 import "@fontsource-variable/plus-jakarta-sans";
 import "./globals.css";
 
@@ -25,8 +26,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="fr">
       <body className="antialiased">
         <StoreProvider>
-          {children}
-          <Bienvenue />
+          <NotificationsProvider>
+            {children}
+            <Bienvenue />
+          </NotificationsProvider>
         </StoreProvider>
         <ServiceWorker />
         <Glisser />

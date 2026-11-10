@@ -16,7 +16,7 @@ import { Tirage } from "@/components/Tirage";
 import { ActionRapide } from "@/components/ActionRapide";
 import { Reglement } from "@/components/Reglement";
 import { CaissePenalites } from "@/components/CaissePenalites";
-import { AlertTriangle, ArrowUpRight, CalendarDays, ChevronsRight, FileText, Flag, History, Users, MessageCircle, Phone, Settings, Check, CheckCircle2, Clock, Gift, PartyPopper, Smartphone, Trash2, LogOut, UserPlus, X } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, CalendarDays, ChevronsRight, FileText, Flag, History, Users, MessageCircle, Phone, Settings, Check, CheckCircle2, Clock, Gift, PartyPopper, Smartphone, ShieldCheck, Trash2, LogOut, UserPlus, X } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 import type { Member } from "@/lib/types";
 
@@ -25,7 +25,7 @@ type Tab = "membres" | "historique" | "tours";
 export default function GroupeDetail() {
   const ok = useRequireUser();
   const { id } = useParams<{ id: string }>();
-  const { getGroup, recordPayment, recordPayout, confirmPayments, setPaymentPhone, addMember, nextRound, joinGroup, repondreDemande, annulerDeclaration, quitterGroupe, loaded, userId } = useStore();
+  const { getGroup, recordPayment, recordPayout, confirmPayments, setPaymentPhone, addMember, nextRound, joinGroup, repondreDemande, annulerDeclaration, quitterGroupe, validerVersement, annulerVersement, loaded, userId } = useStore();
   const router = useRouter();
   const g = getGroup(id);
   const me = useMe(g);
@@ -41,9 +41,10 @@ export default function GroupeDetail() {
 
   // Arrivée depuis l'alerte « à confirmer » de l'accueil : on descend jusqu'au bouton « Reçu »
   useEffect(() => {
-    if (!pret || window.location.hash !== "#a-confirmer") return;
+    const cible = window.location.hash.slice(1);
+    if (!pret || !["a-confirmer", "a-valider"].includes(cible)) return;
     const t = setTimeout(() => {
-      const el = document.getElementById("a-confirmer");
+      const el = document.getElementById(cible);
       if (!el) return;
       el.scrollIntoView({ behavior: "smooth", block: "start" });
       el.classList.add("eclair");
@@ -78,6 +79,7 @@ export default function GroupeDetail() {
     }, {})
   );
   const mesDeclarations = me ? g.pending.filter((p) => p.memberId === me.id) : [];
+  const enValidation = (g.demandesVersement ?? []).filter((d) => d.statut === "en_attente");
   const tourEnAttente = me ? mesDeclarations.some((p) => p.round === g.currentRound || g.type === "collecte") : false;
   const tresorier = g.members.find((m) => m.role === "tresorier");
   const termine =
@@ -151,6 +153,52 @@ export default function GroupeDetail() {
             <Stat n={st.counts.retard} label="En retard" cls="text-red-600" />
           </div>
         </Card>
+
+        {enValidation.length > 0 && (
+          <div id="a-valider" className="scroll-mt-20 rounded-[18px]">
+            <Card className="space-y-3 border-violet-200 bg-violet-50/60">
+              <div>
+                <p className="flex items-center gap-2 text-sm font-bold"><IconBadge icon={ShieldCheck} ton="violet" taille="sm" />Versement en attente de validation</p>
+                <p className="text-xs text-stone-600">Par sécurité, l’argent ne sort qu’après l’accord de plusieurs responsables du groupe.</p>
+              </div>
+              {enValidation.map((d) => {
+                const oui = d.validations.filter((v) => v.accord);
+                const jaiVote = !!userId && d.validations.some((v) => v.profileId === userId);
+                const qui = (pid: string) => g.members.find((m) => m.profileId === pid)?.name ?? "Responsable";
+                return (
+                  <div key={d.id} className="space-y-2 rounded-xl bg-white p-3 ring-1 ring-stone-200">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className="min-w-0">
+                        <p className="font-semibold">{fcfa(d.amount)} pour {d.beneficiaryName}</p>
+                        <p className="text-xs text-stone-500">Demandé par {qui(d.demandePar)} · {dateLongue(d.date)}{d.note ? ` · ${d.note}` : ""}</p>
+                      </div>
+                      <span className="shrink-0 rounded-md bg-violet-100 px-2 py-0.5 text-xs font-bold text-violet-800">{oui.length}/{d.requis}</span>
+                    </div>
+                    <div className="h-1.5 overflow-hidden rounded-full bg-stone-100"><div className="h-full rounded-full bg-violet-500" style={{ width: `${(oui.length / d.requis) * 100}%` }} /></div>
+                    <p className="text-xs text-stone-600">Validé par : {oui.map((v) => prenom(qui(v.profileId))).join(", ")}</p>
+                    {dr.gestionnaire && !jaiVote && (
+                      <div className="grid grid-cols-2 gap-2">
+                        <Button variant="secondary" className="!py-2" onClick={() => confirm(`Refuser ce versement de ${fcfa(d.amount)} ?`) && validerVersement(d.id, false).then(() => flash("Versement refusé")).catch((e) => flash("Erreur : " + e.message))}>
+                          <X size={16} strokeWidth={2} /> Refuser
+                        </Button>
+                        <Button className="!py-2" onClick={() => validerVersement(d.id, true).then((st) => flash(st === "valide" ? "Versement validé et enregistré" : "Ta validation est enregistrée")).catch((e) => flash("Erreur : " + e.message))}>
+                          <Check size={16} strokeWidth={2.25} /> Valider
+                        </Button>
+                      </div>
+                    )}
+                    {jaiVote && <p className="text-xs font-semibold text-violet-800">Tu as validé. En attente des autres responsables.</p>}
+                    {!dr.gestionnaire && <p className="text-xs text-stone-500">Les responsables du groupe doivent valider ce versement.</p>}
+                    {(userId === d.demandePar || isTreasurer) && (
+                      <button type="button" onClick={() => confirm("Annuler cette demande de versement ?") && annulerVersement(d.id).then(() => flash("Demande annulée")).catch((e) => flash("Erreur : " + e.message))} className="text-xs font-semibold text-stone-500 underline">
+                        Annuler la demande
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </Card>
+          </div>
+        )}
 
         {dr.gestionnaire && g.demandes.length > 0 && (
           <Card className="space-y-3 border-sky-200 bg-sky-50/60">
@@ -621,8 +669,8 @@ export default function GroupeDetail() {
                 ? `La caisse du tour ${g.currentRound} est complète. Verse ${fcfa(netTour)} à ${ben.name}.`
                 : `Il manque encore ${unpaid.length} paiement(s). Tu peux attendre, ou verser dès maintenant ce qui a été reçu (${fcfa(netTour)}).`}
             </p>
-            <Button variant={unpaid.length === 0 ? "primary" : "secondary"} className="w-full" onClick={() => setVersement(true)}>
-              Verser {fcfa(netTour)} à {prenom(ben.name)}
+            <Button variant={unpaid.length === 0 ? "primary" : "secondary"} className="w-full" disabled={enValidation.length > 0} onClick={() => setVersement(true)}>
+              {enValidation.length > 0 ? "Versement en cours de validation" : `Verser ${fcfa(netTour)} à ${prenom(ben.name)}`}
             </Button>
           </Card>
         )}
@@ -634,8 +682,8 @@ export default function GroupeDetail() {
               Solde disponible : <b>{fcfa(cs.solde)}</b> (frais Mobile Money déduits).
               {g.type === "collecte" ? " Remets l’argent à la personne désignée, puis enregistre-le ici." : " Enregistre chaque dépense de l’association pour que tout le monde la voie."}
             </p>
-            <Button variant="secondary" className="w-full" onClick={() => setVersement(true)}>
-              {g.type === "collecte" ? "Enregistrer la remise des fonds" : "Enregistrer une sortie"}
+            <Button variant="secondary" className="w-full" disabled={enValidation.length > 0} onClick={() => setVersement(true)}>
+              {enValidation.length > 0 ? "Versement en cours de validation" : g.type === "collecte" ? "Enregistrer la remise des fonds" : "Enregistrer une sortie"}
             </Button>
           </Card>
         )}
@@ -705,8 +753,8 @@ export default function GroupeDetail() {
           max={g.type === "tontine" ? Math.min(netTour, cs.solde) : cs.solde}
           onClose={() => setVersement(false)}
           onConfirm={async (v) => {
-            await recordPayout(g.id, { ...v, round: g.currentRound, memberId: g.type === "tontine" ? ben?.id : null });
-            flash("Versement enregistré");
+            const r = await recordPayout(g.id, { ...v, round: g.currentRound, memberId: g.type === "tontine" ? ben?.id : null });
+            flash(r.statut === "valide" ? "Versement enregistré" : `Demande envoyée : ${r.requis - 1} autre(s) validation(s) nécessaire(s)`);
           }}
         />
       )}

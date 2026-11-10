@@ -1,4 +1,4 @@
-import type { Group, Member, Payment, Payout } from "./types";
+import type { Group, Member, Payment, Payout, DemandeVersement } from "./types";
 
 /* eslint-disable @typescript-eslint/no-explicit-any */
 export const mapPayment = (p: any): Payment => ({
@@ -27,6 +27,22 @@ export const mapPayout = (p: any): Payout => ({
   note: p.note ?? undefined,
   reference: p.reference,
   date: p.created_at,
+});
+
+export const mapDemandeVersement = (d: any): DemandeVersement => ({
+  id: d.id,
+  round: d.round,
+  memberId: d.member_id,
+  beneficiaryName: d.beneficiary_name,
+  amount: d.amount,
+  method: d.method,
+  nature: d.nature ?? "versement",
+  note: d.note ?? undefined,
+  demandePar: d.demande_par,
+  statut: d.statut,
+  requis: d.requis,
+  date: d.cree_le,
+  validations: (d.validations_versement ?? []).map((v: any) => ({ profileId: v.profile_id, accord: v.accord, date: v.le })),
 });
 
 export const mapGroup = (r: any): Group => {
@@ -74,6 +90,7 @@ export const mapGroup = (r: any): Group => {
       acceptedAt: e.accepted_at,
     })),
     payouts: (r.payouts ?? []).map(mapPayout).sort((a: Payout, b: Payout) => a.date.localeCompare(b.date)),
+    demandesVersement: (r.demandes_versement ?? []).map(mapDemandeVersement).sort((a: DemandeVersement, b: DemandeVersement) => b.date.localeCompare(a.date)),
     createdAt: r.created_at,
   };
 };

@@ -24,7 +24,7 @@ export function PayoutModal({
   max: number;
   nomModifiable?: boolean;
   onClose: () => void;
-  onConfirm: (p: { beneficiaryName: string; amount: number; method: PayoutMethod; note?: string }) => Promise<void>;
+  onConfirm: (p: { beneficiaryName: string; amount: number; method: PayoutMethod; note?: string }) => Promise<unknown>;
 }) {
   const [nom, setNom] = useState(beneficiaire);
   const [valeur, setValeur] = useState(String(Math.max(0, Math.round(montant))));
@@ -79,8 +79,9 @@ export function PayoutModal({
             }
           }}
         >
-          {n > max ? "Montant supérieur à la caisse" : `Confirmer le versement de ${fcfa(n)}`}
+          {n > max ? "Montant supérieur à la caisse" : `Demander le versement de ${fcfa(n)}`}
         </Button>
+        <p className="text-center text-xs text-stone-500">Pour la sécurité du groupe, le versement est enregistré après la validation des responsables (2 ou 3 selon la taille du groupe).</p>
       </div>
     </div>
   );
