@@ -4,6 +4,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useEffect, useState } from "react";
 import { Button, Card, Field, Loading, Logo, inputClass } from "@/components/ui";
 import { useStore } from "@/lib/store";
+import { enregistrerNaissance } from "@/lib/verrou";
 import { BellRing, Check, Gift, Receipt, Repeat, ShieldCheck, Wallet } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 
@@ -35,6 +36,7 @@ function Accueil() {
   const suite = suiteParam && suiteParam.startsWith("/") ? suiteParam : "/groupes";
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [naissance, setNaissance] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -48,6 +50,7 @@ function Accueil() {
     e.preventDefault();
     if (!name.trim()) return setError("Indique ton nom.");
     if (!telValide) return setError("Le numéro doit avoir 10 chiffres (ex : 07 07 12 34 56).");
+    if (!naissance) return setError("Indique ta date de naissance.");
     setError("");
     setBusy(true);
     try {
@@ -58,6 +61,7 @@ function Accueil() {
         return;
       }
       await login({ name: name.trim(), phone: phone.replace(/\D/g, "") });
+      await enregistrerNaissance(naissance);
       router.replace(suite);
     } catch (err) {
       setError("Connexion impossible : " + (err as Error).message);
@@ -72,6 +76,7 @@ function Accueil() {
     setBusy(true);
     try {
       await verifierCode({ name: name.trim(), phone: phone.replace(/\D/g, "") }, code.replace(/\D/g, ""));
+      await enregistrerNaissance(naissance);
       router.replace(suite);
     } catch (err) {
       setError("Code incorrect ou expiré : " + (err as Error).message);
@@ -162,6 +167,9 @@ function Accueil() {
             <h2 className="text-lg font-bold">{suite.startsWith("/groupes/") ? "Rejoindre le groupe" : "Commencer"}</h2>
             <Field label="Ton nom">
               <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="ex : Yao Kouassi" autoComplete="name" />
+            </Field>
+            <Field label="Date de naissance" hint="Elle sert à récupérer ton code secret si tu l’oublies.">
+              <input type="date" className={inputClass} value={naissance} onChange={(e) => setNaissance(e.target.value)} max={new Date().toISOString().slice(0, 10)} autoComplete="bday" />
             </Field>
             <Field label="Numéro de téléphone" hint="Le même numéro que celui donné au trésorier de ton groupe.">
               <div className="flex gap-2">

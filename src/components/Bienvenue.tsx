@@ -299,7 +299,7 @@ export function Bienvenue() {
           </div>
         </div>
         {clavier && userId && (
-          <ClavierCode uid={userId} defini={!!etatC?.defini} attenteInitiale={etatC?.attente ?? 0} activerApres={activerApres} tel={user?.phone ?? ""} nom={nom} onOk={entrer} onFermer={() => setClavier(false)} onOubli={oubli} />
+          <ClavierCode uid={userId} defini={!!etatC?.defini} attenteInitiale={etatC?.attente ?? 0} activerApres={activerApres} naissanceConnue={etatC?.naissance} tel={user?.phone ?? ""} nom={nom} onOk={entrer} onFermer={() => setClavier(false)} onOubli={oubli} />
         )}
       </section>
     </div>

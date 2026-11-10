@@ -10,7 +10,7 @@ import { supabase } from "./supabase";
 
 type Local = { sel: string; hash: string };
 type Essais = { n: number; jusqua?: number };
-export type Etat = { defini: boolean; modifieLe?: string; attente: number; serveur: boolean };
+export type Etat = { defini: boolean; modifieLe?: string; attente: number; serveur: boolean; naissance?: boolean };
 export type Resultat = { ok: boolean; restants: number; attente: number; erreur?: string };
 
 const cle = (uid: string) => `cotiz:verrou:${uid}`;
@@ -80,10 +80,10 @@ async function verifierLocal(uid: string, code: string): Promise<Resultat> {
 export async function etatCode(uid: string): Promise<Etat> {
   const { data, error } = await supabase.rpc("code_etat");
   if (!error && data) {
-    const d = data as { defini: boolean; modifie_le?: string; attente: number };
+    const d = data as { defini: boolean; modifie_le?: string; attente: number; naissance?: boolean };
     // Code réinitialisé par l'équipe Cotiz : on efface aussi la copie du téléphone
     if (!d.defini) ecrire(cle(uid), null);
-    return { defini: d.defini, modifieLe: d.modifie_le ?? undefined, attente: d.attente ?? 0, serveur: true };
+    return { defini: d.defini, modifieLe: d.modifie_le ?? undefined, attente: d.attente ?? 0, serveur: true, naissance: d.naissance };
   }
   return { defini: !!lire<Local>(cle(uid)), attente: attenteLocale(uid), serveur: false };
 }
@@ -174,4 +174,27 @@ export async function verifierEmpreinte(uid: string) {
   } catch {
     return false;
   }
+}
+
+/* ---------- Date de naissance et code oublié (mise à jour SQL n°9) ---------- */
+
+/** Enregistre la date de naissance (une seule fois). Sans la mise à jour n°9, ne fait rien. */
+export async function enregistrerNaissance(date: string) {
+  if (!date) return false;
+  const { data, error } = await supabase.rpc("definir_naissance", { d: date });
+  return !error && !!data;
+}
+
+export type ResultatOubli = { ok: boolean; raison?: "faux" | "bloquee" | "sans_naissance" | "indisponible" | "reseau"; restants?: number };
+
+/** Vérifie nom + date de naissance ; si c'est juste, le code est effacé et on en crée un nouveau */
+export async function reinitialiserParNaissance(uid: string, nom: string, date: string): Promise<ResultatOubli> {
+  const { data, error } = await supabase.rpc("reinitialiser_par_naissance", { nom, naissance: date });
+  if (error) return { ok: false, raison: absente(error) ? "indisponible" : "reseau" };
+  const d = data as ResultatOubli;
+  if (d.ok) {
+    ecrire(cle(uid), null);
+    ecrire(cleEssais(uid), null);
+  }
+  return d;
 }

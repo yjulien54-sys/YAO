@@ -1,21 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Delete, Fingerprint, Headset, Lock, ShieldCheck, X } from "lucide-react";
-import { ESSAIS_MAX, aEmpreinte, activerEmpreinte, definirCode, empreinteDisponible, verifierCode, verifierEmpreinte } from "@/lib/verrou";
+import { CalendarDays, Delete, Fingerprint, Headset, Lock, ShieldCheck, X } from "lucide-react";
+import { ESSAIS_MAX, aEmpreinte, activerEmpreinte, definirCode, empreinteDisponible, enregistrerNaissance, reinitialiserParNaissance, verifierCode, verifierEmpreinte } from "@/lib/verrou";
 import { vibrer } from "@/lib/haptique";
 import { SUPPORT_PHONE } from "@/lib/support";
 import { waLink } from "@/lib/whatsapp";
 
-type Mode = "creation" | "confirmation" | "saisie" | "ancien" | "oubli" | "empreinte";
+type Mode = "creation" | "confirmation" | "saisie" | "ancien" | "oubli" | "empreinte" | "naissance";
 
 /**
  * Panneau du code secret Cotiz.
  * - defini = false : création du code ; true : saisie du code.
  * - changement : on demande l'ancien code, puis le nouveau deux fois.
  */
-export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, activerApres, onOk, onFermer, onOubli, tel, nom = "" }: {
-  uid: string; defini: boolean; changement?: boolean; attenteInitiale?: number; activerApres?: boolean; tel?: string; nom?: string;
+export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, activerApres, naissanceConnue, onOk, onFermer, onOubli, tel, nom = "" }: {
+  uid: string; defini: boolean; changement?: boolean; attenteInitiale?: number; activerApres?: boolean; naissanceConnue?: boolean; tel?: string; nom?: string;
   onOk: () => void; onFermer?: () => void; onOubli?: () => void;
 }) {
   const [mode, setMode] = useState<Mode>(changement ? "ancien" : defini ? "saisie" : "creation");
@@ -27,6 +27,11 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
   const [attente, setAttente] = useState(attenteInitiale);
   const [occupe, setOccupe] = useState(false);
   const [bioDispo, setBioDispo] = useState(false);
+  const [reinit, setReinit] = useState(false); // code effacé après vérification « code oublié »
+  const [info, setInfo] = useState("");
+  const [nomSaisi, setNomSaisi] = useState("");
+  const [naissance, setNaissance] = useState("");
+  const [indispo, setIndispo] = useState(false);
   const [bioActive, setBioActive] = useState(() => aEmpreinte(uid));
 
   useEffect(() => {
@@ -99,18 +104,17 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
         return echec("Les deux codes sont différents. Recommence.");
       }
       setOccupe(true);
-      const r = await definirCode(uid, c, changement ? ancien : undefined);
+      const r = await definirCode(uid, c, changement && !reinit ? ancien : undefined);
       setOccupe(false);
       if (!r.ok) {
         setPremier("");
         setAncien("");
-        setMode(changement ? "ancien" : "creation");
+        setMode(changement && !reinit ? "ancien" : "creation");
         return echec(r.erreur ?? "Le code n’a pas pu être enregistré.");
       }
       vibrer("ok");
-      // Première création : on propose l'empreinte si le téléphone en a une
-      if (!changement && bioDispo && !bioActive) return setMode("empreinte");
-      return onOk();
+      setInfo("");
+      return suite();
     }
     if (mode === "saisie") {
       setOccupe(true);
@@ -130,6 +134,50 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
     }
   }
 
+  // Après la création du code : date de naissance (si inconnue), puis proposition d'empreinte
+  function suite(depuis: Mode = "confirmation") {
+    if (depuis === "confirmation" && !changement && naissanceConnue === false) return setMode("naissance");
+    if (!changement && bioDispo && !bioActive) return setMode("empreinte");
+    onOk();
+  }
+
+  async function enregistrerDate() {
+    if (!naissance) return setErreur("Choisis ta date de naissance.");
+    setOccupe(true);
+    await enregistrerNaissance(naissance);
+    setOccupe(false);
+    vibrer("ok");
+    setErreur("");
+    suite("naissance");
+  }
+
+  // Code oublié : nom + date de naissance vérifiés par le serveur, instantanément
+  async function verifierIdentite(e: React.FormEvent) {
+    e.preventDefault();
+    if (!nomSaisi.trim() || !naissance) return setErreur("Remplis ton nom et ta date de naissance.");
+    setOccupe(true);
+    const r = await reinitialiserParNaissance(uid, nomSaisi.trim(), naissance);
+    setOccupe(false);
+    if (r.ok) {
+      vibrer("ok");
+      setReinit(true);
+      setErreur("");
+      setCode("");
+      setPremier("");
+      setAttente(0);
+      setInfo("Identité vérifiée ✓ Choisis ton nouveau code.");
+      return setMode("creation");
+    }
+    vibrer("erreur");
+    if (r.raison === "indisponible" || r.raison === "sans_naissance") {
+      setIndispo(true);
+      return setErreur(r.raison === "sans_naissance" ? "Aucune date de naissance n’est enregistrée sur ton compte." : "");
+    }
+    if (r.raison === "reseau") return setErreur("Pas de connexion. Réessaie quand tu as du réseau.");
+    if (r.raison === "bloquee") return setErreur("Trop d’essais aujourd’hui. Réessaie demain ou contacte le service client.");
+    setErreur(`Les informations ne correspondent pas. ${r.restants ? `Encore ${r.restants} essai${(r.restants ?? 0) > 1 ? "s" : ""} aujourd’hui.` : "Plus d’essai aujourd’hui."}`);
+  }
+
   function touche(t: string) {
     if (occupe || attente > 0 || code.length >= 4) return;
     vibrer("touche");
@@ -141,10 +189,11 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
 
   const titres: Record<Mode, [string, string]> = {
     ancien: ["Ton code actuel", "Tape d’abord ton code secret actuel."],
-    creation: [changement ? "Nouveau code" : "Crée ton code secret", "4 chiffres pour ouvrir Cotiz. Ce n’est pas le code de ton téléphone."],
+    creation: [changement || reinit ? "Nouveau code" : "Crée ton code secret", info || "4 chiffres pour ouvrir Cotiz. Ce n’est pas le code de ton téléphone."],
     confirmation: ["Confirme ton code", "Tape le même code une deuxième fois."],
     saisie: ["Entre ton code Cotiz", activerApres && !bioActive ? "Tape ton code une fois pour activer l’empreinte." : "Ton code secret à 4 chiffres pour accéder à tes groupes."],
-    oubli: ["Code oublié ?", ""],
+    oubli: ["Code oublié ?", "Confirme ton identité pour créer un nouveau code."],
+    naissance: ["Ta date de naissance", "Elle te permettra de récupérer ton code si tu l’oublies. Elle ne pourra plus être changée."],
     empreinte: ["Activer l’empreinte ?", "Entre aussi avec ton doigt. Ton code Cotiz reste valable."],
   };
   const [titre, sous] = titres[mode];
@@ -157,7 +206,7 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
-              {mode === "oubli" ? <ShieldCheck size={22} strokeWidth={1.9} /> : mode === "empreinte" ? <Fingerprint size={22} strokeWidth={1.9} /> : <Lock size={21} strokeWidth={2} />}
+              {mode === "oubli" ? <ShieldCheck size={22} strokeWidth={1.9} /> : mode === "naissance" ? <CalendarDays size={22} strokeWidth={1.9} /> : mode === "empreinte" ? <Fingerprint size={22} strokeWidth={1.9} /> : <Lock size={21} strokeWidth={2} />}
             </span>
             <div>
               <p className="text-lg font-extrabold leading-tight">{titre}</p>
@@ -165,7 +214,7 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
             </div>
           </div>
           {fermable && (
-            <button type="button" onClick={mode === "oubli" ? () => setMode("saisie") : onFermer} aria-label="Fermer" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-500">
+            <button type="button" onClick={mode === "oubli" ? () => { setErreur(""); setMode(changement && !reinit ? "ancien" : "saisie"); } : onFermer} aria-label="Fermer" className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-500">
               <X size={18} strokeWidth={2} />
             </button>
           )}
@@ -179,23 +228,41 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
             <button type="button" onClick={() => { vibrer("touche"); onOk(); }} className="w-full rounded-[14px] py-3 text-sm font-semibold text-stone-500">Plus tard</button>
             {erreur && <p className="text-center text-sm font-medium text-red-600">{erreur}</p>}
           </div>
+        ) : mode === "naissance" ? (
+          <div className="mt-5 space-y-3">
+            <input type="date" value={naissance} onChange={(e) => setNaissance(e.target.value)} max={new Date().toISOString().slice(0, 10)} className="w-full rounded-[14px] border border-stone-300/80 bg-white px-4 py-3 text-base outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" aria-label="Date de naissance" />
+            {erreur && <p className="text-sm font-medium text-red-600">{erreur}</p>}
+            <button type="button" disabled={occupe} onClick={enregistrerDate} className="w-full rounded-[14px] bg-emerald-700 py-3.5 text-[0.95rem] font-bold text-white disabled:opacity-60">{occupe ? "Enregistrement…" : "Enregistrer"}</button>
+            <button type="button" onClick={() => { vibrer("touche"); suite("naissance"); }} className="w-full py-2 text-sm font-semibold text-stone-500">Plus tard</button>
+          </div>
         ) : mode === "oubli" ? (
-          <div className="mt-4 space-y-3 text-sm text-stone-600">
-            <p>Pour ta sécurité, personne ne peut lire ton code, même pas l’équipe Cotiz. Le service client peut le <b>réinitialiser</b> après avoir vérifié ton identité. Tu en créeras alors un nouveau.</p>
-            <a
-              href={waLink(`Bonjour, j’ai oublié mon code secret Cotiz. Mon numéro de compte : ${tel ?? ""}. Pouvez-vous le réinitialiser ?`, SUPPORT_PHONE)}
-              target="_blank"
-              rel="noreferrer"
-              className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-emerald-700 py-3.5 text-[0.95rem] font-bold text-white"
-            >
-              <Headset size={18} strokeWidth={2} /> Contacter le service client
-            </a>
+          <form onSubmit={verifierIdentite} className="mt-4 space-y-3 text-sm text-stone-600">
+            <label className="block">
+              <span className="mb-1 block font-semibold text-stone-700">Nom et prénom</span>
+              <input value={nomSaisi} onChange={(e) => setNomSaisi(e.target.value)} autoComplete="name" placeholder="ex : Yao Kouassi" className="w-full rounded-[14px] border border-stone-300/80 bg-white px-4 py-3 text-base text-stone-900 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" />
+            </label>
+            <label className="block">
+              <span className="mb-1 block font-semibold text-stone-700">Date de naissance</span>
+              <input type="date" value={naissance} onChange={(e) => setNaissance(e.target.value)} max={new Date().toISOString().slice(0, 10)} className="w-full rounded-[14px] border border-stone-300/80 bg-white px-4 py-3 text-base text-stone-900 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" />
+            </label>
+            {erreur && <p className="font-medium text-red-600">{erreur}</p>}
+            <button type="submit" disabled={occupe} className="w-full rounded-[14px] bg-emerald-700 py-3.5 text-[0.95rem] font-bold text-white disabled:opacity-60">{occupe ? "Vérification…" : "Valider"}</button>
+            {indispo && (
+              <a
+                href={waLink(`Bonjour, j’ai oublié mon code secret Cotiz. Mon numéro de compte : ${tel ?? ""}. Pouvez-vous le réinitialiser ?`, SUPPORT_PHONE)}
+                target="_blank"
+                rel="noreferrer"
+                className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-stone-100 py-3 font-bold text-stone-800"
+              >
+                <Headset size={18} strokeWidth={2} /> Contacter le service client
+              </a>
+            )}
             {onOubli && (
-              <button type="button" onClick={onOubli} className="w-full rounded-[14px] py-2.5 text-sm font-semibold text-stone-500">
-                Ou me déconnecter de ce téléphone
+              <button type="button" onClick={onOubli} className="w-full py-1 text-xs font-semibold text-stone-400">
+                Me déconnecter de ce téléphone
               </button>
             )}
-          </div>
+          </form>
         ) : (
           <>
             {/* Les 4 points */}

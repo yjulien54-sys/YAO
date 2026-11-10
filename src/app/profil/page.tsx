@@ -182,6 +182,8 @@ export default function ProfilPage() {
               uid={userId}
               defini={!!etatC?.defini}
               changement={!!etatC?.defini}
+              naissanceConnue={etatC?.naissance}
+              nom={user?.name}
               tel={user?.phone}
               onFermer={() => setChangerCode(false)}
               onOk={() => {
