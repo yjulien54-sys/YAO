@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
-import { CLE_SESSION, aEmpreinte, aUnCode, supprimerVerrou, verifierEmpreinte } from "@/lib/verrou";
+import { CLE_SESSION, etatCode, oublierSurCeTelephone, type Etat } from "@/lib/verrou";
 import { ClavierCode } from "./ClavierCode";
 import { Check, Fingerprint, Gift, Repeat, Shuffle, Wallet } from "lucide-react";
 import { IconBadge } from "./icons";
@@ -99,6 +99,7 @@ export function Bienvenue() {
   const [notif, setNotif] = useState(-1);
   const [etat, setEtat] = useState<EtatBouton>("repos");
   const [clavier, setClavier] = useState(false);
+  const [etatC, setEtatC] = useState<Etat | null>(null);
   const montant = useCompteur(visible ? 400000 : 0, 1600, 1900);
   const nom = user?.name ?? "";
   const actif = ready && !!user && !!userId && !PAGES_PUBLIQUES.includes(path);
@@ -149,21 +150,20 @@ export function Bienvenue() {
     setTimeout(() => setVisible(false), 550);
   }
 
-  // Appui sur l'empreinte : vraie empreinte du téléphone si elle est activée, sinon le code secret
+  // Appui sur le rond : ouvre le clavier du code Cotiz (création la première fois)
   async function appui() {
     if (!userId) return;
-    if (aEmpreinte(userId)) {
-      setEtat("lecture");
-      if (await verifierEmpreinte(userId)) return entrer();
-      setEtat("repos");
-    }
+    setEtat("lecture");
+    const e = await etatCode(userId);
+    setEtatC(e);
+    setEtat("repos");
     setClavier(true);
   }
 
   async function oubli() {
     const uid = userId;
     await logout();
-    if (uid) supprimerVerrou(uid);
+    if (uid) oublierSurCeTelephone(uid);
     try { sessionStorage.removeItem(CLE_SESSION); } catch {}
     setVisible(false);
     router.replace("/");
@@ -267,10 +267,10 @@ export function Bienvenue() {
 
         <div className="apparait relative mt-auto space-y-4 pt-8" style={{ animationDelay: "700ms" }}>
           <p className="text-center text-sm text-emerald-50/80">Tout le monde voit qui a payé. Personne ne garde l’argent seul.</p>
-          <BoutonEmpreinte etat={etat} onAppui={appui} libelle={userId && aEmpreinte(userId) ? "Pose ton doigt pour entrer" : userId && aUnCode(userId) ? "Appuie et entre ton code" : "Appuie pour créer ton code"} />
+          <BoutonEmpreinte etat={etat} onAppui={appui} libelle="Appuie pour entrer" />
         </div>
         {clavier && userId && (
-          <ClavierCode uid={userId} nom={nom} tel={user?.phone ?? ""} onOk={entrer} onFermer={() => setClavier(false)} onOubli={oubli} />
+          <ClavierCode uid={userId} defini={!!etatC?.defini} attenteInitiale={etatC?.attente ?? 0} tel={user?.phone ?? ""} onOk={entrer} onFermer={() => setClavier(false)} onOubli={oubli} />
         )}
       </section>
     </div>

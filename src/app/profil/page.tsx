@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ChevronRight, Download, Fingerprint, Headset, FileText, HelpCircle, KeyRound, Landmark, LogOut, Pencil, Share2, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
-import { CLE_SESSION, aEmpreinte, activerEmpreinte, desactiverEmpreinte, empreinteDisponible, supprimerVerrou } from "@/lib/verrou";
+import { ChevronRight, Download, Headset, FileText, HelpCircle, KeyRound, Landmark, LogOut, Pencil, Share2, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
+import { etatCode, type Etat } from "@/lib/verrou";
+import { ClavierCode } from "@/components/ClavierCode";
+import { dateLongue } from "@/lib/format";
 import { BottomNav } from "@/components/BottomNav";
 import { IconBadge } from "@/components/icons";
 import { Avatar, Button, Card, Field, Header, Loading, Page, inputClass, useRequireUser } from "@/components/ui";
@@ -33,12 +35,12 @@ function Ligne({ href, icon, label, detail, externe, onClick }: { href?: string;
 export default function ProfilPage() {
   const ok = useRequireUser();
   const { user, userId, groups, loaded, logout, updateProfile } = useStore();
-  const [bioDispo, setBioDispo] = useState(false);
-  const [bioActive, setBioActive] = useState(false);
+  const [etatC, setEtatC] = useState<Etat | null>(null);
+  const [changerCode, setChangerCode] = useState(false);
+  const [msgCode, setMsgCode] = useState("");
   useEffect(() => {
-    empreinteDisponible().then(setBioDispo);
-    if (userId) setBioActive(aEmpreinte(userId));
-  }, [userId]);
+    if (userId) etatCode(userId).then(setEtatC);
+  }, [userId, changerCode]);
   const [edition, setEdition] = useState(false);
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
@@ -112,39 +114,12 @@ export default function ProfilPage() {
           <Card className="divide-y divide-stone-100 !p-0">
             <Ligne
               icon={KeyRound}
-              label="Changer mon code secret"
-              detail="Le code à 4 chiffres demandé à l’ouverture"
-              onClick={() => {
-                if (!userId || !confirm("Créer un nouveau code secret maintenant ?")) return;
-                supprimerVerrou(userId);
-                try { sessionStorage.removeItem(CLE_SESSION); } catch {}
-                window.location.reload();
-              }}
+              label={etatC?.defini ? "Changer mon code secret" : "Créer mon code secret"}
+              detail={etatC?.modifieLe ? `Dernière modification : ${dateLongue(etatC.modifieLe)}` : "Le code à 4 chiffres demandé à l’ouverture de Cotiz"}
+              onClick={() => setChangerCode(true)}
             />
-            {bioDispo && (
-              <Ligne
-                icon={Fingerprint}
-                label={bioActive ? "Désactiver l’empreinte" : "Activer l’empreinte"}
-                detail={bioActive ? "Activée : tu entres avec ton doigt ou ton visage" : "Entre plus vite avec ton doigt ou ton visage"}
-                onClick={async () => {
-                  if (!userId) return;
-                  if (bioActive) {
-                    desactiverEmpreinte(userId);
-                    setBioActive(false);
-                    return setMsg("Empreinte désactivée.");
-                  }
-                  try {
-                    await activerEmpreinte(userId, user!.name, user!.phone);
-                    setBioActive(aEmpreinte(userId));
-                    setMsg(aEmpreinte(userId) ? "Empreinte activée." : "Crée d’abord ton code secret.");
-                  } catch {
-                    setMsg("L’empreinte n’a pas pu être activée.");
-                  }
-                }}
-              />
-            )}
           </Card>
-          {msg && <p className="mt-2 px-1 text-sm font-medium text-emerald-700">{msg}</p>}
+          {msgCode && <p className="mt-2 px-1 text-sm font-medium text-emerald-700">{msgCode}</p>}
         </div>
 
         <div>
@@ -171,6 +146,23 @@ export default function ProfilPage() {
         </div>
         <p className="text-center text-xs text-stone-400">Cotiz · version 1.1</p>
       </div>
+      {changerCode && userId && (
+        <div className="fixed inset-0 z-50 mx-auto max-w-md">
+          <div className="relative h-full">
+            <ClavierCode
+              uid={userId}
+              defini={!!etatC?.defini}
+              changement={!!etatC?.defini}
+              tel={user?.phone}
+              onFermer={() => setChangerCode(false)}
+              onOk={() => {
+                setChangerCode(false);
+                setMsgCode(etatC?.defini ? "Ton code secret a été changé." : "Ton code secret est créé.");
+              }}
+            />
+          </div>
+        </div>
+      )}
       <BottomNav />
     </Page>
   );
