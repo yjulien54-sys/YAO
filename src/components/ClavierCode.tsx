@@ -14,8 +14,9 @@ type Mode = "creation" | "confirmation" | "saisie" | "ancien" | "oubli" | "empre
  * - defini = false : création du code ; true : saisie du code.
  * - changement : on demande l'ancien code, puis le nouveau deux fois.
  */
-export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, activerApres, naissanceConnue, onOk, onFermer, onOubli, tel, nom = "" }: {
+export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, activerApres, naissanceConnue, onOk, onFermer, onOubli, tel, nom = "", integre, sansEmpreinte }: {
   uid: string; defini: boolean; changement?: boolean; attenteInitiale?: number; activerApres?: boolean; naissanceConnue?: boolean; tel?: string; nom?: string;
+  integre?: boolean; sansEmpreinte?: boolean;
   onOk: () => void; onFermer?: () => void; onOubli?: () => void;
 }) {
   const [mode, setMode] = useState<Mode>(changement ? "ancien" : defini ? "saisie" : "creation");
@@ -123,7 +124,7 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
       if (r.ok) {
         vibrer("ok");
         // Appui sur « Empreinte » alors qu'elle n'est pas activée : on la propose après le code
-        if (activerApres && bioDispo && !bioActive) return setMode("empreinte");
+        if (activerApres && !sansEmpreinte && bioDispo && !bioActive) return setMode("empreinte");
         return onOk();
       }
       if (r.attente) {
@@ -137,7 +138,7 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
   // Après la création du code : date de naissance (si inconnue), puis proposition d'empreinte
   function suite(depuis: Mode = "confirmation") {
     if (depuis === "confirmation" && !changement && naissanceConnue === false) return setMode("naissance");
-    if (!changement && bioDispo && !bioActive) return setMode("empreinte");
+    if (!changement && !sansEmpreinte && bioDispo && !bioActive) return setMode("empreinte");
     onOk();
   }
 
@@ -178,6 +179,18 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
     setErreur(`Les informations ne correspondent pas. ${r.restants ? `Encore ${r.restants} essai${(r.restants ?? 0) > 1 ? "s" : ""} aujourd’hui.` : "Plus d’essai aujourd’hui."}`);
   }
 
+  // Sur ordinateur : on peut taper le code au clavier
+  useEffect(() => {
+    if (!["saisie", "creation", "confirmation", "ancien"].includes(mode)) return;
+    const f = (e: KeyboardEvent) => {
+      if ((e.target as HTMLElement)?.closest("input, textarea")) return;
+      if (/^[0-9]$/.test(e.key)) touche(e.key);
+      else if (e.key === "Backspace") setCode((c) => c.slice(0, -1));
+    };
+    window.addEventListener("keydown", f);
+    return () => window.removeEventListener("keydown", f);
+  });
+
   function touche(t: string) {
     if (occupe || attente > 0 || code.length >= 4) return;
     vibrer("touche");
@@ -197,12 +210,12 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
     empreinte: ["Activer l’empreinte ?", "Entre aussi avec ton doigt. Ton code Cotiz reste valable."],
   };
   const [titre, sous] = titres[mode];
-  const fermable = !!onFermer && (mode === "saisie" || mode === "oubli" || changement);
+  const fermable = (!!onFermer && !integre && (mode === "saisie" || changement)) || mode === "oubli";
 
   return (
-    <div className="absolute inset-0 z-20 flex flex-col justify-end bg-black/30 backdrop-blur-[2px]" onClick={fermable && mode !== "oubli" ? onFermer : undefined}>
-      <div className="feuille rounded-t-[28px] bg-white px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 text-stone-900 shadow-2xl" onClick={(e) => e.stopPropagation()}>
-        <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-stone-200" />
+    <div className={integre ? "w-full" : "absolute inset-0 z-20 flex flex-col justify-end bg-black/30 backdrop-blur-[2px]"} onClick={!integre && fermable && mode !== "oubli" ? onFermer : undefined}>
+      <div className={integre ? "w-full text-stone-900" : "feuille rounded-t-[28px] bg-white px-6 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 text-stone-900 shadow-2xl"} onClick={(e) => e.stopPropagation()}>
+        {!integre && <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-stone-200" />}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
@@ -280,7 +293,7 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
               {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((t) => (
                 <Touche key={t} onClick={() => touche(t)} disabled={attente > 0}>{t}</Touche>
               ))}
-              {mode === "saisie" && bioActive && bioDispo ? (
+              {mode === "saisie" && !sansEmpreinte && bioActive && bioDispo ? (
                 <Touche onClick={parEmpreinte} label="Entrer avec l’empreinte" discret><Fingerprint size={28} strokeWidth={1.8} className="text-emerald-700" /></Touche>
               ) : (
                 <span />

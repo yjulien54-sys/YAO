@@ -106,6 +106,18 @@ export function Bienvenue() {
   const [etatE, setEtatE] = useState<EtatBouton>("repos");
   const [bioDispo, setBioDispo] = useState(false);
   const [activerApres, setActiverApres] = useState(false);
+  // Ordinateur : grande fenêtre en deux colonnes, code seulement (pas d'empreinte)
+  const [ordi, setOrdi] = useState(false);
+  useEffect(() => {
+    const mq = window.matchMedia("(min-width: 1024px)");
+    const maj = () => setOrdi(mq.matches);
+    maj();
+    mq.addEventListener("change", maj);
+    return () => mq.removeEventListener("change", maj);
+  }, []);
+  useEffect(() => {
+    if (ordi && visible && userId && !etatC) etatCode(userId).then(setEtatC);
+  }, [ordi, visible, userId, etatC]);
   useEffect(() => {
     empreinteDisponible().then(setBioDispo);
   }, []);
@@ -200,6 +212,45 @@ export function Bienvenue() {
   const heure = new Date().getHours();
   const salut = heure >= 18 || heure < 4 ? "Bonsoir" : "Bonjour";
   const n = notif >= 0 ? NOTIFS[notif] : null;
+
+  if (ordi)
+    return (
+      <div className={`fixed inset-0 z-50 grid place-items-center bg-stone-900/55 p-6 backdrop-blur-sm transition-all duration-300 ${sortie ? "scale-[1.02] opacity-0" : "opacity-100"}`}>
+        <div className="grid max-h-[94vh] w-full max-w-[940px] grid-cols-2 overflow-hidden rounded-[2rem] bg-white shadow-2xl">
+          <section className="degrade-vert relative flex flex-col justify-between overflow-hidden p-10 text-white">
+            <div className="motif absolute inset-0 opacity-70" />
+            <span className="halo pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-white/10" />
+            <div className="bande-kente kente-defile absolute inset-x-0 top-0" />
+            <div className="relative flex items-center justify-between">
+              <span className="inline-flex items-center gap-2.5 text-xl font-extrabold tracking-tight">
+                <span className="logo-entre relative block h-11 w-11 overflow-hidden rounded-xl shadow-lg shadow-emerald-950/40">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img src="/icons/logo.svg" alt="" width={44} height={44} className="h-11 w-11" />
+                  <span className="logo-brille pointer-events-none absolute inset-0" />
+                </span>
+                Cotiz
+              </span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold ring-1 ring-white/20"><Drapeau /> Côte d’Ivoire</span>
+            </div>
+            <div className="relative my-10">
+              <p className="apparait text-base font-semibold text-emerald-50/85" style={{ animationDelay: "300ms" }}>{salut} {prenom(nom)},</p>
+              <h1 className="mt-2 text-[2.4rem] font-extrabold leading-[1.1] tracking-tight">
+                <span className="mot inline-block" style={{ animationDelay: "450ms" }}>Tes tontines et cotisations,</span>{" "}
+                <span className="mot or-brille inline-block" style={{ animationDelay: "700ms" }}>sans palabres.</span>
+              </h1>
+            </div>
+            <p className="apparait relative text-sm text-emerald-50/80" style={{ animationDelay: "900ms" }}>Tout le monde voit qui a payé. Personne ne garde l’argent seul.</p>
+          </section>
+          <div className="flex items-center overflow-y-auto p-10">
+            {userId && etatC ? (
+              <ClavierCode uid={userId} defini={etatC.defini} attenteInitiale={etatC.attente} naissanceConnue={etatC.naissance} tel={user?.phone ?? ""} nom={nom} onOk={entrer} onOubli={oubli} integre sansEmpreinte />
+            ) : (
+              <p className="w-full text-center text-sm text-stone-500">Chargement…</p>
+            )}
+          </div>
+        </div>
+      </div>
+    );
 
   return (
     <div className={`fixed inset-0 z-50 mx-auto max-w-md overflow-hidden transition-all duration-300 lg:grid lg:max-w-none lg:place-items-center lg:bg-stone-900/50 lg:backdrop-blur-sm ${sortie ? "scale-[1.04] opacity-0" : "opacity-100"}`}>
