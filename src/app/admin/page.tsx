@@ -22,10 +22,45 @@ type VersementA = { id: string; le: string; groupe_id: string; groupe: string; b
 type LigneJournal = { id: number; le: string; admin_email: string | null; action: string; cible: string | null; detail: string | null };
 type Dossier = { id: string; numero: number; cree_le: string; cree_par: string; motif: string; priorite: "normale" | "urgente"; client_profile_id: string | null; client_nom: string | null; client_tel: string | null; groupe_id: string | null; groupe_nom: string | null; montant: number | null; reference: string | null; description: string; donnees: Record<string, string>; statut: "ouvert" | "valide" | "refuse"; reponse: string | null; traite_par: string | null; traite_le: string | null };
 type DossierInit = { motif?: string; client_profile_id?: string | null; client_nom?: string | null; client_tel?: string | null; groupe_id?: string | null; groupe_nom?: string | null; montant?: number | null; reference?: string | null; donnees?: Record<string, string>; resume?: string };
-type Membre_Equipe = { email: string; nom: string | null; role: "fondateur" | "agent"; ajoute_le: string; numero: number | null; telephone: string | null; photo_path: string | null; cni_numero: string | null; cni_path: string | null; salaire: number | null; cnps_declare: boolean; cnps_numero: string | null; cnps_le: string | null; embauche_le: string | null; contrat: string | null; contact_urgence: string | null; note: string | null };
+type Membre_Equipe = { email: string; nom: string | null; role: "fondateur" | "agent"; ajoute_le: string; numero: number | null; fonctions?: string[]; telephone: string | null; photo_path: string | null; cni_numero: string | null; cni_path: string | null; salaire: number | null; cnps_declare: boolean; cnps_numero: string | null; cnps_le: string | null; embauche_le: string | null; contrat: string | null; contact_urgence: string | null; note: string | null };
 type Requete = { id: string; numero: number; cree_le: string; profile_id: string; nom: string | null; telephone: string | null; motif: string; message: string; statut: "nouvelle" | "en_cours" | "resolue"; agent_email: string | null; reponse: string | null; maj_le: string };
-type Creneau = { id: string; email: string; nom: string | null; numero: number | null; jour: string; debut: string; fin: string; note: string | null };
+type Creneau = { id: string; email: string; nom: string | null; numero: number | null; fonctions?: string[]; jour: string; debut: string; fin: string; note: string | null };
 type Salaire = { email: string; nom: string | null; numero: number | null; telephone: string | null; salaire: number | null; cnps_declare: boolean; paye: boolean; montant_paye: number | null; paye_le: string | null; reference: string | null };
+/** Fonctions (postes) qu'on trouve dans l'entreprise, à cocher pour chaque membre de l'équipe */
+const FONCTIONS: { groupe: string; postes: string[] }[] = [
+  { groupe: "Service client", postes: ["Agent du service client", "Superviseur du service client", "Téléconseiller(e)"] },
+  { groupe: "Paiements et finances", postes: ["Vérification des paiements", "Chargé(e) de recouvrement", "Comptable", "Caissier(ère)"] },
+  { groupe: "Commercial et communication", postes: ["Commercial(e)", "Chargé(e) de partenariats", "Chargé(e) de communication", "Community manager"] },
+  { groupe: "Direction et administration", postes: ["Directeur(trice) général(e)", "Responsable des opérations", "Assistant(e) administratif(ve)", "Ressources humaines", "Juriste / conformité"] },
+  { groupe: "Technique et terrain", postes: ["Informatique / développeur", "Agent de terrain", "Formateur(trice)", "Stagiaire"] },
+];
+
+/** Cases à cocher des fonctions */
+function ChoixFonctions({ valeur, onChange }: { valeur: string[]; onChange: (v: string[]) => void }) {
+  const basculer = (x: string) => onChange(valeur.includes(x) ? valeur.filter((y) => y !== x) : [...valeur, x]);
+  return (
+    <div className="space-y-3">
+      {FONCTIONS.map((g) => (
+        <div key={g.groupe}>
+          <p className="mb-1.5 text-[0.7rem] font-bold uppercase tracking-wide text-stone-500">{g.groupe}</p>
+          <div className="flex flex-wrap gap-1.5">
+            {g.postes.map((x) => {
+              const coche = valeur.includes(x);
+              return (
+                <button key={x} type="button" onClick={() => basculer(x)} aria-pressed={coche}
+                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${coche ? "border-sky-600 bg-sky-600 text-white" : "border-stone-200 bg-white text-stone-700 hover:border-sky-300"}`}>
+                  <span className={`grid h-3.5 w-3.5 place-items-center rounded-[4px] border ${coche ? "border-white bg-white text-sky-700" : "border-stone-300"}`}>{coche && "✓"}</span>
+                  {x}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 /** Identifiant de connexion d'un agent : son numéro (27xx) */
 const emailAgent = (n: string | number) => `agent${n}@tontine-et-cotise.vercel.app`;
 /** Rôle de la personne connectée + ouverture du formulaire « dossier » */
@@ -256,7 +291,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
   const [equipe, setEquipe] = useState<Membre_Equipe[]>([]);
   const [formDossier, setFormDossier] = useState<DossierInit | null>(null);
   const [requetes, setRequetes] = useState<Requete[] | null>(null); // null : mise à jour SQL n°18 pas encore faite
-  const [maFiche, setMaFiche] = useState<{ nom: string | null; numero: number | null } | null>(null);
+  const [maFiche, setMaFiche] = useState<{ nom: string | null; numero: number | null; fonctions?: string[] } | null>(null);
   const [motDePasse, setMotDePasse] = useState(false);
   const [charge, setCharge] = useState(false);
   const [maj, setMaj] = useState<Date | null>(null);
@@ -284,7 +319,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
     setDossiers(ds.error ? null : ((ds.data as Dossier[]) ?? []));
     const [rq, mf] = await Promise.all([db.rpc("admin_requetes"), db.rpc("ma_fiche_admin")]);
     setRequetes(rq.error ? null : ((rq.data as Requete[]) ?? []));
-    setMaFiche(mf.error ? null : (mf.data as { nom: string | null; numero: number | null }));
+    setMaFiche(mf.error ? null : (mf.data as { nom: string | null; numero: number | null; fonctions?: string[] }));
     setEquipe(eq.error ? [] : ((eq.data as Membre_Equipe[]) ?? []));
     setMembres(mb.error ? null : ((mb.data as MembreA[]) ?? []));
     setVersements(vs.error ? [] : ((vs.data as VersementA[]) ?? []));
@@ -345,6 +380,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
         <div className="relative m-3 rounded-2xl bg-white/10 p-3 ring-1 ring-white/15">
           <p className="mb-1 inline-block rounded-full bg-white/20 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide">{fondateur ? "Fondateur" : "Agent service client"}{maFiche?.numero ? ` · n°${maFiche.numero}` : ""}</p>
           {maFiche?.nom && <p className="truncate text-sm font-bold">{maFiche.nom}</p>}
+          {!!maFiche?.fonctions?.length && <p className="truncate text-[0.7rem] text-emerald-100">{maFiche.fonctions.join(" · ")}</p>}
           <p className="truncate text-xs text-emerald-50/80">Connecté : <b className="text-white">{email}</b></p>
           <button onClick={() => setMotDePasse(true)} className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-white/10 py-2 text-xs font-bold hover:bg-white/20">
             <Lock size={14} /> Changer mon mot de passe
@@ -1575,8 +1611,9 @@ function Planning({ fondateur, equipe, moi }: { fondateur: boolean; equipe: Memb
               <div className="space-y-1.5">
                 {duJour.map((c) => (
                   <div key={c.id} className={`rounded-xl px-2.5 py-2 ${enEdition?.id === c.id ? "bg-amber-500 text-white ring-2 ring-amber-300" : !fondateur && !estMoi(c) ? "bg-teal-50 text-teal-900 ring-1 ring-teal-200" : "bg-teal-700 text-white"}`}>
-                    <p className="text-xs font-bold">{h(c.debut)} – {h(c.fin)}</p>
+                    <p className="text-xs font-bold" title={c.fonctions?.join(", ")}>{h(c.debut)} – {h(c.fin)}</p>
                     <p className={`truncate text-[0.7rem] ${!fondateur && !estMoi(c) ? "text-teal-700" : "text-teal-50"}`}>{estMoi(c) ? "Toi" : `${c.numero ? `${c.numero} · ` : ""}${c.nom ?? c.email}`}</p>
+                    {!!c.fonctions?.length && <p className={`truncate text-[0.65rem] italic ${!fondateur && !estMoi(c) ? "text-teal-700/80" : "text-teal-50/90"}`}>{c.fonctions[0]}</p>}
                     {c.note && <p className={`truncate text-[0.7rem] ${!fondateur && !estMoi(c) ? "text-teal-700/80" : "text-teal-50/90"}`}>{c.note}</p>}
                     {fondateur && (
                       <div className="mt-1.5 flex gap-1">
@@ -1638,6 +1675,7 @@ function PhotoPrivee({ chemin, nom, taille = 44 }: { chemin: string | null; nom:
 
 function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string; recharger: () => void }) {
   const [f, setF] = useState({ nom: "", telephone: "", salaire: "", mdp: "" });
+  const [fonctionsNouveau, setFonctionsNouveau] = useState<string[]>(["Agent du service client"]);
   const [msg, setMsg] = useState("");
   const [nouveau, setNouveau] = useState<{ numero: number; mdp: string; nom: string } | null>(null);
   const [occupe, setOccupe] = useState(false);
@@ -1651,7 +1689,7 @@ function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string
     e.preventDefault();
     setOccupe(true); setMsg(""); setNouveau(null);
     const { data } = await db.auth.getSession();
-    const r = await fetch("/api/admin/equipe", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` }, body: JSON.stringify({ nom: f.nom, telephone: f.telephone, salaire: f.salaire, motDePasse: f.mdp }) }).then((x) => x.json()).catch(() => ({ ok: false, erreur: "Réseau indisponible." }));
+    const r = await fetch("/api/admin/equipe", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` }, body: JSON.stringify({ nom: f.nom, telephone: f.telephone, salaire: f.salaire, motDePasse: f.mdp, fonctions: fonctionsNouveau }) }).then((x) => x.json()).catch(() => ({ ok: false, erreur: "Réseau indisponible." }));
     setOccupe(false);
     if (!r.ok) return setMsg("Erreur : " + r.erreur);
     setNouveau({ numero: r.numero, mdp: f.mdp, nom: f.nom });
@@ -1709,6 +1747,10 @@ function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string
                 <label className="block"><span className="mb-1 block text-sm font-semibold">Numéro Wave</span><input value={f.telephone} onChange={(e) => setF({ ...f, telephone: e.target.value })} inputMode="tel" placeholder="07 07 12 34 56" className={champ} /></label>
                 <label className="block"><span className="mb-1 block text-sm font-semibold">Salaire mensuel</span><input value={f.salaire} onChange={(e) => setF({ ...f, salaire: e.target.value })} inputMode="numeric" placeholder="ex : 120000" className={champ} /></label>
               </div>
+              <div>
+                <span className="mb-1.5 block text-sm font-semibold">Fonction(s)</span>
+                <ChoixFonctions valeur={fonctionsNouveau} onChange={setFonctionsNouveau} />
+              </div>
               <label className="block">
                 <span className="mb-1 flex items-center justify-between text-sm font-semibold">Mot de passe provisoire <button type="button" onClick={proposer} className="text-xs font-bold text-sky-700">Générer</button></span>
                 <input value={f.mdp} onChange={(e) => setF({ ...f, mdp: e.target.value })} placeholder="8 caractères minimum" minLength={8} className={`${champ} font-mono`} required />
@@ -1724,6 +1766,7 @@ function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string
                 <PhotoPrivee chemin={m.photo_path} nom={m.nom ?? m.email} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold"><span className="mr-1.5 rounded-md bg-stone-900 px-1.5 py-0.5 font-mono text-[0.7rem] text-white">{m.numero ?? "—"}</span>{m.nom ?? m.email}{m.email.toLowerCase() === moi.toLowerCase() && <span className="font-normal text-stone-400"> (toi)</span>}</p>
+                  {!!m.fonctions?.length && <p className="truncate text-xs font-semibold text-sky-700">{m.fonctions.join(" · ")}</p>}
                   <p className="truncate text-xs text-stone-500">{m.role === "fondateur" ? "Fondateur" : `${m.telephone ? telAffiche(m.telephone) : "pas de numéro Wave"} · ${m.salaire ? fcfa(m.salaire) + "/mois" : "salaire non renseigné"}`}</p>
                 </div>
                 {m.role === "agent" ? <BadgeCnps ok={m.cnps_declare} /> : <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[0.7rem] font-bold text-emerald-800">Fondateur</span>}
@@ -1742,6 +1785,7 @@ function FicheAgent({ a, fermer, recharger, retirer }: { a: Membre_Equipe; ferme
     nom: a.nom ?? "", telephone: a.telephone ?? "", salaire: a.salaire ? String(a.salaire) : "", cni_numero: a.cni_numero ?? "",
     cnps_declare: a.cnps_declare, cnps_numero: a.cnps_numero ?? "", cnps_le: a.cnps_le ?? "", embauche_le: a.embauche_le ?? "",
     contrat: a.contrat ?? "", contact_urgence: a.contact_urgence ?? "", note: a.note ?? "",
+    fonctions: a.fonctions ?? [],
   });
   const [msg, setMsg] = useState("");
   const [envoi, setEnvoi] = useState("");
@@ -1749,7 +1793,7 @@ function FicheAgent({ a, fermer, recharger, retirer }: { a: Membre_Equipe; ferme
   async function enregistrer(e: React.FormEvent) {
     e.preventDefault();
     const { error } = await db.rpc("admin_agent_modifier", { adresse: a.email, champs: { ...f, cnps_declare: String(f.cnps_declare) } });
-    setMsg(error ? "Erreur : " + error.message : "Dossier enregistré.");
+    setMsg(error ? "Erreur : " + error.message : f.fonctions.length && !("fonctions" in a) ? "Dossier enregistré. Pour garder les fonctions, fais la mise à jour SQL n°21." : "Dossier enregistré.");
     recharger();
   }
   async function televerser(type: "photo" | "cni", fichier: File | undefined) {
@@ -1771,6 +1815,7 @@ function FicheAgent({ a, fermer, recharger, retirer }: { a: Membre_Equipe; ferme
         <PhotoPrivee chemin={a.photo_path} nom={a.nom ?? a.email} taille={72} />
         <div className="min-w-0 flex-1 space-y-1">
           <p className="text-lg font-extrabold">{a.nom}</p>
+          {!!a.fonctions?.length && <p className="text-xs font-semibold text-sky-700">{a.fonctions.join(" · ")}</p>}
           <BadgeCnps ok={a.cnps_declare} />
           <p className="text-xs text-stone-500">{a.salaire ? `${fcfa(a.salaire)} par mois` : "Salaire non renseigné"}{a.embauche_le ? ` · depuis le ${dateCourte(a.embauche_le)}` : ""}</p>
         </div>
@@ -1795,6 +1840,9 @@ function FicheAgent({ a, fermer, recharger, retirer }: { a: Membre_Equipe; ferme
               <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => televerser("cni", e.target.files?.[0])} />
             </label>
           </div>
+        </BlocFiche>
+        <BlocFiche titre={`Fonction(s)${f.fonctions.length ? ` · ${f.fonctions.length}` : ""}`}>
+          <ChoixFonctions valeur={f.fonctions} onChange={(v) => setF({ ...f, fonctions: v })} />
         </BlocFiche>
         <BlocFiche titre="Contrat et salaire">
           <div className="grid gap-2 sm:grid-cols-3">
