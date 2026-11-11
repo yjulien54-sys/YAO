@@ -394,7 +394,11 @@ function Payer() {
             <p className="text-center text-xs leading-relaxed text-stone-500">
               <Lock size={12} strokeWidth={2} className="mr-1 inline -mt-0.5" />
               {MODE_PAIEMENT === "manuel"
-                ? "Ton paiement sera validé par le trésorier après vérification. Tout le groupe verra le reçu."
+                ? jeSuisTresorier && !pourAutrui
+                  ? "Ton paiement est enregistré tout de suite. Tout le groupe verra le reçu."
+                  : jeSuisTresorier
+                    ? "Le paiement est enregistré tout de suite comme reçu. Tout le groupe verra le reçu."
+                    : "Ton paiement sera validé par le trésorier après vérification. Tout le groupe verra le reçu."
                 : `Tu paies exactement ${fcfa(total)}. Les frais de paiement (environ ${fcfa(fraisTransaction(total, method))}) sont pris sur la caisse du groupe.`}
               {MODE_PAIEMENT !== "manuel" && !pourAutrui ? ` Reçu visible par tout le groupe.` : ""}
             </p>
