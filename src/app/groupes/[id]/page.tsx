@@ -17,6 +17,7 @@ import { Tirage } from "@/components/Tirage";
 import { ActionRapide } from "@/components/ActionRapide";
 import { Reglement } from "@/components/Reglement";
 import { CaissePenalites } from "@/components/CaissePenalites";
+import { CaisseGroupe } from "@/components/CaisseGroupe";
 import { AlertTriangle, ArrowUpRight, CalendarDays, ChevronsRight, FileText, Flag, History, Users, MessageCircle, Phone, Settings, Check, CheckCircle2, Clock, Gift, PartyPopper, Smartphone, ShieldCheck, Trash2, LogOut, UserPlus, X } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 import type { Member } from "@/lib/types";
@@ -161,6 +162,8 @@ export default function GroupeDetail() {
             <Stat n={st.counts.retard} label="En retard" cls="text-red-600" />
           </div>
         </Card>
+
+        <CaisseGroupe g={g} userId={userId} />
 
         {enValidation.length > 0 && (
           <div id="a-valider" className="scroll-mt-20 rounded-[18px]">

@@ -6,6 +6,7 @@ import { useEffect, useState } from "react";
 import { initiales } from "@/lib/format";
 import { useStore } from "@/lib/store";
 import { SideNav } from "./SideNav";
+import { Cloche } from "./Cloche";
 import type { MemberStatus } from "@/lib/types";
 
 export function Logo({ className = "" }: { className?: string }) {
@@ -32,7 +33,10 @@ export function Header({ title, back, right }: { title?: string; back?: string; 
       )}
       {title && <h1 className="flex-1 truncate text-base font-bold text-stone-900">{title}</h1>}
       {!title && <div className="flex-1" />}
-      {right}
+      <div className="flex items-center">
+        {right}
+        <Cloche />
+      </div>
     </header>
   );
 }

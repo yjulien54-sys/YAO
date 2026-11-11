@@ -126,3 +126,8 @@ body { font-variant-numeric: tabular-nums; }
 
 @keyframes feuille-droite { from { transform: translateX(100%); } to { transform: none; } }
 .feuille-droite { animation: feuille-droite 280ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+/* Point de notification : petite pulsation discrète */
+@keyframes pulse-notif { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.25); } }
+.point-notif { animation: pulse-notif 2s ease-in-out infinite; }
+@media (prefers-reduced-motion: reduce) { .point-notif { animation: none; } }

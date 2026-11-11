@@ -10,7 +10,6 @@ import { TYPE_LABEL, amountDue, droits, beneficiary, impayes, memberStatus, dueD
 import { useStore } from "@/lib/store";
 import { BottomNav } from "@/components/BottomNav";
 import { Annonces } from "@/components/Annonces";
-import { Cloche } from "@/components/Cloche";
 import { AlertCircle, ChevronRight, ClipboardPaste, Clock, HandCoins, ShieldCheck, UserPlus, Headset, Link2, Plus, Repeat, Users, Wallet } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 
@@ -107,7 +106,6 @@ export default function Groupes() {
       <Header
         right={
           <div className="flex items-center">
-            <Cloche />
             <Link href="/aide" aria-label="Service client" className="rounded-full p-2 text-emerald-700 hover:bg-emerald-50">
               <Headset size={22} strokeWidth={1.9} />
             </Link>
