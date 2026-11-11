@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DateNaissance } from "@/components/DateNaissance";
 import {
-  Ban, BarChart3, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LogOut, Megaphone, Plus, RefreshCw, Search, ShieldAlert, Trash2, Users, UsersRound, Wallet, X,
+  Ban, BarChart3, CheckCircle2, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
 } from "lucide-react";
 import { supabaseAdmin as db } from "@/lib/supabaseAdmin";
 import { dateCourte, fcfa, telAffiche } from "@/lib/format";
@@ -20,14 +20,28 @@ type Demande = { le: string; nom: string | null; telephone: string | null; nom_s
 type Annonce = { id: string; titre: string; texte: string | null; lien: string | null; bouton: string | null; couleur: string; actif: boolean; ordre: number };
 
 const ONGLETS = [
-  { id: "apercu", label: "Vue d’ensemble", icon: BarChart3 },
-  { id: "inscrits", label: "Inscrits", icon: Users },
-  { id: "groupes", label: "Groupes", icon: UsersRound },
-  { id: "paiements", label: "Paiements en attente", icon: Clock },
-  { id: "codes", label: "Codes oubliés", icon: KeyRound },
-  { id: "annonces", label: "Annonces", icon: Megaphone },
+  { id: "apercu", label: "Vue d’ensemble", icon: LayoutDashboard, ton: "emerald" },
+  { id: "stats", label: "Statistiques", icon: BarChart3, ton: "teal" },
+  { id: "inscrits", label: "Inscrits", icon: Users, ton: "sky" },
+  { id: "groupes", label: "Groupes", icon: UsersRound, ton: "violet" },
+  { id: "paiements", label: "Paiements", icon: Clock, ton: "amber" },
+  { id: "codes", label: "Codes oubliés", icon: KeyRound, ton: "rose" },
+  { id: "annonces", label: "Annonces", icon: Megaphone, ton: "orange" },
 ] as const;
 type Onglet = (typeof ONGLETS)[number]["id"];
+type Ton = (typeof ONGLETS)[number]["ton"] | "red";
+
+/** Couleurs par rubrique (pastille d'icône, carte chiffrée) */
+const TON: Record<Ton, { pastille: string; carte: string; texte: string; barre: string }> = {
+  emerald: { pastille: "bg-emerald-100 text-emerald-700", carte: "from-emerald-50 to-white border-emerald-100", texte: "text-emerald-700", barre: "bg-emerald-500" },
+  teal: { pastille: "bg-teal-100 text-teal-700", carte: "from-teal-50 to-white border-teal-100", texte: "text-teal-700", barre: "bg-teal-500" },
+  sky: { pastille: "bg-sky-100 text-sky-700", carte: "from-sky-50 to-white border-sky-100", texte: "text-sky-700", barre: "bg-sky-500" },
+  violet: { pastille: "bg-violet-100 text-violet-700", carte: "from-violet-50 to-white border-violet-100", texte: "text-violet-700", barre: "bg-violet-500" },
+  amber: { pastille: "bg-amber-100 text-amber-700", carte: "from-amber-50 to-white border-amber-100", texte: "text-amber-700", barre: "bg-amber-500" },
+  rose: { pastille: "bg-rose-100 text-rose-700", carte: "from-rose-50 to-white border-rose-100", texte: "text-rose-700", barre: "bg-rose-500" },
+  orange: { pastille: "bg-orange-100 text-orange-700", carte: "from-orange-50 to-white border-orange-100", texte: "text-orange-700", barre: "bg-orange-500" },
+  red: { pastille: "bg-red-100 text-red-700", carte: "from-red-50 to-white border-red-100", texte: "text-red-700", barre: "bg-red-500" },
+};
 
 const RESULTAT: Record<string, [string, string]> = {
   reussie: ["Réussie", "bg-emerald-50 text-emerald-700"],
@@ -36,6 +50,8 @@ const RESULTAT: Record<string, [string, string]> = {
   sans_naissance: ["Sans date de naissance", "bg-amber-50 text-amber-800"],
 };
 const TYPE: Record<string, string> = { tontine: "Tontine", association: "Association", collecte: "Collecte" };
+/** Couleur fixe par type de groupe (palette vérifiée daltonisme) */
+const TYPE_COULEUR: Record<string, string> = { tontine: "#059669", association: "#ea580c", collecte: "#7c3aed" };
 const champ = "w-full rounded-xl border border-stone-300/80 bg-white px-3 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100";
 
 export default function Admin() {
@@ -57,25 +73,46 @@ export default function Admin() {
     db.rpc("is_admin").then(({ data, error }) => setAutorise(!error && data === true));
   }, [email]);
 
-  if (!pret) return <Fond><p className="text-center text-sm text-stone-500">Chargement…</p></Fond>;
+  if (!pret) return <Attente_ texte="Chargement…" />;
   if (!email) return <Connexion />;
-  if (autorise === null) return <Fond><p className="text-center text-sm text-stone-500">Vérification de l’accès…</p></Fond>;
+  if (autorise === null) return <Attente_ texte="Vérification de l’accès…" />;
   if (!autorise)
     return (
-      <Fond>
-        <div className="carte mx-auto max-w-md p-6 text-center">
-          <ShieldAlert className="mx-auto text-red-600" size={36} />
-          <p className="mt-3 text-lg font-bold">Accès refusé</p>
-          <p className="mt-1 text-sm text-stone-600">Le compte <b>{email}</b> n’est pas administrateur. Ajoute cet e-mail dans la table <code>admins</code> de Supabase (mise à jour SQL n°10).</p>
-          <button onClick={() => db.auth.signOut()} className="mt-4 rounded-xl bg-stone-900 px-4 py-2.5 text-sm font-bold text-white">Se déconnecter</button>
+      <FondVert>
+        <div className="mx-auto w-full max-w-md rounded-3xl bg-white p-7 text-center shadow-2xl shadow-emerald-950/30">
+          <span className="mx-auto grid h-14 w-14 place-items-center rounded-2xl bg-red-50 text-red-600"><ShieldAlert size={30} /></span>
+          <p className="mt-4 text-xl font-extrabold">Accès refusé</p>
+          <p className="mt-2 text-sm text-stone-600">Le compte <b>{email}</b> n’est pas administrateur. Ajoute cet e-mail dans la table <code>admins</code> de Supabase.</p>
+          <button onClick={() => db.auth.signOut()} className="mt-5 rounded-xl bg-stone-900 px-5 py-3 text-sm font-bold text-white">Se déconnecter</button>
         </div>
-      </Fond>
+      </FondVert>
     );
   return <TableauDeBord email={email} />;
 }
 
-function Fond({ children }: { children: React.ReactNode }) {
-  return <div className="min-h-dvh bg-[#f7f5f0] px-4 py-16">{children}</div>;
+function Attente_({ texte }: { texte: string }) {
+  return (
+    <FondVert>
+      <div className="text-center text-white">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/icons/logo.svg" alt="" width={64} height={64} className="mx-auto h-16 w-16 animate-pulse rounded-2xl shadow-xl" />
+        <p className="mt-4 text-sm font-medium text-emerald-50/90">{texte}</p>
+      </div>
+    </FondVert>
+  );
+}
+
+/** Fond vert Cotiz avec motif et bande kente */
+function FondVert({ children }: { children: React.ReactNode }) {
+  return (
+    <div className="degrade-vert relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-12">
+      <div className="motif pointer-events-none absolute inset-0 opacity-40" />
+      <div className="pointer-events-none absolute -left-24 -top-24 h-80 w-80 rounded-full bg-emerald-300/20 blur-3xl" />
+      <div className="pointer-events-none absolute -bottom-32 -right-16 h-96 w-96 rounded-full bg-orange-400/20 blur-3xl" />
+      <div className="bande-kente pointer-events-none absolute inset-x-0 bottom-0" />
+      <div className="relative w-full">{children}</div>
+    </div>
+  );
 }
 
 function Connexion() {
@@ -95,33 +132,69 @@ function Connexion() {
   }
 
   return (
-    <Fond>
-      <form onSubmit={connecter} className="carte mx-auto max-w-sm space-y-4 p-6">
-        <div className="flex items-center gap-3">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/logo.svg" alt="" width={40} height={40} className="h-10 w-10 rounded-xl" />
-          <div>
-            <p className="text-lg font-extrabold leading-tight">Administration</p>
-            <p className="text-xs text-stone-500">Réservé à l’équipe Cotiz</p>
+    <FondVert>
+      <div className="mx-auto grid w-full max-w-5xl items-center gap-10 lg:grid-cols-[1.1fr_1fr]">
+        {/* Présentation (ordinateur) */}
+        <div className="hidden text-white lg:block">
+          <div className="flex items-center gap-3">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icons/logo.svg" alt="" width={52} height={52} className="h-[52px] w-[52px] rounded-2xl shadow-lg" />
+            <p className="text-3xl font-extrabold tracking-tight">Cotiz</p>
           </div>
+          <h1 className="mt-8 text-4xl font-extrabold leading-tight tracking-tight">Le poste de pilotage<br />de ta plateforme.</h1>
+          <p className="mt-4 max-w-md text-base text-emerald-50/85">Suis les inscriptions, les groupes et l’argent qui circule. Aide les membres, règle les problèmes, protège la communauté.</p>
+          <ul className="mt-8 space-y-3 text-sm">
+            {[
+              [Users, "Tous les inscrits, leurs groupes et leurs fiches"],
+              [Wallet, "Les paiements confirmés et en attente"],
+              [ShieldCheck, "Blocage des fraudeurs et codes oubliés"],
+            ].map(([I, t], i) => {
+              const Icone = I as typeof Users;
+              return (
+                <li key={i} className="flex items-center gap-3">
+                  <span className="grid h-9 w-9 place-items-center rounded-xl bg-white/15 ring-1 ring-white/20"><Icone size={18} /></span>
+                  <span className="text-emerald-50">{t as string}</span>
+                </li>
+              );
+            })}
+          </ul>
         </div>
-        <label className="block">
-          <span className="mb-1 block text-sm font-semibold">E-mail</span>
-          <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" className={champ} required />
-        </label>
-        <label className="block">
-          <span className="mb-1 block text-sm font-semibold">Mot de passe</span>
-          <div className="relative">
-            <input type={voir ? "text" : "password"} value={mdp} onChange={(e) => setMdp(e.target.value)} autoComplete="current-password" className={`${champ} pr-10`} required />
-            <button type="button" onClick={() => setVoir(!voir)} className="absolute inset-y-0 right-2 grid place-items-center text-stone-400" aria-label="Afficher le mot de passe">
-              {voir ? <EyeOff size={18} /> : <Eye size={18} />}
-            </button>
+
+        {/* Formulaire */}
+        <form onSubmit={connecter} className="mx-auto w-full max-w-sm rounded-3xl bg-white p-7 shadow-2xl shadow-emerald-950/40">
+          <div className="text-center">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icons/logo.svg" alt="" width={64} height={64} className="mx-auto h-16 w-16 rounded-2xl shadow-md shadow-emerald-900/20" />
+            <p className="mt-4 text-[1.4rem] font-extrabold leading-tight tracking-tight">Espace administrateur</p>
+            <p className="mt-1 text-sm text-stone-500">Connecte-toi avec ton e-mail et ton mot de passe</p>
           </div>
-        </label>
-        {erreur && <p className="text-sm font-medium text-red-600">{erreur}</p>}
-        <button disabled={occupe} className="w-full rounded-xl bg-emerald-700 py-3 text-sm font-bold text-white disabled:opacity-60">{occupe ? "Connexion…" : "Se connecter"}</button>
-      </form>
-    </Fond>
+          <div className="mt-6 space-y-4">
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-semibold text-stone-700">E-mail</span>
+              <div className="relative">
+                <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" placeholder="ton@email.com" className={`${champ} !py-3 pl-11`} required />
+              </div>
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-sm font-semibold text-stone-700">Mot de passe</span>
+              <div className="relative">
+                <Lock size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
+                <input type={voir ? "text" : "password"} value={mdp} onChange={(e) => setMdp(e.target.value)} autoComplete="current-password" placeholder="••••••••" className={`${champ} !py-3 pl-11 pr-11`} required />
+                <button type="button" onClick={() => setVoir(!voir)} className="absolute inset-y-0 right-3 grid place-items-center text-stone-400 hover:text-stone-600" aria-label={voir ? "Cacher le mot de passe" : "Afficher le mot de passe"}>
+                  {voir ? <EyeOff size={18} /> : <Eye size={18} />}
+                </button>
+              </div>
+            </label>
+          </div>
+          {erreur && <p className="mt-4 rounded-xl bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700">{erreur}</p>}
+          <button disabled={occupe} className="mt-6 w-full rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-700/30 transition hover:brightness-110 disabled:opacity-60">
+            {occupe ? "Connexion…" : "Se connecter"}
+          </button>
+          <p className="mt-5 flex items-center justify-center gap-1.5 text-xs text-stone-500"><Lock size={13} /> Connexion sécurisée · accès réservé à l’équipe Cotiz</p>
+        </form>
+      </div>
+    </FondVert>
   );
 }
 
@@ -134,6 +207,7 @@ function TableauDeBord({ email }: { email: string }) {
   const [demandes, setDemandes] = useState<Demande[]>([]);
   const [annonces, setAnnonces] = useState<Annonce[]>([]);
   const [charge, setCharge] = useState(false);
+  const [maj, setMaj] = useState<Date | null>(null);
   const [msg, setMsg] = useState("");
   const [fiche, setFiche] = useState<{ type: "utilisateur" | "groupe"; id: string } | null>(null);
 
@@ -155,6 +229,7 @@ function TableauDeBord({ email }: { email: string }) {
     setAnnonces((an.data as Annonce[]) ?? []);
     const err = [s, i, g, a, d, an].find((r) => r.error)?.error;
     setMsg(err ? "Erreur : " + err.message : "");
+    setMaj(new Date());
     setCharge(false);
   }, []);
 
@@ -163,94 +238,329 @@ function TableauDeBord({ email }: { email: string }) {
   }, [charger]);
 
   const compteurs: Partial<Record<Onglet, number>> = { inscrits: inscrits.length, groupes: groupes.length, paiements: attente.length, codes: demandes.length, annonces: annonces.length };
+  const alerte: Partial<Record<Onglet, boolean>> = { paiements: attente.length > 0 };
+  const courant = ONGLETS.find((o) => o.id === onglet)!;
+  const heure = new Date().getHours();
+  const salut = heure < 12 ? "Bonjour" : heure < 18 ? "Bon après-midi" : "Bonsoir";
 
   return (
-    <div className="min-h-dvh bg-[#f7f5f0] text-stone-900">
-      <header className="sticky top-0 z-10 border-b border-stone-200 bg-white/95 backdrop-blur-md">
-        <div className="mx-auto flex max-w-6xl items-center gap-3 px-4 py-3">
+    <div className="min-h-dvh bg-[#f4f2ec] text-stone-900 lg:flex">
+      {/* Barre latérale (ordinateur) */}
+      <aside className="degrade-vert relative hidden w-[260px] shrink-0 overflow-hidden text-white lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col">
+        <div className="motif pointer-events-none absolute inset-0 opacity-30" />
+        <div className="relative flex items-center gap-3 px-5 pb-6 pt-6">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/logo.svg" alt="" width={34} height={34} className="h-[34px] w-[34px] rounded-[10px]" />
-          <div className="min-w-0 flex-1">
-            <p className="font-extrabold leading-tight">Cotiz · Administration</p>
-            <p className="truncate text-xs text-stone-500">{email}</p>
+          <img src="/icons/logo.svg" alt="" width={40} height={40} className="h-10 w-10 rounded-xl shadow-md" />
+          <div>
+            <p className="text-lg font-extrabold leading-tight">Cotiz</p>
+            <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-emerald-100/80">Administration</p>
           </div>
-          <button onClick={charger} className="grid h-9 w-9 place-items-center rounded-full bg-stone-100 text-stone-600" aria-label="Actualiser">
-            <RefreshCw size={17} className={charge ? "animate-spin" : ""} />
-          </button>
-          <button onClick={() => db.auth.signOut()} className="inline-flex items-center gap-1.5 rounded-full bg-stone-100 px-3 py-2 text-xs font-bold text-stone-700">
-            <LogOut size={15} /> Quitter
+        </div>
+        <nav className="relative flex-1 space-y-1 px-3">
+          {ONGLETS.map(({ id, label, icon: I }) => {
+            const actif = onglet === id;
+            return (
+              <button key={id} onClick={() => setOnglet(id)}
+                className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${actif ? "bg-white text-emerald-900 shadow-lg shadow-emerald-950/20" : "text-emerald-50/90 hover:bg-white/10"}`}>
+                <I size={18} strokeWidth={2} className={actif ? "text-emerald-700" : ""} />
+                <span className="flex-1">{label}</span>
+                {compteurs[id] !== undefined && (
+                  <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${alerte[id] ? "bg-orange-500 text-white" : actif ? "bg-emerald-100 text-emerald-800" : "bg-white/15"}`}>{compteurs[id]}</span>
+                )}
+              </button>
+            );
+          })}
+        </nav>
+        <div className="relative m-3 rounded-2xl bg-white/10 p-3 ring-1 ring-white/15">
+          <p className="truncate text-xs text-emerald-50/80">Connecté : <b className="text-white">{email}</b></p>
+          <button onClick={() => db.auth.signOut()} className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-white/15 py-2 text-xs font-bold hover:bg-white/25">
+            <LogOut size={14} /> Se déconnecter
           </button>
         </div>
-        <nav className="mx-auto flex max-w-6xl gap-1 overflow-x-auto px-3 pb-2">
-          {ONGLETS.map(({ id, label, icon: I }) => (
-            <button
-              key={id}
-              onClick={() => setOnglet(id)}
-              className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-sm font-semibold transition ${onglet === id ? "bg-emerald-700 text-white" : "text-stone-600 hover:bg-stone-100"}`}
-            >
-              <I size={16} /> {label}
-              {compteurs[id] !== undefined && <span className={`rounded-full px-1.5 text-xs ${onglet === id ? "bg-white/20" : "bg-stone-200"}`}>{compteurs[id]}</span>}
-            </button>
-          ))}
-        </nav>
-      </header>
+        <div className="bande-kente pointer-events-none absolute inset-x-0 bottom-0" />
+      </aside>
 
-      <main className="mx-auto max-w-6xl space-y-4 px-4 py-5">
-        {msg && <p className="rounded-xl bg-red-50 p-3 text-sm font-medium text-red-700">{msg}</p>}
-        {onglet === "apercu" && <Apercu stats={stats} attente={attente} demandes={demandes} aller={setOnglet} />}
-        {onglet === "inscrits" && <Inscrits liste={inscrits} ouvrir={(id) => setFiche({ type: "utilisateur", id })} />}
-        {onglet === "groupes" && <Groupes liste={groupes} recharger={charger} ouvrir={(id) => setFiche({ type: "groupe", id })} />}
-        {onglet === "paiements" && <Paiements liste={attente} />}
-        {onglet === "codes" && <Codes liste={demandes} recharger={charger} />}
-        {onglet === "annonces" && <Annonces liste={annonces} recharger={charger} />}
-      </main>
+      <div className="min-w-0 flex-1">
+        {/* En-tête (téléphone) */}
+        <header className="degrade-vert relative overflow-hidden text-white lg:hidden">
+          <div className="motif pointer-events-none absolute inset-0 opacity-30" />
+          <div className="relative flex items-center gap-3 px-4 pb-3 pt-4">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/icons/logo.svg" alt="" width={36} height={36} className="h-9 w-9 rounded-xl shadow" />
+            <div className="min-w-0 flex-1">
+              <p className="font-extrabold leading-tight">Cotiz · Admin</p>
+              <p className="truncate text-xs text-emerald-50/80">{email}</p>
+            </div>
+            <button onClick={charger} className="grid h-9 w-9 place-items-center rounded-full bg-white/15" aria-label="Actualiser"><RefreshCw size={17} className={charge ? "animate-spin" : ""} /></button>
+            <button onClick={() => db.auth.signOut()} className="grid h-9 w-9 place-items-center rounded-full bg-white/15" aria-label="Se déconnecter"><LogOut size={16} /></button>
+          </div>
+          <nav className="relative flex gap-1.5 overflow-x-auto px-3 pb-3" data-pas-glisser>
+            {ONGLETS.map(({ id, label, icon: I }) => (
+              <button key={id} onClick={() => setOnglet(id)}
+                className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-[0.8rem] font-semibold transition ${onglet === id ? "bg-white text-emerald-900" : "bg-white/10 text-emerald-50"}`}>
+                <I size={15} /> {label}
+                {compteurs[id] !== undefined && <span className={`rounded-full px-1.5 text-[0.7rem] font-bold ${alerte[id] ? "bg-orange-500 text-white" : onglet === id ? "bg-emerald-100" : "bg-white/15"}`}>{compteurs[id]}</span>}
+              </button>
+            ))}
+          </nav>
+          <div className="bande-kente pointer-events-none absolute inset-x-0 bottom-0" />
+        </header>
+
+        <main className="mx-auto max-w-6xl space-y-5 px-4 py-5 lg:px-8 lg:py-8">
+          {/* Titre de la rubrique */}
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div className="flex items-center gap-3">
+              <span className={`grid h-11 w-11 place-items-center rounded-2xl ${TON[courant.ton].pastille}`}><courant.icon size={22} /></span>
+              <div>
+                <p className="text-xs font-semibold text-stone-500">{onglet === "apercu" ? `${salut} 👋` : "Administration"}</p>
+                <h1 className="text-2xl font-extrabold tracking-tight">{courant.label}</h1>
+              </div>
+            </div>
+            <div className="hidden items-center gap-2 lg:flex">
+              {maj && <span className="text-xs text-stone-500">Mis à jour à {maj.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>}
+              <button onClick={charger} className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 shadow-sm hover:bg-stone-50">
+                <RefreshCw size={15} className={charge ? "animate-spin" : ""} /> Actualiser
+              </button>
+            </div>
+          </div>
+
+          {msg && <p className="rounded-xl bg-red-50 p-3 text-sm font-medium text-red-700">{msg}</p>}
+          {onglet === "apercu" && <Apercu stats={stats} inscrits={inscrits} groupes={groupes} attente={attente} demandes={demandes} aller={setOnglet} ouvrir={(type, id) => setFiche({ type, id })} />}
+          {onglet === "stats" && <Statistiques stats={stats} inscrits={inscrits} groupes={groupes} ouvrir={(id) => setFiche({ type: "groupe", id })} />}
+          {onglet === "inscrits" && <Inscrits liste={inscrits} ouvrir={(id) => setFiche({ type: "utilisateur", id })} />}
+          {onglet === "groupes" && <Groupes liste={groupes} recharger={charger} ouvrir={(id) => setFiche({ type: "groupe", id })} />}
+          {onglet === "paiements" && <Paiements liste={attente} />}
+          {onglet === "codes" && <Codes liste={demandes} recharger={charger} />}
+          {onglet === "annonces" && <Annonces liste={annonces} recharger={charger} />}
+        </main>
+      </div>
       {fiche?.type === "utilisateur" && <FicheUtilisateur id={fiche.id} fermer={() => setFiche(null)} ouvrirGroupe={(id) => setFiche({ type: "groupe", id })} recharger={charger} />}
       {fiche?.type === "groupe" && <FicheGroupe id={fiche.id} fermer={() => setFiche(null)} ouvrirUtilisateur={(id) => setFiche({ type: "utilisateur", id })} recharger={charger} />}
     </div>
   );
 }
 
-function Chiffre({ label, valeur, detail, icone: I, ton = "vert", onClick }: { label: string; valeur: string; detail?: string; icone: typeof Users; ton?: "vert" | "orange" | "gris"; onClick?: () => void }) {
-  const tons = { vert: "bg-emerald-50 text-emerald-700", orange: "bg-amber-50 text-amber-700", gris: "bg-stone-100 text-stone-600" };
+/** Carte chiffrée colorée */
+function Chiffre({ label, valeur, detail, icone: I, ton = "emerald", onClick }: { label: string; valeur: string; detail?: string; icone: typeof Users; ton?: Ton; onClick?: () => void }) {
+  const t = TON[ton];
   return (
-    <button onClick={onClick} disabled={!onClick} className="carte flex items-start gap-3 p-4 text-left transition enabled:hover:border-emerald-300">
-      <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${tons[ton]}`}><I size={20} /></span>
-      <span className="min-w-0">
-        <span className="block text-xs font-semibold text-stone-500">{label}</span>
-        <span className="block text-xl font-extrabold leading-tight">{valeur}</span>
-        {detail && <span className="block text-xs text-stone-500">{detail}</span>}
-      </span>
+    <button onClick={onClick} disabled={!onClick} className={`group relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 text-left shadow-sm transition enabled:hover:-translate-y-0.5 enabled:hover:shadow-md ${t.carte}`}>
+      <div className="flex items-start justify-between gap-2">
+        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${t.pastille}`}><I size={20} /></span>
+        {onClick && <ChevronRight size={16} className="text-stone-300 transition group-hover:translate-x-0.5 group-hover:text-stone-500" />}
+      </div>
+      <p className="mt-3 text-xs font-semibold text-stone-500">{label}</p>
+      <p className="mt-0.5 truncate text-[1.45rem] font-extrabold leading-tight tracking-tight">{valeur}</p>
+      {detail && <p className={`mt-0.5 text-xs font-medium ${t.texte}`}>{detail}</p>}
     </button>
   );
 }
 
-function Apercu({ stats, attente, demandes, aller }: { stats: Stats | null; attente: Attente[]; demandes: Demande[]; aller: (o: Onglet) => void }) {
+function Bloc({ titre, sous, action, children, className = "" }: { titre: string; sous?: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
+  return (
+    <section className={`rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm lg:p-5 ${className}`}>
+      <div className="mb-3 flex items-start justify-between gap-3">
+        <div>
+          <p className="font-bold">{titre}</p>
+          {sous && <p className="text-xs text-stone-500">{sous}</p>}
+        </div>
+        {action}
+      </div>
+      {children}
+    </section>
+  );
+}
+
+const jour = (d: Date) => d.toISOString().slice(0, 10);
+
+/** Inscriptions par jour sur les 30 derniers jours (une seule série) */
+function CourbeInscriptions({ inscrits }: { inscrits: Inscrit[] }) {
+  const jours = useMemo(() => {
+    const parJour = new Map<string, number>();
+    for (const i of inscrits) parJour.set(i.inscrit_le.slice(0, 10), (parJour.get(i.inscrit_le.slice(0, 10)) ?? 0) + 1);
+    return Array.from({ length: 30 }, (_, k) => {
+      const d = new Date(); d.setDate(d.getDate() - (29 - k));
+      return { d, n: parJour.get(jour(d)) ?? 0 };
+    });
+  }, [inscrits]);
+  const max = Math.max(1, ...jours.map((j) => j.n));
+  const total = jours.reduce((s, j) => s + j.n, 0);
+  const [survol, setSurvol] = useState<number | null>(null);
+  const sel = survol !== null ? jours[survol] : null;
+  return (
+    <div>
+      <div className="mb-2 flex items-baseline justify-between text-xs text-stone-500">
+        <span><b className="text-lg font-extrabold text-stone-900">{total}</b> inscriptions en 30 jours</span>
+        <span className="font-medium text-stone-700">{sel ? `${sel.d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} : ${sel.n} inscrit${sel.n > 1 ? "s" : ""}` : "Touche une barre pour le détail"}</span>
+      </div>
+      <div className="relative h-36">
+        <div className="absolute inset-x-0 top-0 border-t border-dashed border-stone-200" />
+        <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-stone-200" />
+        <span className="absolute -top-2 right-0 bg-white pl-1 text-[0.65rem] text-stone-400">{max}</span>
+        <div className="absolute inset-0 flex items-end gap-[2px] border-b border-stone-300" onMouseLeave={() => setSurvol(null)}>
+          {jours.map((j, k) => (
+            <button key={k} type="button" aria-label={`${j.d.toLocaleDateString("fr-FR")} : ${j.n}`}
+              onMouseEnter={() => setSurvol(k)} onFocus={() => setSurvol(k)} onClick={() => setSurvol(k)}
+              className="flex h-full flex-1 items-end">
+              <span className={`block w-full rounded-t-[4px] transition-colors ${survol === k ? "bg-emerald-800" : "bg-emerald-500"}`} style={{ height: j.n ? `${Math.max(4, (j.n / max) * 100)}%` : "2px", opacity: j.n ? 1 : 0.25 }} />
+            </button>
+          ))}
+        </div>
+      </div>
+      <div className="mt-1.5 flex justify-between text-[0.65rem] text-stone-400">
+        <span>{jours[0].d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
+        <span>Aujourd’hui</span>
+      </div>
+    </div>
+  );
+}
+
+/** Barres horizontales étiquetées */
+function Barres({ lignes, format = (n: number) => String(n) }: { lignes: { label: string; n: number; couleur: string; onClick?: () => void }[]; format?: (n: number) => string }) {
+  const max = Math.max(1, ...lignes.map((l) => l.n));
+  return (
+    <div className="space-y-2.5">
+      {lignes.map((l, i) => (
+        <button key={i} type="button" onClick={l.onClick} disabled={!l.onClick} title={`${l.label} : ${format(l.n)}`} className="block w-full text-left enabled:hover:opacity-80">
+          <div className="mb-1 flex justify-between gap-2 text-xs">
+            <span className="truncate font-semibold text-stone-700">{l.label}</span>
+            <span className="shrink-0 font-bold text-stone-900">{format(l.n)}</span>
+          </div>
+          <div className="h-2.5 rounded-full bg-stone-100">
+            <div className="h-full rounded-full" style={{ width: `${Math.max(2, (l.n / max) * 100)}%`, background: l.couleur }} />
+          </div>
+        </button>
+      ))}
+    </div>
+  );
+}
+
+function Apercu({ stats, inscrits, groupes, attente, demandes, aller, ouvrir }: { stats: Stats | null; inscrits: Inscrit[]; groupes: Groupe[]; attente: Attente[]; demandes: Demande[]; aller: (o: Onglet) => void; ouvrir: (type: "utilisateur" | "groupe", id: string) => void }) {
   if (!stats) return <p className="text-sm text-stone-500">Chargement des chiffres…</p>;
+  const bloques = inscrits.filter((i) => i.nom.endsWith("(bloqué)")).length;
+  const echecs = demandes.filter((d) => d.resultat === "echouee" || d.resultat === "bloquee").length;
+  const derniers = [...inscrits].sort((a, b) => b.inscrit_le.localeCompare(a.inscrit_le)).slice(0, 6);
+  const aSurveiller = [
+    attente.length > 0 && { t: `${attente.length} paiement${attente.length > 1 ? "s" : ""} en attente de confirmation`, ton: "amber" as Ton, o: "paiements" as Onglet },
+    echecs > 0 && { t: `${echecs} tentative${echecs > 1 ? "s" : ""} « code oublié » échouée${echecs > 1 ? "s" : ""}`, ton: "rose" as Ton, o: "codes" as Onglet },
+    bloques > 0 && { t: `${bloques} compte${bloques > 1 ? "s" : ""} bloqué${bloques > 1 ? "s" : ""}`, ton: "red" as Ton, o: "inscrits" as Onglet },
+    groupes.some((g) => g.nb_membres <= 1) && { t: `${groupes.filter((g) => g.nb_membres <= 1).length} groupe(s) sans autre membre que le créateur`, ton: "violet" as Ton, o: "groupes" as Onglet },
+  ].filter(Boolean) as { t: string; ton: Ton; o: Onglet }[];
+
   return (
     <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Chiffre label="Inscrits" valeur={String(stats.inscrits)} detail={`+${stats.inscrits_7j} cette semaine`} icone={Users} onClick={() => aller("inscrits")} />
-        <Chiffre label="Groupes" valeur={String(stats.groupes)} detail={`${stats.membres} membres au total`} icone={UsersRound} onClick={() => aller("groupes")} />
-        <Chiffre label="Argent confirmé" valeur={fcfa(stats.montant_confirme)} detail={`${stats.paiements_confirmes} paiements`} icone={Wallet} />
-        <Chiffre label="En attente de confirmation" valeur={fcfa(stats.montant_attente)} detail={`${stats.paiements_attente} paiements`} icone={Clock} ton="orange" onClick={() => aller("paiements")} />
-        <Chiffre label="Codes secrets créés" valeur={String(stats.codes_definis)} detail={`sur ${stats.inscrits} inscrits`} icone={KeyRound} ton="gris" />
-        <Chiffre label="Codes oubliés (7 jours)" valeur={String(stats.demandes_code_7j)} icone={ShieldAlert} ton="gris" onClick={() => aller("codes")} />
+        <Chiffre label="Inscrits" valeur={String(stats.inscrits)} detail={`+${stats.inscrits_7j} cette semaine`} icone={Users} ton="sky" onClick={() => aller("inscrits")} />
+        <Chiffre label="Groupes" valeur={String(stats.groupes)} detail={`${stats.membres} membres au total`} icone={UsersRound} ton="violet" onClick={() => aller("groupes")} />
+        <Chiffre label="Argent confirmé" valeur={fcfa(stats.montant_confirme)} detail={`${stats.paiements_confirmes} paiements`} icone={Wallet} ton="emerald" onClick={() => aller("stats")} />
+        <Chiffre label="En attente" valeur={fcfa(stats.montant_attente)} detail={`${stats.paiements_attente} paiements à confirmer`} icone={Clock} ton="amber" onClick={() => aller("paiements")} />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Bloc titre="Inscriptions" sous="Nouveaux comptes, jour par jour" className="lg:col-span-2">
+          <CourbeInscriptions inscrits={inscrits} />
+        </Bloc>
+        <Bloc titre="À surveiller" sous="Ce qui demande ton attention">
+          {aSurveiller.length === 0 ? (
+            <div className="flex items-center gap-3 rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-800"><CheckCircle2 size={20} /> Tout est en ordre.</div>
+          ) : (
+            <div className="space-y-2">
+              {aSurveiller.map((a, i) => (
+                <button key={i} onClick={() => aller(a.o)} className={`flex w-full items-center gap-2.5 rounded-xl bg-gradient-to-r p-3 text-left text-sm font-semibold ${TON[a.ton].carte} border`}>
+                  <span className={`h-2 w-2 shrink-0 rounded-full ${TON[a.ton].barre}`} />
+                  <span className="flex-1">{a.t}</span>
+                  <ChevronRight size={15} className="text-stone-400" />
+                </button>
+              ))}
+            </div>
+          )}
+        </Bloc>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Bloc titre="Derniers inscrits" action={<button onClick={() => aller("inscrits")} className="text-xs font-bold text-sky-700">Tout voir</button>}>
+          {derniers.length === 0 ? <p className="text-sm text-stone-500">Personne pour l’instant.</p> : (
+            <Liste>
+              {derniers.map((i) => (
+                <button key={i.id} onClick={() => ouvrir("utilisateur", i.id)} className="flex w-full items-center gap-3 py-2.5 text-left text-sm hover:bg-stone-50">
+                  <Pastille nom={i.nom} />
+                  <div className="min-w-0 flex-1">
+                    <p className={`truncate font-semibold ${i.nom.endsWith("(bloqué)") ? "text-red-600" : ""}`}>{i.nom}</p>
+                    <p className="text-xs text-stone-500">{telAffiche(i.telephone)} · {i.nb_groupes} groupe{i.nb_groupes > 1 ? "s" : ""}</p>
+                  </div>
+                  <span className="shrink-0 text-xs text-stone-400">{dateCourte(i.inscrit_le)}</span>
+                </button>
+              ))}
+            </Liste>
+          )}
+        </Bloc>
+        <Bloc titre="Paiements en attente" sous="Déclarés, pas encore confirmés par le trésorier" action={<button onClick={() => aller("paiements")} className="text-xs font-bold text-amber-700">Tout voir</button>}>
+          {attente.length === 0 ? <p className="text-sm text-stone-500">Aucun paiement en attente.</p> : <Liste>{attente.slice(0, 6).map((a) => <LigneAttente key={a.id} a={a} />)}</Liste>}
+        </Bloc>
+      </div>
+    </>
+  );
+}
+
+function Statistiques({ stats, inscrits, groupes, ouvrir }: { stats: Stats | null; inscrits: Inscrit[]; groupes: Groupe[]; ouvrir: (id: string) => void }) {
+  if (!stats) return <p className="text-sm text-stone-500">Chargement des chiffres…</p>;
+  const parType = ["tontine", "association", "collecte"].map((t) => ({ t, n: groupes.filter((g) => g.type === t).length, argent: groupes.filter((g) => g.type === t).reduce((s, g) => s + g.collecte, 0) }));
+  const top = [...groupes].sort((a, b) => b.collecte - a.collecte).slice(0, 6);
+  const avecGroupe = inscrits.filter((i) => i.nb_groupes > 0).length;
+  const pct = (a: number, b: number) => (b ? Math.round((a / b) * 100) : 0);
+  const moyenne = groupes.length ? Math.round(groupes.reduce((s, g) => s + g.nb_membres, 0) / groupes.length) : 0;
+  const tailles = [
+    { label: "1 à 5 membres", n: groupes.filter((g) => g.nb_membres <= 5).length },
+    { label: "6 à 10 membres", n: groupes.filter((g) => g.nb_membres > 5 && g.nb_membres <= 10).length },
+    { label: "11 à 20 membres", n: groupes.filter((g) => g.nb_membres > 10 && g.nb_membres <= 20).length },
+    { label: "Plus de 20", n: groupes.filter((g) => g.nb_membres > 20).length },
+  ];
+  return (
+    <>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Chiffre label="Inscrits dans un groupe" valeur={`${pct(avecGroupe, inscrits.length)} %`} detail={`${avecGroupe} sur ${inscrits.length}`} icone={Users} ton="sky" />
+        <Chiffre label="Code secret créé" valeur={`${pct(stats.codes_definis, stats.inscrits)} %`} detail={`${stats.codes_definis} sur ${stats.inscrits}`} icone={KeyRound} ton="rose" />
+        <Chiffre label="Membres par groupe" valeur={String(moyenne)} detail="en moyenne" icone={UsersRound} ton="violet" />
+        <Chiffre label="Paiement moyen" valeur={fcfa(stats.paiements_confirmes ? Math.round(stats.montant_confirme / stats.paiements_confirmes) : 0)} detail={`${stats.paiements_confirmes} paiements confirmés`} icone={Wallet} ton="emerald" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <section className="carte p-4">
-          <p className="mb-2 font-bold">Derniers paiements en attente</p>
-          {attente.length === 0 ? <p className="text-sm text-stone-500">Aucun paiement en attente.</p> : <Liste>{attente.slice(0, 5).map((a) => <LigneAttente key={a.id} a={a} />)}</Liste>}
-        </section>
-        <section className="carte p-4">
-          <p className="mb-2 font-bold">Dernières demandes « code oublié »</p>
-          {demandes.length === 0 ? <p className="text-sm text-stone-500">Aucune demande.</p> : <Liste>{demandes.slice(0, 5).map((d, i) => <LigneDemande key={i} d={d} />)}</Liste>}
-        </section>
+        <Bloc titre="Groupes par type" sous="Nombre de groupes">
+          <Barres lignes={parType.map((p) => ({ label: TYPE[p.t], n: p.n, couleur: TYPE_COULEUR[p.t] }))} />
+        </Bloc>
+        <Bloc titre="Argent confirmé par type" sous="Total des cotisations confirmées">
+          <Barres lignes={parType.map((p) => ({ label: TYPE[p.t], n: p.argent, couleur: TYPE_COULEUR[p.t] }))} format={fcfa} />
+        </Bloc>
+        <Bloc titre="Groupes qui cotisent le plus" sous="Touche un groupe pour ouvrir sa fiche">
+          {top.length === 0 ? <p className="text-sm text-stone-500">Aucun groupe.</p> : <Barres lignes={top.map((g) => ({ label: g.nom, n: g.collecte, couleur: TYPE_COULEUR[g.type] ?? "#059669", onClick: () => ouvrir(g.id) }))} format={fcfa} />}
+        </Bloc>
+        <Bloc titre="Taille des groupes" sous="Nombre de groupes par nombre de membres">
+          <Barres lignes={tailles.map((t) => ({ ...t, couleur: "#0d9488" }))} />
+        </Bloc>
       </div>
     </>
   );
 }
 
 const Liste = ({ children }: { children: React.ReactNode }) => <div className="divide-y divide-stone-100">{children}</div>;
+
+const COULEURS_PASTILLE = ["bg-emerald-100 text-emerald-800", "bg-sky-100 text-sky-800", "bg-violet-100 text-violet-800", "bg-amber-100 text-amber-800", "bg-rose-100 text-rose-800", "bg-teal-100 text-teal-800"];
+function Pastille({ nom }: { nom: string }) {
+  const ini = nom.replace("(bloqué)", "").trim().split(/\s+/).map((m) => m[0]).slice(0, 2).join("").toUpperCase() || "?";
+  const c = COULEURS_PASTILLE[[...nom].reduce((s, ch) => s + ch.charCodeAt(0), 0) % COULEURS_PASTILLE.length];
+  return <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-full text-xs font-bold ${nom.endsWith("(bloqué)") ? "bg-red-100 text-red-700" : c}`}>{ini}</span>;
+}
+
+function Puces<T extends string>({ options, valeur, onChange }: { options: { id: T; label: string; n: number }[]; valeur: T; onChange: (v: T) => void }) {
+  return (
+    <div className="flex gap-1.5 overflow-x-auto pb-1" data-pas-glisser>
+      {options.map((o) => (
+        <button key={o.id} onClick={() => onChange(o.id)} className={`inline-flex shrink-0 items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${valeur === o.id ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white text-stone-600 hover:border-stone-300"}`}>
+          {o.label} <span className={valeur === o.id ? "text-white/70" : "text-stone-400"}>{o.n}</span>
+        </button>
+      ))}
+    </div>
+  );
+}
 
 function Recherche({ valeur, onChange, placeholder }: { valeur: string; onChange: (v: string) => void; placeholder: string }) {
   return (
@@ -263,40 +573,62 @@ function Recherche({ valeur, onChange, placeholder }: { valeur: string; onChange
 
 const norm = (s: string | null | undefined) => (s ?? "").toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "");
 
+type FiltreInscrit = "tous" | "semaine" | "sans_groupe" | "sans_code" | "bloques";
 function Inscrits({ liste, ouvrir }: { liste: Inscrit[]; ouvrir: (id: string) => void }) {
   const [q, setQ] = useState("");
-  const vus = useMemo(() => liste.filter((i) => !q || norm(i.nom).includes(norm(q)) || i.telephone.replace(/\D/g, "").includes(q.replace(/\D/g, "") || "§")), [liste, q]);
+  const [f, setF] = useState<FiltreInscrit>("tous");
+  const semaine = Date.now() - 7 * 86400000;
+  const tests: Record<FiltreInscrit, (i: Inscrit) => boolean> = {
+    tous: () => true,
+    semaine: (i) => new Date(i.inscrit_le).getTime() > semaine,
+    sans_groupe: (i) => i.nb_groupes === 0,
+    sans_code: (i) => !i.code_defini,
+    bloques: (i) => i.nom.endsWith("(bloqué)"),
+  };
+  const vus = useMemo(() => liste.filter(tests[f]).filter((i) => !q || norm(i.nom).includes(norm(q)) || i.telephone.replace(/\D/g, "").includes(q.replace(/\D/g, "") || "§")), [liste, q, f]); // eslint-disable-line react-hooks/exhaustive-deps
+  const opt = (id: FiltreInscrit, label: string) => ({ id, label, n: liste.filter(tests[id]).length });
   return (
-    <section className="carte space-y-3 p-4">
-      <Recherche valeur={q} onChange={setQ} placeholder="Chercher un nom ou un numéro…" />
-      <p className="text-xs text-stone-500">{vus.length} inscrit{vus.length > 1 ? "s" : ""}</p>
-      <div className="overflow-x-auto">
-        <table className="w-full min-w-[640px] text-sm">
-          <thead className="text-left text-xs uppercase tracking-wide text-stone-500">
-            <tr><th className="py-2">Nom</th><th>Téléphone</th><th>Naissance</th><th>Inscrit le</th><th className="text-right">Groupes</th><th className="text-right">Code</th></tr>
-          </thead>
-          <tbody className="divide-y divide-stone-100">
-            {vus.map((i) => (
-              <tr key={i.id} onClick={() => ouvrir(i.id)} className="cursor-pointer hover:bg-emerald-50/60">
-                <td className={`py-2.5 font-semibold ${i.nom.endsWith("(bloqué)") ? "text-red-600" : "text-emerald-800 underline decoration-emerald-200 underline-offset-2"}`}>{i.nom}</td>
-                <td className="whitespace-nowrap">{telAffiche(i.telephone)}</td>
-                <td>{i.naissance ? dateCourte(i.naissance) : <span className="text-stone-400">—</span>}</td>
-                <td className="whitespace-nowrap">{dateCourte(i.inscrit_le)}</td>
-                <td className="text-right">{i.nb_groupes}</td>
-                <td className="text-right">{i.code_defini ? <span className="text-emerald-700">✓</span> : <span className="text-stone-400">—</span>}</td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
+    <Bloc titre={`${vus.length} inscrit${vus.length > 1 ? "s" : ""}`} sous="Touche une personne pour ouvrir sa fiche (modifier, bloquer, réinitialiser le code)">
+      <div className="space-y-3">
+        <Recherche valeur={q} onChange={setQ} placeholder="Chercher un nom ou un numéro…" />
+        <Puces options={[opt("tous", "Tous"), opt("semaine", "Cette semaine"), opt("sans_groupe", "Sans groupe"), opt("sans_code", "Sans code"), opt("bloques", "Bloqués")]} valeur={f} onChange={setF} />
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[680px] text-sm">
+            <thead className="text-left text-[0.7rem] uppercase tracking-wide text-stone-500">
+              <tr className="border-b border-stone-200"><th className="py-2">Personne</th><th>Téléphone</th><th>Naissance</th><th>Inscrit le</th><th className="text-right">Groupes</th><th className="text-right">Code</th></tr>
+            </thead>
+            <tbody className="divide-y divide-stone-100">
+              {vus.map((i) => (
+                <tr key={i.id} onClick={() => ouvrir(i.id)} className="cursor-pointer hover:bg-sky-50/60">
+                  <td className="py-2.5">
+                    <span className="flex items-center gap-2.5">
+                      <Pastille nom={i.nom} />
+                      <span className={`font-semibold ${i.nom.endsWith("(bloqué)") ? "text-red-600" : "text-stone-900"}`}>{i.nom}</span>
+                    </span>
+                  </td>
+                  <td className="whitespace-nowrap">{telAffiche(i.telephone)}</td>
+                  <td>{i.naissance ? dateCourte(i.naissance) : <span className="text-stone-400">—</span>}</td>
+                  <td className="whitespace-nowrap">{dateCourte(i.inscrit_le)}</td>
+                  <td className="text-right"><span className={`rounded-md px-2 py-0.5 text-xs font-bold ${i.nb_groupes ? "bg-violet-50 text-violet-700" : "bg-stone-100 text-stone-500"}`}>{i.nb_groupes}</span></td>
+                  <td className="text-right">{i.code_defini ? <span className="rounded-md bg-emerald-50 px-2 py-0.5 text-xs font-bold text-emerald-700">✓ créé</span> : <span className="text-stone-400">—</span>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+          {vus.length === 0 && <p className="py-4 text-center text-sm text-stone-500">Personne ne correspond.</p>}
+        </div>
       </div>
-    </section>
+    </Bloc>
   );
 }
 
 function Groupes({ liste, recharger, ouvrir }: { liste: Groupe[]; recharger: () => void; ouvrir: (id: string) => void }) {
   const [q, setQ] = useState("");
   const [msg, setMsg] = useState("");
-  const vus = liste.filter((g) => !q || norm(g.nom).includes(norm(q)) || norm(g.tresorier).includes(norm(q)));
+  const [type, setType] = useState<"tous" | "tontine" | "association" | "collecte" | "attente">("tous");
+  const vus = liste
+    .filter((g) => type === "tous" || (type === "attente" ? g.en_attente > 0 : g.type === type))
+    .filter((g) => !q || norm(g.nom).includes(norm(q)) || norm(g.tresorier).includes(norm(q)));
   const supprimer = async (g: Groupe) => {
     if (!confirm(`Supprimer définitivement « ${g.nom} » ? Ses membres, paiements et versements seront effacés pour tout le monde.`)) return;
     const { error } = await db.rpc("admin_supprimer_groupe", { g: g.id });
@@ -312,7 +644,7 @@ function Groupes({ liste, recharger, ouvrir }: { liste: Groupe[]; recharger: () 
     recharger();
   };
   return (
-    <section className="carte space-y-3 p-4">
+    <section className="space-y-3 rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm lg:p-5">
       <div className="flex flex-wrap items-center gap-2">
         <div className="min-w-0 flex-1"><Recherche valeur={q} onChange={setQ} placeholder="Chercher un groupe ou un trésorier…" /></div>
         {liste.length > 0 && (
@@ -321,14 +653,24 @@ function Groupes({ liste, recharger, ouvrir }: { liste: Groupe[]; recharger: () 
           </button>
         )}
       </div>
+      <Puces
+        options={[
+          { id: "tous", label: "Tous", n: liste.length },
+          ...(["tontine", "association", "collecte"] as const).map((t) => ({ id: t, label: TYPE[t] + "s", n: liste.filter((g) => g.type === t).length })),
+          { id: "attente", label: "Paiements à confirmer", n: liste.filter((g) => g.en_attente > 0).length },
+        ]}
+        valeur={type}
+        onChange={setType}
+      />
       {msg && <p className="text-sm font-medium text-emerald-800">{msg}</p>}
       <div className="grid gap-3 md:grid-cols-2">
         {vus.map((g) => (
-          <div key={g.id} className="rounded-2xl border border-stone-200 p-3 transition hover:border-emerald-300">
+          <div key={g.id} className="relative overflow-hidden rounded-2xl border border-stone-200 bg-white p-3 pl-4 transition hover:shadow-md">
+            <span className="absolute inset-y-0 left-0 w-1.5" style={{ background: TYPE_COULEUR[g.type] ?? "#059669" }} />
             <div className="flex items-start justify-between gap-2">
               <button type="button" onClick={() => ouvrir(g.id)} className="min-w-0 text-left">
                 <p className="inline-flex items-center gap-1 truncate font-bold text-emerald-800">{g.nom} <ChevronRight size={15} /></p>
-                <p className="text-xs text-stone-500">{TYPE[g.type] ?? g.type} · {fcfa(g.montant)} · {g.frequence} · tour {g.tour}</p>
+                <p className="text-xs text-stone-500"><b style={{ color: TYPE_COULEUR[g.type] }}>{TYPE[g.type] ?? g.type}</b> · {fcfa(g.montant)} · {g.frequence} · tour {g.tour}</p>
               </button>
               {g.en_attente > 0 && <span className="shrink-0 rounded-md bg-amber-50 px-2 py-0.5 text-xs font-bold text-amber-800">{g.en_attente} à confirmer</span>}
             </div>
@@ -365,7 +707,7 @@ function LigneAttente({ a }: { a: Attente }) {
 
 function Paiements({ liste }: { liste: Attente[] }) {
   return (
-    <section className="carte p-4">
+    <section className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm lg:p-5">
       <p className="mb-1 text-sm text-stone-600">Paiements déclarés par les membres, que le trésorier n’a pas encore confirmés. Seul le trésorier du groupe peut confirmer.</p>
       {liste.length === 0 ? <p className="py-3 text-sm text-stone-500">Aucun paiement en attente.</p> : <Liste>{liste.map((a) => <LigneAttente key={a.id} a={a} />)}</Liste>}
     </section>
@@ -398,7 +740,7 @@ function Codes({ liste, recharger }: { liste: Demande[]; recharger: () => void }
   }
   return (
     <>
-      <form onSubmit={reinitialiser} className="carte space-y-3 p-4">
+      <form onSubmit={reinitialiser} className="space-y-3 rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm lg:p-5">
         <p className="font-bold">Réinitialiser un code secret</p>
         <p className="text-sm text-stone-600">Pour une personne qui a oublié son code et n’a pas pu le récupérer seule. <b>Vérifie d’abord son identité</b> (appelle-la sur son numéro).</p>
         <div className="flex gap-2">
@@ -407,7 +749,7 @@ function Codes({ liste, recharger }: { liste: Demande[]; recharger: () => void }
         </div>
         {msg && <p className="text-sm font-medium text-emerald-800">{msg}</p>}
       </form>
-      <section className="carte p-4">
+      <section className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm lg:p-5">
         <p className="mb-2 font-bold">Demandes « code oublié »</p>
         {liste.length === 0 ? <p className="text-sm text-stone-500">Aucune demande.</p> : <Liste>{liste.map((d, i) => <LigneDemande key={i} d={d} />)}</Liste>}
       </section>
@@ -434,7 +776,7 @@ function Annonces({ liste, recharger }: { liste: Annonce[]; recharger: () => voi
   }
   return (
     <>
-      <section className="carte p-4">
+      <section className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm lg:p-5">
         <p className="mb-2 font-bold">Annonces affichées sur l’accueil</p>
         <Liste>
           {liste.map((a) => (
@@ -523,8 +865,8 @@ function Volet({ titre, sousTitre, fermer, children }: { titre: string; sousTitr
   );
 }
 
-const Bloc = ({ titre, children, action }: { titre: string; children: React.ReactNode; action?: React.ReactNode }) => (
-  <section className="carte p-4">
+const BlocFiche = ({ titre, children, action }: { titre: string; children: React.ReactNode; action?: React.ReactNode }) => (
+  <section className="rounded-2xl border border-stone-200/80 bg-white p-4">
     <div className="mb-2 flex items-center justify-between gap-2"><p className="font-bold">{titre}</p>{action}</div>
     {children}
   </section>
@@ -583,7 +925,7 @@ function FicheUtilisateur({ id, fermer, ouvrirGroupe, recharger }: { id: string;
             </div>
           )}
 
-          <Bloc titre="Identité">
+          <BlocFiche titre="Identité">
             <div className="space-y-1 text-sm">
               <p>Identifiant : <Identifiant id={p.id} /></p>
               <p>Compte : {f.compte?.email?.startsWith("compte-") ? "retrouvé sur un nouveau téléphone" : f.compte?.is_anonymous === false ? f.compte?.email : "créé dans l’application"}</p>
@@ -601,9 +943,9 @@ function FicheUtilisateur({ id, fermer, ouvrirGroupe, recharger }: { id: string;
               <label className="text-xs font-semibold text-stone-500">Naissance<DateNaissance value={form.naissance} onChange={(v) => setForm((x) => ({ ...x, naissance: v }))} /></label>
               <button className="rounded-xl bg-emerald-700 py-2.5 text-sm font-bold text-white sm:col-span-3">Enregistrer les modifications</button>
             </form>
-          </Bloc>
+          </BlocFiche>
 
-          <Bloc titre="Sécurité">
+          <BlocFiche titre="Sécurité">
             <p className="text-sm">Code secret : {f.code?.defini ? <b className="text-emerald-700">créé</b> : <b className="text-stone-500">pas encore créé</b>}{f.code?.modifie_le && ` · modifié le ${dateCourte(f.code.modifie_le)}`}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <button onClick={() => confirm("Réinitialiser son code secret ? La personne en créera un nouveau à sa prochaine ouverture.") && action(async () => await db.rpc("admin_reinitialiser_code_profil", { p: id }), "Code réinitialisé.")} className="rounded-xl border border-stone-200 px-3 py-2 text-sm font-bold">
@@ -628,9 +970,9 @@ function FicheUtilisateur({ id, fermer, ouvrirGroupe, recharger }: { id: string;
             </div>
             {f.historique_code.length > 0 && <p className="mt-3 text-xs text-stone-500">Historique du code : {f.historique_code.slice(0, 6).map((h) => `${h.action} (${dateCourte(h.le)})`).join(" · ")}</p>}
             {f.tentatives.length > 0 && <p className="mt-1 text-xs text-stone-500">Connexions sur un autre téléphone : {f.tentatives.filter((t) => t.reussie).length} réussie(s), {f.tentatives.filter((t) => !t.reussie).length} échouée(s)</p>}
-          </Bloc>
+          </BlocFiche>
 
-          <Bloc titre={`Groupes (${f.groupes.length})`}>
+          <BlocFiche titre={`Groupes (${f.groupes.length})`}>
             {f.groupes.length === 0 ? <p className="text-sm text-stone-500">Aucun groupe.</p> : (
               <Liste>
                 {f.groupes.map((g) => (
@@ -642,9 +984,9 @@ function FicheUtilisateur({ id, fermer, ouvrirGroupe, recharger }: { id: string;
                 ))}
               </Liste>
             )}
-          </Bloc>
+          </BlocFiche>
 
-          <Bloc titre={`Paiements (${f.paiements.length})`}>
+          <BlocFiche titre={`Paiements (${f.paiements.length})`}>
             {f.paiements.length === 0 ? <p className="text-sm text-stone-500">Aucun paiement.</p> : (
               <Liste>
                 {f.paiements.map((x) => {
@@ -660,7 +1002,7 @@ function FicheUtilisateur({ id, fermer, ouvrirGroupe, recharger }: { id: string;
                 })}
               </Liste>
             )}
-          </Bloc>
+          </BlocFiche>
         </>
       )}
     </Volet>
@@ -696,15 +1038,15 @@ function FicheGroupe({ id, fermer, ouvrirUtilisateur, recharger }: { id: string;
       {f && !g && <p className="text-sm text-stone-500">Ce groupe n’existe plus.</p>}
       {g && f && (
         <>
-          <Bloc titre="Informations">
+          <BlocFiche titre="Informations">
             <div className="space-y-1 text-sm">
               <p>Identifiant : <Identifiant id={g.id} /></p>
               <p>Créé le {dateCourte(g.created_at)} par <b>{g.createur_nom ?? "—"}</b>{g.createur_tel && ` · ${telAffiche(g.createur_tel)}`}</p>
               {g.payment_phone && <p>Numéro qui reçoit l’argent : <b>{telAffiche(g.payment_phone)}</b></p>}
             </div>
-          </Bloc>
+          </BlocFiche>
 
-          <Bloc titre={`Membres (${f.membres.filter((m) => !m.archive).length})`}>
+          <BlocFiche titre={`Membres (${f.membres.filter((m) => !m.archive).length})`}>
             <div className="overflow-x-auto">
               <table className="w-full min-w-[560px] text-sm">
                 <thead className="text-left text-xs uppercase tracking-wide text-stone-500">
@@ -743,9 +1085,9 @@ function FicheGroupe({ id, fermer, ouvrirUtilisateur, recharger }: { id: string;
                 </tbody>
               </table>
             </div>
-          </Bloc>
+          </BlocFiche>
 
-          <Bloc titre={`Paiements (${f.paiements.length})`}>
+          <BlocFiche titre={`Paiements (${f.paiements.length})`}>
             {f.paiements.length === 0 ? <p className="text-sm text-stone-500">Aucun paiement.</p> : (
               <Liste>
                 {f.paiements.map((x) => {
@@ -767,9 +1109,9 @@ function FicheGroupe({ id, fermer, ouvrirUtilisateur, recharger }: { id: string;
                 })}
               </Liste>
             )}
-          </Bloc>
+          </BlocFiche>
 
-          <Bloc titre={`Versements (${f.versements.length})`}>
+          <BlocFiche titre={`Versements (${f.versements.length})`}>
             {f.demandes_versement.filter((d) => d.statut === "en_attente").map((d) => (
               <p key={d.id} className="mb-2 rounded-xl bg-violet-50 p-2 text-sm text-violet-900">En attente de validation : {fcfa(d.amount)} pour {d.beneficiary_name} ({d.validations}/{d.requis})</p>
             ))}
@@ -784,7 +1126,7 @@ function FicheGroupe({ id, fermer, ouvrirUtilisateur, recharger }: { id: string;
                 ))}
               </Liste>
             )}
-          </Bloc>
+          </BlocFiche>
 
           <button
             onClick={async () => {
