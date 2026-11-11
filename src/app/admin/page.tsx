@@ -412,7 +412,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
           {onglet === "dossiers" && <Dossiers liste={dossiers} fondateur={fondateur} recharger={charger} nouveau={() => setFormDossier({})} ouvrirUtilisateur={(id) => setFiche({ type: "utilisateur", id })} ouvrirGroupe={(id) => setFiche({ type: "groupe", id })} />}
           {onglet === "equipe" && fondateur && <Equipe liste={equipe} moi={email} recharger={charger} />}
           {onglet === "requetes" && <Requetes liste={requetes} moi={email} recharger={charger} ouvrirUtilisateur={(id) => setFiche({ type: "utilisateur", id })} />}
-          {onglet === "planning" && <Planning fondateur={fondateur} equipe={equipe} />}
+          {onglet === "planning" && <Planning fondateur={fondateur} equipe={equipe} moi={email} />}
           {onglet === "salaires" && fondateur && <Salaires />}
           {onglet === "codes" && <Codes liste={demandes} recharger={charger} />}
           {onglet === "annonces" && fondateur && <Annonces liste={annonces} recharger={charger} />}
@@ -1448,7 +1448,8 @@ const JOURS_SEMAINE = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
 const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 const lundiDe = (d: Date) => { const x = new Date(d); x.setHours(12, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
 
-function Planning({ fondateur, equipe }: { fondateur: boolean; equipe: Membre_Equipe[] }) {
+function Planning({ fondateur, equipe, moi }: { fondateur: boolean; equipe: Membre_Equipe[]; moi: string }) {
+  const [filtre, setFiltre] = useState<string>(fondateur ? "tous" : "moi");
   const [lundi, setLundi] = useState(() => lundiDe(new Date()));
   const [liste, setListe] = useState<Creneau[] | null>(null);
   const [msg, setMsg] = useState("");
@@ -1529,6 +1530,11 @@ function Planning({ fondateur, equipe }: { fondateur: boolean; equipe: Membre_Eq
   if (liste === null) return <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Pour le planning, fais d’abord la <b>mise à jour SQL n°18</b> dans Supabase.</p>;
   const aujourdhui = iso(new Date());
   const agents = equipe.filter((a) => a.role === "agent");
+  const estMoi = (c: Creneau) => c.email.toLowerCase() === moi.toLowerCase();
+  // Personnes présentes cette semaine (pour les filtres)
+  const personnes = [...new Map(liste.map((c) => [c.email, { email: c.email, label: `${c.numero ? c.numero + " · " : ""}${c.nom ?? c.email}` }])).values()].sort((a, b) => a.label.localeCompare(b.label));
+  const visibles = liste.filter((c) => filtre === "tous" || (filtre === "moi" ? estMoi(c) : c.email === filtre));
+  const mesHeures = liste.filter(estMoi).reduce((t, c) => t + (Number(c.fin.slice(0, 2)) * 60 + Number(c.fin.slice(3, 5)) - Number(c.debut.slice(0, 2)) * 60 - Number(c.debut.slice(3, 5))) / 60, 0);
   return (
     <>
       <div className="flex flex-wrap items-center gap-2">
@@ -1543,10 +1549,20 @@ function Planning({ fondateur, equipe }: { fondateur: boolean; equipe: Membre_Eq
           {liste.length > 0 && <button disabled={occupe} onClick={viderSemaine} className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-600 disabled:opacity-50"><Trash2 size={15} /> Vider cette semaine</button>}
         </div>
       )}
+      <Puces
+        options={[
+          { id: "tous", label: "Tout le monde", n: liste.length },
+          ...(!fondateur || liste.some(estMoi) ? [{ id: "moi", label: "Mon planning", n: liste.filter(estMoi).length }] : []),
+          ...personnes.filter((x) => x.email.toLowerCase() !== moi.toLowerCase()).map((x) => ({ id: x.email, label: x.label, n: liste.filter((c) => c.email === x.email).length })),
+        ]}
+        valeur={filtre}
+        onChange={setFiltre}
+      />
+      {!fondateur && <p className="text-sm text-stone-600">Cette semaine, tu travailles <b>{liste.filter(estMoi).length} fois</b>{mesHeures > 0 ? <> pour <b>{Math.round(mesHeures * 10) / 10} h</b></> : null}. Tes créneaux sont en vert foncé.</p>}
       {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") || msg.includes("chevauche") || msg.includes("doit") || msg.includes("Choisis") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}>{msg}</p>}
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-7">
         {jours.map((d, k) => {
-          const duJour = liste.filter((c) => c.jour === iso(d));
+          const duJour = visibles.filter((c) => c.jour === iso(d));
           const estAuj = iso(d) === aujourdhui;
           return (
             <div key={k} className={`min-h-[110px] rounded-2xl border p-2.5 ${estAuj ? "border-teal-400 bg-teal-50/60" : "border-stone-200/80 bg-white"}`}>
@@ -1558,10 +1574,10 @@ function Planning({ fondateur, equipe }: { fondateur: boolean; equipe: Membre_Eq
               </div>
               <div className="space-y-1.5">
                 {duJour.map((c) => (
-                  <div key={c.id} className={`rounded-xl px-2.5 py-2 text-white ${enEdition?.id === c.id ? "bg-amber-500 ring-2 ring-amber-300" : "bg-teal-600"}`}>
+                  <div key={c.id} className={`rounded-xl px-2.5 py-2 ${enEdition?.id === c.id ? "bg-amber-500 text-white ring-2 ring-amber-300" : !fondateur && !estMoi(c) ? "bg-teal-50 text-teal-900 ring-1 ring-teal-200" : "bg-teal-700 text-white"}`}>
                     <p className="text-xs font-bold">{h(c.debut)} – {h(c.fin)}</p>
-                    {fondateur && <p className="truncate text-[0.7rem] text-teal-50">{c.numero ? `${c.numero} · ` : ""}{c.nom ?? c.email}</p>}
-                    {c.note && <p className="truncate text-[0.7rem] text-teal-50/90">{c.note}</p>}
+                    <p className={`truncate text-[0.7rem] ${!fondateur && !estMoi(c) ? "text-teal-700" : "text-teal-50"}`}>{estMoi(c) ? "Toi" : `${c.numero ? `${c.numero} · ` : ""}${c.nom ?? c.email}`}</p>
+                    {c.note && <p className={`truncate text-[0.7rem] ${!fondateur && !estMoi(c) ? "text-teal-700/80" : "text-teal-50/90"}`}>{c.note}</p>}
                     {fondateur && (
                       <div className="mt-1.5 flex gap-1">
                         <button onClick={() => modifier(c)} className="flex-1 rounded-lg bg-white/20 px-1.5 py-1 text-[0.7rem] font-bold hover:bg-white/30">Modifier</button>
