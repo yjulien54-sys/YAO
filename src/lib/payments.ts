@@ -11,15 +11,17 @@ export const OPERATEURS: { id: Exclude<PayMethod, "especes">; nom: string; bg: s
  * Mode de paiement :
  *  - "manuel" (par défaut) : le membre envoie l'argent au trésorier avec son Wave/Orange Money,
  *    déclare son paiement, et le trésorier le confirme.
- *  - "wave" (Wave Business), "cinetpay" : paiements automatiques via API.
+ *  - "wave" (Wave Business), "cinetpay", "geniuspay" : paiements automatiques via API.
  *  - "simulation" : démonstration, aucun argent.
  */
 const MODE = process.env.NEXT_PUBLIC_PAIEMENT_MODE;
-export const MODE_PAIEMENT: "manuel" | "simulation" | "wave" | "cinetpay" =
-  MODE === "wave" || MODE === "cinetpay" || MODE === "simulation" ? MODE : "manuel";
+export const MODE_PAIEMENT: "manuel" | "simulation" | "wave" | "cinetpay" | "geniuspay" =
+  MODE === "wave" || MODE === "cinetpay" || MODE === "geniuspay" || MODE === "simulation" ? MODE : "manuel";
 
 /** Frais estimés (pris sur la caisse du groupe) : ≈1 % chez Wave Business, ≈3 % chez les agrégateurs. À ajuster selon ton contrat. */
-export const FRAIS_TAUX = Number(process.env.NEXT_PUBLIC_FRAIS_TAUX ?? (MODE_PAIEMENT === "wave" ? "0.01" : "0.03"));
+// GeniusPay : 1 % + frais opérateur (~1,5 %) + 100 F fixes par transaction
+export const FRAIS_TAUX = Number(process.env.NEXT_PUBLIC_FRAIS_TAUX ?? (MODE_PAIEMENT === "wave" ? "0.01" : MODE_PAIEMENT === "geniuspay" ? "0.025" : "0.03"));
+export const FRAIS_FIXE = Number(process.env.NEXT_PUBLIC_FRAIS_FIXE ?? (MODE_PAIEMENT === "geniuspay" ? "100" : "0"));
 export const fraisMobileMoney = (montant: number, method: PayMethod) =>
   // en mode manuel, c'est le membre qui paie les frais de son transfert : la caisse reçoit le montant exact
   method === "especes" || MODE_PAIEMENT === "manuel" ? 0 : Math.round(montant * FRAIS_TAUX);
@@ -44,6 +46,8 @@ export const METHOD_LABEL: Record<PayMethod | "virement" | "cinetpay", string> =
   virement: "Virement",
   cinetpay: "Mobile Money (CinetPay)",
 };
+/** Frais estimés d'une transaction complète (taux + frais fixe) */
+export const fraisTransaction = (total: number) => (MODE_PAIEMENT === "manuel" ? 0 : Math.round(total * FRAIS_TAUX) + FRAIS_FIXE);
 
 /**
  * Paiement SIMULÉ pour le prototype.

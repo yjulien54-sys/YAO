@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button, Card, Field, Header, Loading, Page, WhatsAppIcon, btnClass, inputClass, useRequireUser } from "@/components/ui";
 import { dateCourte, fcfa, prenom, telAffiche } from "@/lib/format";
 import { dueDate, roundAmount, roundsToPay } from "@/lib/logic";
-import { FRAIS_TAUX, MODE_PAIEMENT, OPERATEURS, initierPaiement, lienWaveAvecMontant, lienWaveValide } from "@/lib/payments";
+import { FRAIS_TAUX, MODE_PAIEMENT, fraisTransaction, OPERATEURS, initierPaiement, lienWaveAvecMontant, lienWaveValide } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { waLink } from "@/lib/whatsapp";
@@ -119,11 +119,11 @@ function Payer() {
         const res = await fetch("/api/paiements/initier", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` },
-          body: JSON.stringify({ groupId: g!.id, memberId: member!.id, rounds: tours, amount: isCollecte ? total : undefined, phone }),
+          body: JSON.stringify({ groupId: g!.id, memberId: member!.id, rounds: tours, amount: isCollecte ? total : undefined, phone, method }),
         });
         const json = await res.json();
         if (!res.ok || !json.paymentUrl) throw new Error(json.error ?? "paiement impossible");
-        window.location.href = json.paymentUrl; // page sécurisée Wave / CinetPay
+        window.location.href = json.paymentUrl; // page sécurisée Wave / CinetPay / GeniusPay
         return;
       }
       await initierPaiement({ method, phone, amount: total });
@@ -170,7 +170,7 @@ function Payer() {
             <div className="mx-auto mb-6 grid h-20 w-20 animate-pulse place-items-center rounded-full text-2xl font-extrabold" style={{ background: op.bg, color: op.fg }}>
               {op.nom[0]}
             </div>
-            <h2 className="text-xl font-bold">{MODE_PAIEMENT === "wave" ? "Ouverture de Wave…" : MODE_PAIEMENT === "cinetpay" ? "Ouverture du paiement sécurisé…" : "Confirme sur ton téléphone"}</h2>
+            <h2 className="text-xl font-bold">{MODE_PAIEMENT === "wave" ? "Ouverture de Wave…" : MODE_PAIEMENT === "cinetpay" || MODE_PAIEMENT === "geniuspay" ? "Ouverture du paiement sécurisé…" : "Confirme sur ton téléphone"}</h2>
             <p className="mt-2 text-sm leading-relaxed text-stone-600">
               Paiement de <b>{fcfa(total)}</b> via {op.nom}.
               {MODE_PAIEMENT === "simulation" && <><br />Valide avec ton code secret.</>}
@@ -377,7 +377,7 @@ function Payer() {
               <Lock size={12} strokeWidth={2} className="mr-1 inline -mt-0.5" />
               {MODE_PAIEMENT === "manuel"
                 ? "Ton paiement sera validé par le trésorier après vérification. Tout le groupe verra le reçu."
-                : `Tu paies exactement ${fcfa(total)}. Les frais (≈${Math.round(FRAIS_TAUX * 100)} %) sont pris sur la caisse du groupe.`}
+                : `Tu paies exactement ${fcfa(total)}. Les frais de paiement (environ ${fcfa(fraisTransaction(total))}, soit ≈${Math.round(FRAIS_TAUX * 100)} %${fraisTransaction(total) - Math.round(total * FRAIS_TAUX) > 0 ? " + frais fixe" : ""}) sont pris sur la caisse du groupe.`}
               {MODE_PAIEMENT !== "manuel" && !pourAutrui ? ` Reçu visible par tout le groupe.` : ""}
             </p>
             <LienAide sujet={`Bonjour, j’ai besoin d’aide pour payer dans le groupe « ${g.name} ».`} />

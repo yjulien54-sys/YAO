@@ -21,7 +21,9 @@ export const cinetpayConfigured = () =>
 export const fournisseurConfigure = () =>
   process.env.NEXT_PUBLIC_PAIEMENT_MODE === "wave"
     ? Boolean(process.env.WAVE_API_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY)
-    : cinetpayConfigured();
+    : process.env.NEXT_PUBLIC_PAIEMENT_MODE === "geniuspay"
+      ? Boolean(process.env.GENIUSPAY_PUBLIC_KEY && process.env.GENIUSPAY_SECRET_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY)
+      : cinetpayConfigured();
 
 /** Client Supabase avec tous les droits — ne jamais l'utiliser côté navigateur. */
 export const supabaseAdmin = () =>
@@ -101,7 +103,12 @@ export async function synchroniserTransaction(transactionId: string) {
   const sb = supabaseAdmin();
   let statut: StatutCinetpay;
   let m: PayMethod | undefined;
-  if (transactionId.startsWith("cos-") || process.env.NEXT_PUBLIC_PAIEMENT_MODE === "wave") {
+  if (process.env.NEXT_PUBLIC_PAIEMENT_MODE === "geniuspay") {
+    const { lireGeniuspay } = await import("./geniuspay");
+    const r = await lireGeniuspay(transactionId);
+    statut = r.statut;
+    m = r.methode;
+  } else if (transactionId.startsWith("cos-") || process.env.NEXT_PUBLIC_PAIEMENT_MODE === "wave") {
     const { lireSessionWave } = await import("./wave");
     statut = await lireSessionWave(transactionId);
     m = "wave";

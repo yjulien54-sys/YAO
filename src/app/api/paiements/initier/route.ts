@@ -4,6 +4,8 @@ import { mapGroup } from "@/lib/mappers";
 import { fraisMobileMoney } from "@/lib/payments";
 import { fournisseurConfigure, initierCinetpay, supabaseAdmin, userFromRequest } from "@/lib/server/cinetpay";
 import { creerSessionWave } from "@/lib/server/wave";
+import { initierGeniuspay } from "@/lib/server/geniuspay";
+import type { PayMethod } from "@/lib/types";
 
 export const runtime = "nodejs";
 
@@ -13,7 +15,7 @@ export async function POST(req: Request) {
   if (!user) return NextResponse.json({ error: "non connecté" }, { status: 401 });
 
   const body = await req.json().catch(() => ({}));
-  const { groupId, memberId, rounds, amount, phone } = body as { groupId?: string; memberId?: string; rounds?: number[]; amount?: number; phone?: string };
+  const { groupId, memberId, rounds, amount, phone, method } = body as { groupId?: string; memberId?: string; rounds?: number[]; amount?: number; phone?: string; method?: PayMethod };
   if (!groupId || !memberId) return NextResponse.json({ error: "requête invalide" }, { status: 400 });
 
   const sb = supabaseAdmin();
@@ -47,7 +49,8 @@ export async function POST(req: Request) {
       round: l.round,
       amount: l.amount,
       penalty: l.penalty,
-      fees: fraisMobileMoney(l.amount + l.penalty, "wave"),
+      // frais estimés ; le frais fixe (s'il existe) est compté sur la première ligne
+      fees: fraisMobileMoney(l.amount + l.penalty, "wave") + (i === 0 ? Number(process.env.NEXT_PUBLIC_FRAIS_FIXE ?? (process.env.NEXT_PUBLIC_PAIEMENT_MODE === "geniuspay" ? 100 : 0)) : 0),
       method: "wave", // remplacé par l'opérateur réel après confirmation
       status: "en_attente",
       transaction_id: transactionId,
@@ -58,6 +61,28 @@ export async function POST(req: Request) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const origin = new URL(req.url).origin;
+
+  if (process.env.NEXT_PUBLIC_PAIEMENT_MODE === "geniuspay") {
+    try {
+      const { paymentUrl, reference } = await initierGeniuspay({
+        transactionId,
+        groupId: g.id,
+        amount: total,
+        description: `Cotiz ${g.name}`,
+        successUrl: `${origin}/api/paiements/retour?ref=${transactionId}&g=${g.id}`,
+        errorUrl: `${origin}/api/paiements/retour?ref=${transactionId}&g=${g.id}&erreur=1`,
+        customerName: membre.name,
+        customerPhone: String(phone ?? membre.phone),
+        methode: method,
+      });
+      // On retient la référence GeniusPay pour vérifier le paiement ensuite
+      await sb.from("payments").update({ transaction_id: reference }).eq("transaction_id", transactionId);
+      return NextResponse.json({ paymentUrl, transactionId: reference });
+    } catch (e) {
+      await sb.from("payments").update({ status: "echoue" }).eq("transaction_id", transactionId);
+      return NextResponse.json({ error: (e as Error).message }, { status: 502 });
+    }
+  }
 
   if (process.env.NEXT_PUBLIC_PAIEMENT_MODE === "wave") {
     try {
