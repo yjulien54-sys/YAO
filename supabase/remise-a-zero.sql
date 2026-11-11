@@ -2,7 +2,8 @@
 -- COTIZ — REMISE À ZÉRO COMPLÈTE (repartir de zéro)
 -- Supprime TOUS les comptes utilisateurs, TOUS les groupes, paiements,
 -- versements, codes secrets, notifications et l'historique.
--- GARDE : ton compte administrateur (table admins) et les annonces.
+-- GARDE : les comptes de l'équipe (table admins : fondateur et agents), leur
+-- planning et leurs salaires, le journal admin, les réglages et les annonces.
 -- ⚠️ DÉFINITIF : rien ne peut être récupéré après.
 -- Supabase > SQL Editor > New query (vide) > coller > Run
 -- =====================================================================
@@ -29,6 +30,12 @@ delete from public.profiles
               where email is null or lower(email) not in (select lower(email) from public.admins));
 delete from auth.users
  where email is null or lower(email) not in (select lower(email) from public.admins);
+
+-- Requêtes des clients et dossiers du service client (si les mises à jour 17 et 18 sont faites)
+do $$ begin
+  if to_regclass('public.requetes_clients') is not null then delete from public.requetes_clients; end if;
+  if to_regclass('public.dossiers_admin') is not null then delete from public.dossiers_admin; end if;
+end $$;
 
 -- Historique de sécurité (en dernier : les suppressions ci-dessus y écrivent)
 delete from public.journal;

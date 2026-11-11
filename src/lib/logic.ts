@@ -73,8 +73,6 @@ export function beneficiary(g: Group, round = g.currentRound): Member | undefine
   return g.members.find((m) => m.id === id);
 }
 
-export const totalRounds = (g: Group) => (g.type === "tontine" ? g.order.length : undefined);
-
 export const unpaidMembers = (g: Group) =>
   g.members.filter((m) => memberStatus(g, m.id) !== "paye");
 
