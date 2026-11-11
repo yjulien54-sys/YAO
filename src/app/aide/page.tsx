@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ServiceClient } from "@/components/ServiceClient";
+import { RequeteClient } from "@/components/RequeteClient";
 import { BottomNav } from "@/components/BottomNav";
 import { Header, Page } from "@/components/ui";
 
@@ -27,6 +28,7 @@ export default function Aide() {
       <Header title="Aide et service client" />
       <div className="space-y-5 p-4 pb-28">
         <ServiceClient />
+        <RequeteClient />
         <section>
           <h2 className="mb-2 px-1 text-xs font-bold uppercase tracking-wide text-stone-500">Questions fréquentes</h2>
           <div className="carte divide-y divide-stone-100 overflow-hidden">

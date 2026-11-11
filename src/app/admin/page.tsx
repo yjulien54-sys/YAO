@@ -3,7 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { DateNaissance } from "@/components/DateNaissance";
 import {
-  Ban, BarChart3, CheckCircle2, Contact, ExternalLink, FolderOpen, ScrollText, Send, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
+  Ban, BarChart3, BadgeCheck, CalendarDays, Camera, CheckCircle2, ChevronLeft, Contact, Download, ExternalLink, FolderOpen, Headset, IdCard, MessageSquareText, Phone, ScrollText, Send, ShieldX, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
 } from "lucide-react";
 import { supabaseAdmin as db } from "@/lib/supabaseAdmin";
 import { dateCourte, fcfa, telAffiche } from "@/lib/format";
@@ -22,7 +22,12 @@ type VersementA = { id: string; le: string; groupe_id: string; groupe: string; b
 type LigneJournal = { id: number; le: string; admin_email: string | null; action: string; cible: string | null; detail: string | null };
 type Dossier = { id: string; numero: number; cree_le: string; cree_par: string; motif: string; priorite: "normale" | "urgente"; client_profile_id: string | null; client_nom: string | null; client_tel: string | null; groupe_id: string | null; groupe_nom: string | null; montant: number | null; reference: string | null; description: string; donnees: Record<string, string>; statut: "ouvert" | "valide" | "refuse"; reponse: string | null; traite_par: string | null; traite_le: string | null };
 type DossierInit = { motif?: string; client_profile_id?: string | null; client_nom?: string | null; client_tel?: string | null; groupe_id?: string | null; groupe_nom?: string | null; montant?: number | null; reference?: string | null; donnees?: Record<string, string>; resume?: string };
-type Membre_Equipe = { email: string; nom: string | null; role: "fondateur" | "agent"; ajoute_le: string };
+type Membre_Equipe = { email: string; nom: string | null; role: "fondateur" | "agent"; ajoute_le: string; numero: number | null; telephone: string | null; photo_path: string | null; cni_numero: string | null; cni_path: string | null; salaire: number | null; cnps_declare: boolean; cnps_numero: string | null; cnps_le: string | null; embauche_le: string | null; contrat: string | null; contact_urgence: string | null; note: string | null };
+type Requete = { id: string; numero: number; cree_le: string; profile_id: string; nom: string | null; telephone: string | null; motif: string; message: string; statut: "nouvelle" | "en_cours" | "resolue"; agent_email: string | null; reponse: string | null; maj_le: string };
+type Creneau = { id: string; email: string; nom: string | null; numero: number | null; jour: string; debut: string; fin: string; note: string | null };
+type Salaire = { email: string; nom: string | null; numero: number | null; telephone: string | null; salaire: number | null; cnps_declare: boolean; paye: boolean; montant_paye: number | null; paye_le: string | null; reference: string | null };
+/** Identifiant de connexion d'un agent : son numéro (27xx) */
+const emailAgent = (n: string | number) => `agent${n}@tontine-et-cotise.vercel.app`;
 /** Rôle de la personne connectée + ouverture du formulaire « dossier » */
 const AdminCtx = createContext<{ fondateur: boolean; demander: (d: DossierInit) => void }>({ fondateur: true, demander: () => {} });
 const MOTIFS = [
@@ -34,6 +39,7 @@ const MOTIFS = [
 type Annonce = { id: string; titre: string; texte: string | null; lien: string | null; bouton: string | null; couleur: string; actif: boolean; ordre: number };
 
 const ONGLETS = [
+  { id: "requetes", label: "Requêtes clients", icon: MessageSquareText, ton: "sky" },
   { id: "apercu", label: "Vue d’ensemble", icon: LayoutDashboard, ton: "emerald" },
   { id: "stats", label: "Statistiques", icon: BarChart3, ton: "teal" },
   { id: "inscrits", label: "Inscrits", icon: Users, ton: "sky" },
@@ -44,10 +50,12 @@ const ONGLETS = [
   { id: "annonces", label: "Annonces", icon: Megaphone, ton: "orange" },
   { id: "dossiers", label: "Dossiers", icon: FolderOpen, ton: "violet" },
   { id: "journal", label: "Journal admin", icon: ScrollText, ton: "emerald" },
+  { id: "planning", label: "Planning", icon: CalendarDays, ton: "teal" },
   { id: "equipe", label: "Équipe", icon: UserCog, ton: "sky" },
+  { id: "salaires", label: "Salaires", icon: Wallet, ton: "emerald" },
 ] as const;
 type Onglet = (typeof ONGLETS)[number]["id"];
-const RESERVE_FONDATEUR: Onglet[] = ["annonces", "journal", "equipe"];
+const RESERVE_FONDATEUR: Onglet[] = ["annonces", "journal", "equipe", "salaires"];
 type Ton = (typeof ONGLETS)[number]["ton"] | "red";
 
 /** Couleurs par rubrique (pastille d'icône, carte chiffrée) */
@@ -157,7 +165,9 @@ function Connexion() {
     e.preventDefault();
     setErreur("");
     setOccupe(true);
-    const { error } = await db.auth.signInWithPassword({ email: email.trim(), password: mdp });
+    // Un agent se connecte avec son numéro (ex : 2704)
+    const id = email.trim();
+    const { error } = await db.auth.signInWithPassword({ email: /^27\d{2,3}$/.test(id) ? emailAgent(id) : id, password: mdp });
     setOccupe(false);
     if (error) setErreur(error.message.includes("Invalid") ? "E-mail ou mot de passe incorrect." : error.message);
   }
@@ -197,14 +207,14 @@ function Connexion() {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons/logo.svg" alt="" width={64} height={64} className="mx-auto h-16 w-16 rounded-2xl shadow-md shadow-emerald-900/20" />
             <p className="mt-4 text-[1.4rem] font-extrabold leading-tight tracking-tight">Espace administrateur</p>
-            <p className="mt-1 text-sm text-stone-500">Connecte-toi avec ton e-mail et ton mot de passe</p>
+            <p className="mt-1 text-sm text-stone-500">Fondateur : ton e-mail · Agent : ton numéro (27…)</p>
           </div>
           <div className="mt-6 space-y-4">
             <label className="block">
-              <span className="mb-1.5 block text-sm font-semibold text-stone-700">E-mail</span>
+              <span className="mb-1.5 block text-sm font-semibold text-stone-700">E-mail ou numéro d’agent</span>
               <div className="relative">
                 <Mail size={18} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-stone-400" />
-                <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" placeholder="ton@email.com" className={`${champ} !py-3 pl-11`} required />
+                <input type="text" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="username" autoCapitalize="none" placeholder="ton@email.com ou 2704" className={`${champ} !py-3 pl-11`} required />
               </div>
             </label>
             <label className="block">
@@ -231,7 +241,7 @@ function Connexion() {
 
 function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "agent" }) {
   const fondateur = role === "fondateur";
-  const [onglet, setOnglet] = useState<Onglet>("apercu");
+  const [onglet, setOnglet] = useState<Onglet>(role === "agent" ? "requetes" : "apercu");
   const [stats, setStats] = useState<Stats | null>(null);
   const [inscrits, setInscrits] = useState<Inscrit[]>([]);
   const [groupes, setGroupes] = useState<Groupe[]>([]);
@@ -245,6 +255,9 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
   const [dossiers, setDossiers] = useState<Dossier[] | null>(null); // null : mise à jour SQL n°17 pas encore faite
   const [equipe, setEquipe] = useState<Membre_Equipe[]>([]);
   const [formDossier, setFormDossier] = useState<DossierInit | null>(null);
+  const [requetes, setRequetes] = useState<Requete[] | null>(null); // null : mise à jour SQL n°18 pas encore faite
+  const [maFiche, setMaFiche] = useState<{ nom: string | null; numero: number | null } | null>(null);
+  const [motDePasse, setMotDePasse] = useState(false);
   const [charge, setCharge] = useState(false);
   const [maj, setMaj] = useState<Date | null>(null);
   const [msg, setMsg] = useState("");
@@ -269,6 +282,9 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
     // Mise à jour SQL n°16 (facultative tant qu'elle n'est pas faite)
     const [mb, vs, jn, ds, eq] = await Promise.all([db.rpc("admin_membres"), db.rpc("admin_versements_attente"), db.rpc("admin_journal"), db.rpc("admin_dossiers"), db.rpc("admin_equipe")]);
     setDossiers(ds.error ? null : ((ds.data as Dossier[]) ?? []));
+    const [rq, mf] = await Promise.all([db.rpc("admin_requetes"), db.rpc("ma_fiche_admin")]);
+    setRequetes(rq.error ? null : ((rq.data as Requete[]) ?? []));
+    setMaFiche(mf.error ? null : (mf.data as { nom: string | null; numero: number | null }));
     setEquipe(eq.error ? [] : ((eq.data as Membre_Equipe[]) ?? []));
     setMembres(mb.error ? null : ((mb.data as MembreA[]) ?? []));
     setVersements(vs.error ? [] : ((vs.data as VersementA[]) ?? []));
@@ -285,8 +301,9 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
 
   const aValider = attente.length + versements.length;
   const ouverts = (dossiers ?? []).filter((d) => d.statut === "ouvert").length;
-  const compteurs: Partial<Record<Onglet, number>> = { inscrits: inscrits.length, groupes: groupes.length, membres: membres?.length, paiements: aValider, codes: demandes.length, annonces: annonces.length, dossiers: dossiers ? ouverts : undefined, equipe: equipe.length || undefined };
-  const alerte: Partial<Record<Onglet, boolean>> = { paiements: aValider > 0, dossiers: fondateur && ouverts > 0 };
+  const nouvelles = (requetes ?? []).filter((r) => r.statut === "nouvelle").length;
+  const compteurs: Partial<Record<Onglet, number>> = { inscrits: inscrits.length, groupes: groupes.length, membres: membres?.length, paiements: aValider, codes: demandes.length, annonces: annonces.length, dossiers: dossiers ? ouverts : undefined, equipe: equipe.length || undefined, requetes: requetes ? nouvelles : undefined };
+  const alerte: Partial<Record<Onglet, boolean>> = { paiements: aValider > 0, dossiers: fondateur && ouverts > 0, requetes: nouvelles > 0 };
   const onglets = ONGLETS.filter((o) => fondateur || !RESERVE_FONDATEUR.includes(o.id));
   const voirMembres = (t: string) => { setTypeMembres(t); setOnglet("membres"); };
   const courant = onglets.find((o) => o.id === onglet) ?? onglets[0];
@@ -299,7 +316,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
       {/* Barre latérale (ordinateur) */}
       <aside className="degrade-vert relative hidden w-[260px] shrink-0 overflow-hidden text-white lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col">
         <div className="motif pointer-events-none absolute inset-0 opacity-30" />
-        <div className="relative flex items-center gap-3 px-5 pb-6 pt-6">
+        <div className="relative flex items-center gap-3 px-5 pb-4 pt-5">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/logo.svg" alt="" width={40} height={40} className="h-10 w-10 rounded-xl shadow-md" />
           <div>
@@ -307,7 +324,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
             <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-emerald-100/80">Administration</p>
           </div>
         </div>
-        <nav className="relative flex-1 space-y-1 px-3">
+        <nav className="relative min-h-0 flex-1 space-y-0.5 overflow-y-auto px-3">
           {onglets.map(({ id, label, icon: I }) => {
             const actif = onglet === id;
             return (
@@ -326,9 +343,13 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
           <ExternalLink size={17} /> Ouvrir l’application
         </a>
         <div className="relative m-3 rounded-2xl bg-white/10 p-3 ring-1 ring-white/15">
-          <p className="mb-1 inline-block rounded-full bg-white/20 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide">{fondateur ? "Fondateur" : "Agent service client"}</p>
+          <p className="mb-1 inline-block rounded-full bg-white/20 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide">{fondateur ? "Fondateur" : "Agent service client"}{maFiche?.numero ? ` · n°${maFiche.numero}` : ""}</p>
+          {maFiche?.nom && <p className="truncate text-sm font-bold">{maFiche.nom}</p>}
           <p className="truncate text-xs text-emerald-50/80">Connecté : <b className="text-white">{email}</b></p>
-          <button onClick={() => db.auth.signOut()} className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-white/15 py-2 text-xs font-bold hover:bg-white/25">
+          <button onClick={() => setMotDePasse(true)} className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-white/10 py-2 text-xs font-bold hover:bg-white/20">
+            <Lock size={14} /> Changer mon mot de passe
+          </button>
+          <button onClick={() => db.auth.signOut()} className="mt-1.5 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-white/15 py-2 text-xs font-bold hover:bg-white/25">
             <LogOut size={14} /> Se déconnecter
           </button>
         </div>
@@ -344,8 +365,9 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
             <img src="/icons/logo.svg" alt="" width={36} height={36} className="h-9 w-9 rounded-xl shadow" />
             <div className="min-w-0 flex-1">
               <p className="font-extrabold leading-tight">Cotiz · {fondateur ? "Admin" : "Service client"}</p>
-              <p className="truncate text-xs text-emerald-50/80">{email}</p>
+              <p className="truncate text-xs text-emerald-50/80">{maFiche?.numero ? `n°${maFiche.numero} · ` : ""}{maFiche?.nom ?? email}</p>
             </div>
+            <button onClick={() => setMotDePasse(true)} className="grid h-9 w-9 place-items-center rounded-full bg-white/15" aria-label="Changer mon mot de passe"><Lock size={16} /></button>
             <button onClick={charger} className="grid h-9 w-9 place-items-center rounded-full bg-white/15" aria-label="Actualiser"><RefreshCw size={17} className={charge ? "animate-spin" : ""} /></button>
             <button onClick={() => db.auth.signOut()} className="grid h-9 w-9 place-items-center rounded-full bg-white/15" aria-label="Se déconnecter"><LogOut size={16} /></button>
           </div>
@@ -380,7 +402,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
           </div>
 
           {msg && <p className="rounded-xl bg-red-50 p-3 text-sm font-medium text-red-700">{msg}</p>}
-          {onglet === "apercu" && <Apercu stats={stats} inscrits={inscrits} groupes={groupes} attente={attente} demandes={demandes} aller={setOnglet} ouvrir={(type, id) => setFiche({ type, id })} />}
+          {onglet === "apercu" && <Apercu stats={stats} inscrits={inscrits} groupes={groupes} attente={attente} demandes={demandes} aller={setOnglet} ouvrir={(type, id) => setFiche({ type, id })} nonDeclares={equipe.filter((a) => a.role === "agent" && !a.cnps_declare).length} nouvelles={nouvelles} />}
           {onglet === "stats" && <Statistiques stats={stats} inscrits={inscrits} groupes={groupes} ouvrir={(id) => setFiche({ type: "groupe", id })} />}
           {onglet === "inscrits" && <Inscrits liste={inscrits} ouvrir={(id) => setFiche({ type: "utilisateur", id })} />}
           {onglet === "groupes" && <Groupes liste={groupes} recharger={charger} ouvrir={(id) => setFiche({ type: "groupe", id })} voirMembres={voirMembres} />}
@@ -389,12 +411,16 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
           {onglet === "journal" && fondateur && <Journal liste={journal} />}
           {onglet === "dossiers" && <Dossiers liste={dossiers} fondateur={fondateur} recharger={charger} nouveau={() => setFormDossier({})} ouvrirUtilisateur={(id) => setFiche({ type: "utilisateur", id })} ouvrirGroupe={(id) => setFiche({ type: "groupe", id })} />}
           {onglet === "equipe" && fondateur && <Equipe liste={equipe} moi={email} recharger={charger} />}
+          {onglet === "requetes" && <Requetes liste={requetes} moi={email} recharger={charger} ouvrirUtilisateur={(id) => setFiche({ type: "utilisateur", id })} />}
+          {onglet === "planning" && <Planning fondateur={fondateur} equipe={equipe} />}
+          {onglet === "salaires" && fondateur && <Salaires />}
           {onglet === "codes" && <Codes liste={demandes} recharger={charger} />}
           {onglet === "annonces" && fondateur && <Annonces liste={annonces} recharger={charger} />}
         </main>
       </div>
       {fiche?.type === "utilisateur" && <FicheUtilisateur id={fiche.id} fermer={() => setFiche(null)} ouvrirGroupe={(id) => setFiche({ type: "groupe", id })} recharger={charger} />}
       {fiche?.type === "groupe" && <FicheGroupe id={fiche.id} fermer={() => setFiche(null)} ouvrirUtilisateur={(id) => setFiche({ type: "utilisateur", id })} recharger={charger} />}
+      {motDePasse && <ChangerMotDePasse fermer={() => setMotDePasse(false)} />}
       {formDossier && <FormDossier init={formDossier} fermer={() => setFormDossier(null)} envoye={() => { setFormDossier(null); charger(); setOnglet("dossiers"); }} />}
     </div>
     </AdminCtx.Provider>
@@ -496,12 +522,14 @@ function Barres({ lignes, format = (n: number) => String(n) }: { lignes: { label
   );
 }
 
-function Apercu({ stats, inscrits, groupes, attente, demandes, aller, ouvrir }: { stats: Stats | null; inscrits: Inscrit[]; groupes: Groupe[]; attente: Attente[]; demandes: Demande[]; aller: (o: Onglet) => void; ouvrir: (type: "utilisateur" | "groupe", id: string) => void }) {
+function Apercu({ stats, inscrits, groupes, attente, demandes, aller, ouvrir, nonDeclares = 0, nouvelles = 0 }: { stats: Stats | null; inscrits: Inscrit[]; groupes: Groupe[]; attente: Attente[]; demandes: Demande[]; aller: (o: Onglet) => void; ouvrir: (type: "utilisateur" | "groupe", id: string) => void; nonDeclares?: number; nouvelles?: number }) {
   if (!stats) return <p className="text-sm text-stone-500">Chargement des chiffres…</p>;
   const bloques = inscrits.filter((i) => i.nom.endsWith("(bloqué)")).length;
   const echecs = demandes.filter((d) => d.resultat === "echouee" || d.resultat === "bloquee").length;
   const derniers = [...inscrits].sort((a, b) => b.inscrit_le.localeCompare(a.inscrit_le)).slice(0, 6);
   const aSurveiller = [
+    nouvelles > 0 && { t: `${nouvelles} requête${nouvelles > 1 ? "s" : ""} client sans réponse`, ton: "sky" as Ton, o: "requetes" as Onglet },
+    nonDeclares > 0 && { t: `${nonDeclares} agent${nonDeclares > 1 ? "s" : ""} pas encore déclaré${nonDeclares > 1 ? "s" : ""} à la CNPS`, ton: "red" as Ton, o: "equipe" as Onglet },
     attente.length > 0 && { t: `${attente.length} paiement${attente.length > 1 ? "s" : ""} en attente de confirmation`, ton: "amber" as Ton, o: "paiements" as Onglet },
     echecs > 0 && { t: `${echecs} tentative${echecs > 1 ? "s" : ""} « code oublié » échouée${echecs > 1 ? "s" : ""}`, ton: "rose" as Ton, o: "codes" as Onglet },
     bloques > 0 && { t: `${bloques} compte${bloques > 1 ? "s" : ""} bloqué${bloques > 1 ? "s" : ""}`, ton: "red" as Ton, o: "inscrits" as Onglet },
@@ -1251,62 +1279,498 @@ function Dossiers({ liste, fondateur, recharger, nouveau, ouvrirUtilisateur, ouv
   );
 }
 
-function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string; recharger: () => void }) {
-  const [f, setF] = useState({ nom: "", email: "", mdp: "" });
+/** Fenêtre simple au centre de l'écran */
+function Fenetre({ titre, fermer, children }: { titre: string; fermer: () => void; children: React.ReactNode }) {
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 sm:items-center sm:p-4" onClick={fermer}>
+      <div onClick={(e) => e.stopPropagation()} className="max-h-[92dvh] w-full max-w-md overflow-y-auto rounded-t-3xl bg-white p-6 shadow-2xl sm:rounded-3xl">
+        <div className="mb-4 flex items-center justify-between gap-3">
+          <p className="text-lg font-extrabold">{titre}</p>
+          <button type="button" onClick={fermer} className="grid h-9 w-9 place-items-center rounded-full bg-stone-100" aria-label="Fermer"><X size={18} /></button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
+function ChangerMotDePasse({ fermer }: { fermer: () => void }) {
+  const [a, setA] = useState("");
+  const [b, setB] = useState("");
   const [msg, setMsg] = useState("");
+  const [ok, setOk] = useState(false);
+  async function valider(e: React.FormEvent) {
+    e.preventDefault();
+    if (a.length < 8) return setMsg("8 caractères minimum.");
+    if (a !== b) return setMsg("Les deux mots de passe ne sont pas pareils.");
+    const { error } = await db.auth.updateUser({ password: a });
+    if (error) return setMsg("Erreur : " + error.message);
+    setOk(true);
+  }
+  return (
+    <Fenetre titre="Changer mon mot de passe" fermer={fermer}>
+      {ok ? (
+        <div className="space-y-3">
+          <p className="rounded-xl bg-emerald-50 p-3 text-sm font-medium text-emerald-800">Mot de passe changé. Garde-le pour toi : ne le donne à personne, même à un collègue.</p>
+          <button onClick={fermer} className="w-full rounded-xl bg-emerald-700 py-3 text-sm font-bold text-white">Fermer</button>
+        </div>
+      ) : (
+        <form onSubmit={valider} className="space-y-3">
+          <input type="password" value={a} onChange={(e) => setA(e.target.value)} placeholder="Nouveau mot de passe" autoComplete="new-password" className={champ} />
+          <input type="password" value={b} onChange={(e) => setB(e.target.value)} placeholder="Encore une fois" autoComplete="new-password" className={champ} />
+          {msg && <p className="text-sm font-medium text-red-600">{msg}</p>}
+          <button className="w-full rounded-xl bg-emerald-700 py-3 text-sm font-bold text-white">Enregistrer</button>
+        </form>
+      )}
+    </Fenetre>
+  );
+}
+
+const STATUT_REQ: Record<Requete["statut"], [string, string]> = {
+  nouvelle: ["Nouvelle", "bg-sky-600 text-white"],
+  en_cours: ["En cours", "bg-amber-50 text-amber-800 ring-1 ring-amber-200"],
+  resolue: ["Répondu", "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"],
+};
+
+function Requetes({ liste, moi, recharger, ouvrirUtilisateur }: { liste: Requete[] | null; moi: string; recharger: () => void; ouvrirUtilisateur: (id: string) => void }) {
+  const { demander } = useContext(AdminCtx);
+  const [filtre, setFiltre] = useState<"a_traiter" | "miennes" | "resolue" | "toutes">("a_traiter");
+  const [reponses, setReponses] = useState<Record<string, string>>({});
+  const [msg, setMsg] = useState("");
+  const [occupe, setOccupe] = useState<string | null>(null);
+  if (!liste) return <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Pour voir les requêtes des clients, fais d’abord la <b>mise à jour SQL n°18</b> dans Supabase.</p>;
+  const tests = {
+    a_traiter: (r: Requete) => r.statut !== "resolue",
+    miennes: (r: Requete) => (r.agent_email ?? "").toLowerCase() === moi.toLowerCase(),
+    resolue: (r: Requete) => r.statut === "resolue",
+    toutes: () => true,
+  };
+  const vus = liste.filter(tests[filtre]);
+  const agir = async (id: string, fn: () => PromiseLike<{ error: { message: string } | null }>, ok: string) => {
+    setOccupe(id); setMsg("");
+    const { error } = await fn();
+    setOccupe(null);
+    setMsg(error ? "Erreur : " + error.message : ok);
+    if (!error) setReponses((x) => ({ ...x, [id]: "" }));
+    recharger();
+  };
+  return (
+    <>
+      <div className="rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-white p-4 text-sm text-sky-900">
+        Les clients écrivent depuis l’application (page <b>Aide</b>). Touche <b>« Je m’en occupe »</b>, appelle le client si besoin, puis réponds : il reçoit ta réponse en notification. S’il faut une action que tu ne peux pas faire, envoie un dossier au fondateur.
+      </div>
+      <Puces options={[
+        { id: "a_traiter" as const, label: "À traiter", n: liste.filter(tests.a_traiter).length },
+        { id: "miennes" as const, label: "Les miennes", n: liste.filter(tests.miennes).length },
+        { id: "resolue" as const, label: "Répondues", n: liste.filter(tests.resolue).length },
+        { id: "toutes" as const, label: "Toutes", n: liste.length },
+      ]} valeur={filtre} onChange={setFiltre} />
+      {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}>{msg}</p>}
+      {vus.length === 0 && <p className="rounded-2xl border border-dashed border-stone-300 p-8 text-center text-sm text-stone-500">{filtre === "a_traiter" ? "Aucune requête en attente. 🎉" : "Rien ici."}</p>}
+      <div className="grid gap-3 lg:grid-cols-2">
+        {vus.map((r) => {
+          const [l, c] = STATUT_REQ[r.statut];
+          const aMoi = (r.agent_email ?? "").toLowerCase() === moi.toLowerCase();
+          return (
+            <article key={r.id} className={`flex flex-col rounded-2xl border bg-white p-4 shadow-sm ${r.statut === "nouvelle" ? "border-sky-200" : "border-stone-200/80"}`}>
+              <div className="flex items-start gap-3">
+                <Pastille nom={r.nom ?? "?"} />
+                <div className="min-w-0 flex-1">
+                  <button onClick={() => ouvrirUtilisateur(r.profile_id)} className="truncate text-left font-bold hover:underline">{r.nom ?? "Client"}</button>
+                  <p className="text-xs text-stone-500">{r.telephone && <a href={`tel:${r.telephone}`} className="font-semibold text-emerald-700 underline">{telAffiche(r.telephone)}</a>} · n°{r.numero} · {new Date(r.cree_le).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>
+                </div>
+                <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.7rem] font-bold ${c}`}>{l}</span>
+              </div>
+              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-sky-700">{r.motif}</p>
+              <p className="mt-1 whitespace-pre-line text-sm text-stone-800">{r.message}</p>
+              {r.agent_email && <p className="mt-2 text-xs text-stone-500">Pris en charge par {aMoi ? "toi" : r.agent_email.replace("@tontine-et-cotise.vercel.app", "").replace("agent", "n°")}</p>}
+              {r.reponse && <p className="mt-2 rounded-xl bg-emerald-50 p-2.5 text-sm text-emerald-900"><b>Réponse :</b> {r.reponse}</p>}
+              {r.statut !== "resolue" && (
+                <div className="mt-3 space-y-2 border-t border-stone-100 pt-3">
+                  {r.statut === "nouvelle" && (
+                    <button disabled={!!occupe} onClick={() => agir(r.id, () => db.rpc("admin_requete_prendre", { r: r.id }), "Requête prise en charge.")} className="w-full rounded-xl bg-sky-600 py-2.5 text-sm font-bold text-white disabled:opacity-50">Je m’en occupe</button>
+                  )}
+                  <textarea value={reponses[r.id] ?? ""} onChange={(e) => setReponses({ ...reponses, [r.id]: e.target.value })} rows={2} placeholder="Ta réponse au client…" className={`${champ} resize-y`} />
+                  <div className="flex flex-wrap gap-2">
+                    <button disabled={!!occupe || !(reponses[r.id] ?? "").trim()} onClick={() => agir(r.id, () => db.rpc("admin_requete_repondre", { r: r.id, texte: reponses[r.id], resoudre: true }), "Réponse envoyée au client.")} className="flex-1 rounded-xl bg-emerald-700 py-2.5 text-sm font-bold text-white disabled:opacity-40">Répondre et clore</button>
+                    <button disabled={!!occupe || !(reponses[r.id] ?? "").trim()} onClick={() => agir(r.id, () => db.rpc("admin_requete_repondre", { r: r.id, texte: reponses[r.id], resoudre: false }), "Réponse envoyée, requête gardée ouverte.")} className="rounded-xl border border-stone-200 px-3 py-2.5 text-sm font-bold text-stone-700 disabled:opacity-40">Répondre</button>
+                    <button onClick={() => demander({ motif: r.motif.includes("paiement") ? "Confirmer un paiement" : "Réclamation d’un client", client_profile_id: r.profile_id, client_nom: r.nom, client_tel: r.telephone })} className="inline-flex items-center gap-1 rounded-xl bg-violet-50 px-3 py-2.5 text-sm font-bold text-violet-700"><Send size={14} /> Dossier</button>
+                  </div>
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+const JOURS_SEMAINE = ["Lun", "Mar", "Mer", "Jeu", "Ven", "Sam", "Dim"];
+const iso = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+const lundiDe = (d: Date) => { const x = new Date(d); x.setHours(12, 0, 0, 0); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return x; };
+
+function Planning({ fondateur, equipe }: { fondateur: boolean; equipe: Membre_Equipe[] }) {
+  const [lundi, setLundi] = useState(() => lundiDe(new Date()));
+  const [liste, setListe] = useState<Creneau[] | null>(null);
+  const [msg, setMsg] = useState("");
+  const [f, setF] = useState({ email: "", jour: iso(new Date()), debut: "08:00", fin: "16:00", note: "" });
+  const jours = Array.from({ length: 7 }, (_, k) => { const d = new Date(lundi); d.setDate(d.getDate() + k); return d; });
+  const charger = useCallback(async () => {
+    const { data, error } = await db.rpc("admin_planning", { du: iso(jours[0]), au: iso(jours[6]) });
+    setListe(error ? null : ((data as Creneau[]) ?? []));
+  }, [lundi]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { charger(); }, [charger]);
+  const decaler = (n: number) => { const d = new Date(lundi); d.setDate(d.getDate() + 7 * n); setLundi(d); };
+  async function ajouter(e: React.FormEvent) {
+    e.preventDefault();
+    if (!f.email) return setMsg("Choisis un agent.");
+    const { error } = await db.rpc("admin_planning_ajouter", { adresse: f.email, j: f.jour, de: f.debut, a: f.fin, remarque: f.note || null });
+    setMsg(error ? "Erreur : " + error.message : "Créneau ajouté.");
+    if (!error) charger();
+  }
+  if (liste === null) return <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Pour le planning, fais d’abord la <b>mise à jour SQL n°18</b> dans Supabase.</p>;
+  const aujourdhui = iso(new Date());
+  const h = (t: string) => t.slice(0, 5).replace(":", "h");
+  const agents = equipe.filter((a) => a.role === "agent");
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-2">
+        <button onClick={() => decaler(-1)} className="grid h-10 w-10 place-items-center rounded-xl border border-stone-200 bg-white" aria-label="Semaine précédente"><ChevronLeft size={18} /></button>
+        <p className="min-w-0 flex-1 text-center font-bold">Semaine du {jours[0].toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} au {jours[6].toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</p>
+        <button onClick={() => decaler(1)} className="grid h-10 w-10 place-items-center rounded-xl border border-stone-200 bg-white" aria-label="Semaine suivante"><ChevronRight size={18} /></button>
+        <button onClick={() => setLundi(lundiDe(new Date()))} className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-semibold">Aujourd’hui</button>
+      </div>
+      <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-7">
+        {jours.map((d, k) => {
+          const duJour = liste.filter((c) => c.jour === iso(d));
+          const estAuj = iso(d) === aujourdhui;
+          return (
+            <div key={k} className={`min-h-[110px] rounded-2xl border p-2.5 ${estAuj ? "border-teal-400 bg-teal-50/60" : "border-stone-200/80 bg-white"}`}>
+              <p className={`mb-2 text-xs font-bold ${estAuj ? "text-teal-800" : "text-stone-500"}`}>{JOURS_SEMAINE[k]} {d.getDate()}{estAuj && " · aujourd’hui"}</p>
+              <div className="space-y-1.5">
+                {duJour.map((c) => (
+                  <div key={c.id} className="group rounded-xl bg-teal-600 px-2.5 py-2 text-white">
+                    <p className="text-xs font-bold">{h(c.debut)} – {h(c.fin)}</p>
+                    {fondateur && <p className="truncate text-[0.7rem] text-teal-50">{c.numero ? `${c.numero} · ` : ""}{c.nom ?? c.email}</p>}
+                    {c.note && <p className="truncate text-[0.7rem] text-teal-50/90">{c.note}</p>}
+                    {fondateur && <button onClick={async () => { if (!confirm("Supprimer ce créneau ?")) return; await db.rpc("admin_planning_supprimer", { i: c.id }); charger(); }} className="mt-1 text-[0.65rem] font-bold text-teal-100 underline">Supprimer</button>}
+                  </div>
+                ))}
+                {duJour.length === 0 && <p className="text-[0.7rem] text-stone-300">—</p>}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+      {fondateur && (
+        <Bloc titre="Ajouter un créneau de travail" sous="Choisis l’agent, le jour et les heures">
+          {agents.length === 0 ? <p className="text-sm text-stone-500">Ajoute d’abord un agent dans l’onglet Équipe.</p> : (
+            <form onSubmit={ajouter} className="grid gap-2 sm:grid-cols-6">
+              <select value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} className={`${champ} sm:col-span-2`}>
+                <option value="">Agent…</option>
+                {agents.map((a) => <option key={a.email} value={a.email}>{a.numero ? `${a.numero} · ` : ""}{a.nom ?? a.email}</option>)}
+              </select>
+              <input type="date" value={f.jour} onChange={(e) => setF({ ...f, jour: e.target.value })} className={champ} />
+              <input type="time" value={f.debut} onChange={(e) => setF({ ...f, debut: e.target.value })} className={champ} />
+              <input type="time" value={f.fin} onChange={(e) => setF({ ...f, fin: e.target.value })} className={champ} />
+              <input value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="Note (facultatif)" className={champ} />
+              <button className="rounded-xl bg-teal-700 py-2.5 text-sm font-bold text-white sm:col-span-6">Ajouter au planning</button>
+              {msg && <p className="text-sm font-medium text-emerald-800 sm:col-span-6">{msg}</p>}
+            </form>
+          )}
+        </Bloc>
+      )}
+    </>
+  );
+}
+
+function BadgeCnps({ ok }: { ok: boolean }) {
+  return ok
+    ? <span className="inline-flex items-center gap-1 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[0.7rem] font-bold text-emerald-800"><BadgeCheck size={12} /> CNPS déclaré</span>
+    : <span className="inline-flex items-center gap-1 rounded-full bg-red-100 px-2.5 py-0.5 text-[0.7rem] font-bold text-red-700"><ShieldX size={12} /> CNPS non déclaré</span>;
+}
+
+/** Photo stockée en privé : lien temporaire */
+function PhotoPrivee({ chemin, nom, taille = 44 }: { chemin: string | null; nom: string; taille?: number }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => {
+    if (!chemin) return setUrl(null);
+    db.storage.from("agents").createSignedUrl(chemin, 3600).then(({ data }) => setUrl(data?.signedUrl ?? null));
+  }, [chemin]);
+  // eslint-disable-next-line @next/next/no-img-element
+  if (url) return <img src={url} alt={nom} style={{ width: taille, height: taille }} className="shrink-0 rounded-full object-cover ring-2 ring-white" />;
+  return <span style={{ width: taille, height: taille }} className="grid shrink-0 place-items-center"><Pastille nom={nom} /></span>;
+}
+
+function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string; recharger: () => void }) {
+  const [f, setF] = useState({ nom: "", telephone: "", salaire: "", mdp: "" });
+  const [msg, setMsg] = useState("");
+  const [nouveau, setNouveau] = useState<{ numero: number; mdp: string; nom: string } | null>(null);
   const [occupe, setOccupe] = useState(false);
+  const [fiche, setFiche] = useState<string | null>(null);
   const proposer = () => {
     const c = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
-    const a = new Uint32Array(12); crypto.getRandomValues(a);
+    const a = new Uint32Array(10); crypto.getRandomValues(a);
     setF((x) => ({ ...x, mdp: [...a].map((n) => c[n % c.length]).join("") }));
   };
   async function ajouter(e: React.FormEvent) {
     e.preventDefault();
-    setOccupe(true); setMsg("");
+    setOccupe(true); setMsg(""); setNouveau(null);
     const { data } = await db.auth.getSession();
-    const r = await fetch("/api/admin/equipe", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` }, body: JSON.stringify({ nom: f.nom, email: f.email, motDePasse: f.mdp }) }).then((x) => x.json()).catch(() => ({ ok: false, erreur: "Réseau indisponible." }));
+    const r = await fetch("/api/admin/equipe", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` }, body: JSON.stringify({ nom: f.nom, telephone: f.telephone, salaire: f.salaire, motDePasse: f.mdp }) }).then((x) => x.json()).catch(() => ({ ok: false, erreur: "Réseau indisponible." }));
     setOccupe(false);
     if (!r.ok) return setMsg("Erreur : " + r.erreur);
-    setMsg(r.existait ? `${f.email} avait déjà un compte : il a maintenant l’accès agent (avec son mot de passe actuel).` : `Agent ajouté. Donne-lui : l’adresse /admin, son e-mail ${f.email} et le mot de passe provisoire.`);
-    setF({ nom: "", email: "", mdp: "" });
+    setNouveau({ numero: r.numero, mdp: f.mdp, nom: f.nom });
+    setF({ nom: "", telephone: "", salaire: "", mdp: "" });
     recharger();
   }
   const retirer = async (m: Membre_Equipe) => {
     if (!confirm(`Retirer l’accès de ${m.nom ?? m.email} ? Il ne pourra plus ouvrir l’administration.`)) return;
     const { error } = await db.rpc("admin_retirer_agent", { adresse: m.email });
-    setMsg(error ? "Erreur : " + error.message : `${m.email} n’a plus accès.`);
+    setMsg(error ? "Erreur : " + error.message : `${m.nom ?? m.email} n’a plus accès.`);
     recharger();
   };
+  const retirerTous = async () => {
+    const n = liste.filter((a) => a.role === "agent").length;
+    const saisie = prompt(`Retirer l’accès des ${n} agents ? Leurs fiches seront supprimées. Toi, tu gardes ton accès.\n\nPour confirmer, écris : RETIRER TOUS LES AGENTS`);
+    if (saisie === null) return;
+    if (saisie.trim() !== "RETIRER TOUS LES AGENTS") return setMsg("Confirmation incorrecte : personne n’a été retiré.");
+    const { data, error } = await db.rpc("admin_retirer_tous_agents", { confirmation: "RETIRER TOUS LES AGENTS" });
+    setMsg(error ? "Erreur : " + error.message : `${data} agent(s) retiré(s).`);
+    recharger();
+  };
+  const agents = liste.filter((a) => a.role === "agent");
+  const masse = agents.reduce((t, a) => t + (a.salaire ?? 0), 0);
+  const ouverte = liste.find((a) => a.email === fiche);
   return (
-    <div className="grid gap-4 lg:grid-cols-[1fr_1.1fr]">
-      <Bloc titre="Ajouter un agent du service client" sous="Il pourra tout voir, réinitialiser les codes oubliés et t’envoyer des dossiers. Il ne pourra rien confirmer, modifier, bloquer ni supprimer.">
-        <form onSubmit={ajouter} className="space-y-3">
-          <label className="block"><span className="mb-1 block text-sm font-semibold">Nom</span><input value={f.nom} onChange={(e) => setF({ ...f, nom: e.target.value })} placeholder="ex : Aïcha Koné" className={champ} required /></label>
-          <label className="block"><span className="mb-1 block text-sm font-semibold">E-mail</span><input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="agent@email.com" className={champ} required /></label>
-          <label className="block">
-            <span className="mb-1 flex items-center justify-between text-sm font-semibold">Mot de passe provisoire <button type="button" onClick={proposer} className="text-xs font-bold text-sky-700">Générer</button></span>
-            <input value={f.mdp} onChange={(e) => setF({ ...f, mdp: e.target.value })} placeholder="10 caractères minimum" minLength={10} className={`${champ} font-mono`} required />
-          </label>
-          <button disabled={occupe} className="w-full rounded-xl bg-sky-700 py-3 text-sm font-bold text-white disabled:opacity-60">{occupe ? "Ajout…" : "Ajouter l’agent"}</button>
-          {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}>{msg}</p>}
-        </form>
-      </Bloc>
-      <Bloc titre={`Équipe (${liste.length})`} sous="Qui a accès à l’administration">
-        <Liste>
-          {liste.map((m) => (
-            <div key={m.email} className="flex items-center gap-3 py-3 text-sm">
-              <Pastille nom={m.nom ?? m.email} />
-              <div className="min-w-0 flex-1">
-                <p className="truncate font-semibold">{m.nom ?? m.email}{m.email.toLowerCase() === moi.toLowerCase() && <span className="font-normal text-stone-400"> (toi)</span>}</p>
-                <p className="truncate text-xs text-stone-500">{m.email} · depuis le {dateCourte(m.ajoute_le)}</p>
+    <>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Chiffre label="Agents" valeur={String(agents.length)} detail="dans l’équipe" icone={Headset} ton="sky" />
+        <Chiffre label="Masse salariale" valeur={fcfa(masse)} detail="par mois" icone={Wallet} ton="emerald" />
+        <Chiffre label="CNPS déclarés" valeur={`${agents.filter((a) => a.cnps_declare).length} / ${agents.length}`} detail="agents déclarés" icone={BadgeCheck} ton="teal" />
+        <Chiffre label="Non déclarés" valeur={String(agents.filter((a) => !a.cnps_declare).length)} detail="à régulariser" icone={ShieldX} ton="red" />
+      </div>
+      {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") || msg.startsWith("Confirmation") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}>{msg}</p>}
+      <div className="grid gap-4 lg:grid-cols-[1fr_1.3fr]">
+        <Bloc titre="Ajouter un agent" sous="Cotiz lui donne le numéro suivant (2702, 2703…). Il se connecte avec ce numéro et le mot de passe provisoire.">
+          {nouveau ? (
+            <div className="space-y-3">
+              <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 p-5 text-white">
+                <p className="text-sm text-emerald-100">Accès de {nouveau.nom}</p>
+                <p className="mt-2 text-xs uppercase tracking-wide text-emerald-200">Adresse</p>
+                <p className="font-bold">tontine-et-cotise.vercel.app/admin</p>
+                <div className="mt-3 grid grid-cols-2 gap-3">
+                  <div><p className="text-xs uppercase tracking-wide text-emerald-200">Numéro</p><p className="text-3xl font-extrabold">{nouveau.numero}</p></div>
+                  <div><p className="text-xs uppercase tracking-wide text-emerald-200">Mot de passe</p><p className="break-all font-mono text-lg font-bold">{nouveau.mdp}</p></div>
+                </div>
               </div>
-              <span className={`rounded-full px-2.5 py-0.5 text-[0.7rem] font-bold ${m.role === "fondateur" ? "bg-emerald-100 text-emerald-800" : "bg-sky-100 text-sky-800"}`}>{m.role === "fondateur" ? "Fondateur" : "Agent"}</span>
-              {m.role === "agent" && <button onClick={() => retirer(m)} className="rounded-lg px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50">Retirer</button>}
+              <p className="text-xs text-stone-500">Note ces accès maintenant : le mot de passe ne sera plus affiché. Demande à l’agent de le changer à sa première connexion (bouton « Changer mon mot de passe »).</p>
+              <button onClick={() => navigator.clipboard?.writeText(`Cotiz — accès service client\nAdresse : https://tontine-et-cotise.vercel.app/admin\nNuméro : ${nouveau.numero}\nMot de passe : ${nouveau.mdp}`)} className="w-full rounded-xl border border-stone-200 py-2.5 text-sm font-bold"><Copy size={14} className="mr-1 inline" /> Copier les accès</button>
+              <button onClick={() => setNouveau(null)} className="w-full rounded-xl bg-sky-700 py-2.5 text-sm font-bold text-white">Ajouter un autre agent</button>
             </div>
-          ))}
-        </Liste>
+          ) : (
+            <form onSubmit={ajouter} className="space-y-3">
+              <label className="block"><span className="mb-1 block text-sm font-semibold">Nom et prénoms</span><input value={f.nom} onChange={(e) => setF({ ...f, nom: e.target.value })} placeholder="ex : Koné Aïcha" className={champ} required /></label>
+              <div className="grid grid-cols-2 gap-2">
+                <label className="block"><span className="mb-1 block text-sm font-semibold">Numéro Wave</span><input value={f.telephone} onChange={(e) => setF({ ...f, telephone: e.target.value })} inputMode="tel" placeholder="07 07 12 34 56" className={champ} /></label>
+                <label className="block"><span className="mb-1 block text-sm font-semibold">Salaire mensuel</span><input value={f.salaire} onChange={(e) => setF({ ...f, salaire: e.target.value })} inputMode="numeric" placeholder="ex : 120000" className={champ} /></label>
+              </div>
+              <label className="block">
+                <span className="mb-1 flex items-center justify-between text-sm font-semibold">Mot de passe provisoire <button type="button" onClick={proposer} className="text-xs font-bold text-sky-700">Générer</button></span>
+                <input value={f.mdp} onChange={(e) => setF({ ...f, mdp: e.target.value })} placeholder="8 caractères minimum" minLength={8} className={`${champ} font-mono`} required />
+              </label>
+              <button disabled={occupe} className="w-full rounded-xl bg-sky-700 py-3 text-sm font-bold text-white disabled:opacity-60">{occupe ? "Création…" : "Créer l’agent et son numéro"}</button>
+            </form>
+          )}
+        </Bloc>
+        <Bloc titre={`Équipe (${liste.length})`} sous="Touche un agent pour ouvrir son dossier" action={agents.length > 0 ? <button onClick={retirerTous} className="text-xs font-bold text-red-600">Retirer tous les agents</button> : undefined}>
+          <Liste>
+            {liste.map((m) => (
+              <button key={m.email} onClick={() => m.role === "agent" && setFiche(m.email)} className="flex w-full items-center gap-3 py-3 text-left text-sm enabled:hover:bg-stone-50" disabled={m.role !== "agent"}>
+                <PhotoPrivee chemin={m.photo_path} nom={m.nom ?? m.email} />
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold"><span className="mr-1.5 rounded-md bg-stone-900 px-1.5 py-0.5 font-mono text-[0.7rem] text-white">{m.numero ?? "—"}</span>{m.nom ?? m.email}{m.email.toLowerCase() === moi.toLowerCase() && <span className="font-normal text-stone-400"> (toi)</span>}</p>
+                  <p className="truncate text-xs text-stone-500">{m.role === "fondateur" ? "Fondateur" : `${m.telephone ? telAffiche(m.telephone) : "pas de numéro Wave"} · ${m.salaire ? fcfa(m.salaire) + "/mois" : "salaire non renseigné"}`}</p>
+                </div>
+                {m.role === "agent" ? <BadgeCnps ok={m.cnps_declare} /> : <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[0.7rem] font-bold text-emerald-800">Fondateur</span>}
+              </button>
+            ))}
+          </Liste>
+        </Bloc>
+      </div>
+      {ouverte && <FicheAgent a={ouverte} fermer={() => setFiche(null)} recharger={recharger} retirer={() => { setFiche(null); retirer(ouverte); }} />}
+    </>
+  );
+}
+
+function FicheAgent({ a, fermer, recharger, retirer }: { a: Membre_Equipe; fermer: () => void; recharger: () => void; retirer: () => void }) {
+  const [f, setF] = useState({
+    nom: a.nom ?? "", telephone: a.telephone ?? "", salaire: a.salaire ? String(a.salaire) : "", cni_numero: a.cni_numero ?? "",
+    cnps_declare: a.cnps_declare, cnps_numero: a.cnps_numero ?? "", cnps_le: a.cnps_le ?? "", embauche_le: a.embauche_le ?? "",
+    contrat: a.contrat ?? "", contact_urgence: a.contact_urgence ?? "", note: a.note ?? "",
+  });
+  const [msg, setMsg] = useState("");
+  const [envoi, setEnvoi] = useState("");
+  const maj = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
+  async function enregistrer(e: React.FormEvent) {
+    e.preventDefault();
+    const { error } = await db.rpc("admin_agent_modifier", { adresse: a.email, champs: { ...f, cnps_declare: String(f.cnps_declare) } });
+    setMsg(error ? "Erreur : " + error.message : "Dossier enregistré.");
+    recharger();
+  }
+  async function televerser(type: "photo" | "cni", fichier: File | undefined) {
+    if (!fichier) return;
+    if (fichier.size > 5 * 1024 * 1024) return setMsg("Erreur : image trop lourde (5 Mo maximum).");
+    setEnvoi(type); setMsg("");
+    const ext = (fichier.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+    const chemin = `${a.numero ?? "agent"}/${type}-${Date.now()}.${ext}`;
+    const { error } = await db.storage.from("agents").upload(chemin, fichier, { upsert: true, contentType: fichier.type });
+    if (error) { setEnvoi(""); return setMsg("Erreur : " + (error.message.includes("Bucket") ? "fais d’abord la mise à jour SQL n°18." : error.message)); }
+    const { error: e2 } = await db.rpc("admin_agent_modifier", { adresse: a.email, champs: { [type === "photo" ? "photo_path" : "cni_path"]: chemin } });
+    setEnvoi("");
+    setMsg(e2 ? "Erreur : " + e2.message : type === "photo" ? "Photo enregistrée." : "Pièce d’identité enregistrée.");
+    recharger();
+  }
+  return (
+    <Volet titre={`${a.numero ?? ""} · ${a.nom ?? a.email}`} sousTitre={`Agent service client · identifiant de connexion : ${a.numero ?? "—"}`} fermer={fermer}>
+      <div className="flex items-center gap-4 rounded-2xl bg-white p-4 ring-1 ring-stone-200/80">
+        <PhotoPrivee chemin={a.photo_path} nom={a.nom ?? a.email} taille={72} />
+        <div className="min-w-0 flex-1 space-y-1">
+          <p className="text-lg font-extrabold">{a.nom}</p>
+          <BadgeCnps ok={a.cnps_declare} />
+          <p className="text-xs text-stone-500">{a.salaire ? `${fcfa(a.salaire)} par mois` : "Salaire non renseigné"}{a.embauche_le ? ` · depuis le ${dateCourte(a.embauche_le)}` : ""}</p>
+        </div>
+        <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-stone-200 px-3 py-2 text-xs font-bold">
+          <Camera size={15} /> {envoi === "photo" ? "Envoi…" : "Photo"}
+          <input type="file" accept="image/*" capture="user" className="hidden" onChange={(e) => televerser("photo", e.target.files?.[0])} />
+        </label>
+      </div>
+      {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}>{msg}</p>}
+      <form onSubmit={enregistrer} className="space-y-4">
+        <BlocFiche titre="Identité">
+          <div className="grid gap-2 sm:grid-cols-2">
+            <label className="text-xs font-semibold text-stone-500">Nom et prénoms<input value={f.nom} onChange={maj("nom")} className={champ} /></label>
+            <label className="text-xs font-semibold text-stone-500">Numéro Wave / téléphone<input value={f.telephone} onChange={maj("telephone")} inputMode="tel" className={champ} /></label>
+            <label className="text-xs font-semibold text-stone-500">N° de la pièce d’identité (CNI)<input value={f.cni_numero} onChange={maj("cni_numero")} placeholder="ex : CI001234567" className={champ} /></label>
+            <label className="text-xs font-semibold text-stone-500">Contact d’urgence<input value={f.contact_urgence} onChange={maj("contact_urgence")} placeholder="Nom et numéro" className={champ} /></label>
+          </div>
+          <div className="mt-3 flex flex-wrap items-center gap-3">
+            {a.cni_path ? <PieceIdentite chemin={a.cni_path} /> : <p className="text-xs text-stone-500">Aucune photo de la pièce d’identité.</p>}
+            <label className="inline-flex cursor-pointer items-center gap-1.5 rounded-xl border border-stone-200 px-3 py-2 text-xs font-bold">
+              <IdCard size={15} /> {envoi === "cni" ? "Envoi…" : a.cni_path ? "Remplacer la pièce" : "Ajouter la photo de la pièce"}
+              <input type="file" accept="image/*" capture="environment" className="hidden" onChange={(e) => televerser("cni", e.target.files?.[0])} />
+            </label>
+          </div>
+        </BlocFiche>
+        <BlocFiche titre="Contrat et salaire">
+          <div className="grid gap-2 sm:grid-cols-3">
+            <label className="text-xs font-semibold text-stone-500">Salaire mensuel (F)<input value={f.salaire} onChange={maj("salaire")} inputMode="numeric" className={champ} /></label>
+            <label className="text-xs font-semibold text-stone-500">Type de contrat
+              <select value={f.contrat} onChange={maj("contrat")} className={champ}>
+                <option value="">—</option>{["CDI", "CDD", "Stage", "Prestataire"].map((c) => <option key={c}>{c}</option>)}
+              </select>
+            </label>
+            <label className="text-xs font-semibold text-stone-500">Date d’embauche<input type="date" value={f.embauche_le} onChange={maj("embauche_le")} className={champ} /></label>
+          </div>
+        </BlocFiche>
+        <BlocFiche titre="Déclaration CNPS">
+          <button type="button" onClick={() => setF({ ...f, cnps_declare: !f.cnps_declare })} className={`flex w-full items-center gap-3 rounded-2xl border-2 p-3 text-left transition ${f.cnps_declare ? "border-emerald-500 bg-emerald-50" : "border-red-300 bg-red-50"}`}>
+            <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${f.cnps_declare ? "bg-emerald-600 text-white" : "bg-red-600 text-white"}`}>{f.cnps_declare ? <BadgeCheck size={20} /> : <ShieldX size={20} />}</span>
+            <span className="flex-1">
+              <span className={`block font-bold ${f.cnps_declare ? "text-emerald-800" : "text-red-700"}`}>{f.cnps_declare ? "Déclaré à la CNPS" : "Pas encore déclaré à la CNPS"}</span>
+              <span className="text-xs text-stone-600">Touche pour changer</span>
+            </span>
+          </button>
+          {f.cnps_declare && (
+            <div className="mt-2 grid gap-2 sm:grid-cols-2">
+              <label className="text-xs font-semibold text-stone-500">N° d’immatriculation CNPS<input value={f.cnps_numero} onChange={maj("cnps_numero")} className={champ} /></label>
+              <label className="text-xs font-semibold text-stone-500">Déclaré le<input type="date" value={f.cnps_le} onChange={maj("cnps_le")} className={champ} /></label>
+            </div>
+          )}
+        </BlocFiche>
+        <BlocFiche titre="Notes">
+          <textarea value={f.note} onChange={maj("note")} rows={3} placeholder="Remarques, absences, points à suivre…" className={`${champ} resize-y`} />
+        </BlocFiche>
+        <button className="w-full rounded-xl bg-emerald-700 py-3 text-sm font-bold text-white">Enregistrer le dossier</button>
+      </form>
+      <button onClick={retirer} className="w-full rounded-xl border border-red-200 py-3 text-sm font-bold text-red-600 hover:bg-red-50">Retirer cet agent</button>
+    </Volet>
+  );
+}
+
+function PieceIdentite({ chemin }: { chemin: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  useEffect(() => { db.storage.from("agents").createSignedUrl(chemin, 3600).then(({ data }) => setUrl(data?.signedUrl ?? null)); }, [chemin]);
+  if (!url) return <span className="text-xs text-stone-400">Chargement…</span>;
+  // eslint-disable-next-line @next/next/no-img-element
+  return <a href={url} target="_blank" rel="noreferrer"><img src={url} alt="Pièce d’identité" className="h-20 rounded-lg object-cover ring-1 ring-stone-200" /></a>;
+}
+
+function Salaires() {
+  const [mois, setMois] = useState(() => new Date().toISOString().slice(0, 7));
+  const [liste, setListe] = useState<Salaire[] | null>(null);
+  const [msg, setMsg] = useState("");
+  const charger = useCallback(async () => {
+    const { data, error } = await db.rpc("admin_salaires", { m: mois });
+    setListe(error ? null : ((data as Salaire[]) ?? []));
+  }, [mois]);
+  useEffect(() => { charger(); }, [charger]);
+  if (liste === null) return <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Pour les salaires, fais d’abord la <b>mise à jour SQL n°18</b> dans Supabase.</p>;
+  const aPayer = liste.filter((a) => !a.paye && a.salaire);
+  const total = aPayer.reduce((t, a) => t + (a.salaire ?? 0), 0);
+  const nomMois = new Date(mois + "-15").toLocaleDateString("fr-FR", { month: "long", year: "numeric" });
+  const payer = async (a: Salaire) => {
+    const ref = prompt(`Salaire de ${a.nom} pour ${nomMois} : ${fcfa(a.salaire ?? 0)}.\n\nEnvoie l’argent par Wave au ${a.telephone ? telAffiche(a.telephone) : "(numéro non renseigné)"}, puis colle ici la référence de la transaction (facultatif) :`);
+    if (ref === null) return;
+    const { error } = await db.rpc("admin_salaire_payer", { adresse: a.email, m: mois, montant: a.salaire, ref: ref || null });
+    setMsg(error ? "Erreur : " + error.message : `Salaire de ${a.nom} marqué payé.`);
+    charger();
+  };
+  const fichierWave = () => {
+    const lignes = [["Nom", "Numero", "Montant", "Motif"], ...aPayer.map((a) => [a.nom ?? "", a.telephone ? "+225" + a.telephone.slice(-10) : "", String(a.salaire ?? 0), `Salaire ${nomMois} Cotiz`])];
+    const csv = lignes.map((l) => l.map((x) => `"${x.replace(/"/g, '""')}"`).join(";")).join("\n");
+    const lien = document.createElement("a");
+    lien.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
+    lien.download = `cotiz-salaires-${mois}.csv`;
+    lien.click();
+  };
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-3">
+        <input type="month" value={mois} onChange={(e) => setMois(e.target.value)} className={`${champ} !w-auto`} />
+        <p className="flex-1 text-sm text-stone-600">Reste à payer pour <b>{nomMois}</b> : <b className="text-emerald-800">{fcfa(total)}</b> ({aPayer.length} agent{aPayer.length > 1 ? "s" : ""})</p>
+        <button onClick={fichierWave} disabled={aPayer.length === 0} className="inline-flex items-center gap-1.5 rounded-xl bg-[#1dc8f2] px-4 py-2.5 text-sm font-bold text-stone-900 shadow-sm disabled:opacity-40"><Download size={16} /> Fichier de paiement Wave</button>
+      </div>
+      <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
+        <b>Payer tout le monde d’un coup :</b> télécharge le fichier ci-dessus et dépose-le sur <b>Wave Business → Paiements en masse</b>. Le paiement direct depuis Cotiz arrivera quand Cotiz aura l’accès API Wave (compte entreprise). En attendant, paie chaque agent par Wave puis touche <b>« Marquer payé »</b>.
+      </div>
+      {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}>{msg}</p>}
+      <Bloc titre={`Salaires de ${nomMois}`}>
+        {liste.length === 0 ? <p className="text-sm text-stone-500">Aucun agent.</p> : (
+          <Liste>
+            {liste.map((a) => (
+              <div key={a.email} className="flex flex-wrap items-center gap-3 py-3 text-sm">
+                <span className="rounded-md bg-stone-900 px-1.5 py-0.5 font-mono text-[0.7rem] text-white">{a.numero ?? "—"}</span>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold">{a.nom}</p>
+                  <p className="text-xs text-stone-500">{a.telephone ? <a href={`tel:${a.telephone}`} className="inline-flex items-center gap-1 text-emerald-700 underline"><Phone size={11} />{telAffiche(a.telephone)}</a> : "numéro Wave manquant"} · <BadgeCnps ok={a.cnps_declare} /></p>
+                </div>
+                <b className="shrink-0">{a.salaire ? fcfa(a.salaire) : "—"}</b>
+                {a.paye ? (
+                  <span className="flex shrink-0 items-center gap-2">
+                    <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">✓ Payé le {a.paye_le ? dateCourte(a.paye_le) : ""}{a.reference ? ` · ${a.reference}` : ""}</span>
+                    <button onClick={async () => { if (!confirm("Annuler ce paiement ?")) return; await db.rpc("admin_salaire_annuler", { adresse: a.email, m: mois }); charger(); }} className="text-xs text-stone-400 underline">annuler</button>
+                  </span>
+                ) : (
+                  <button disabled={!a.salaire} onClick={() => payer(a)} className="shrink-0 rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-40">Marquer payé</button>
+                )}
+              </div>
+            ))}
+          </Liste>
+        )}
       </Bloc>
-    </div>
+    </>
   );
 }
 

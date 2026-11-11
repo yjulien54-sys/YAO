@@ -21,22 +21,25 @@ export async function POST(req: Request) {
   if (role !== "fondateur") return NextResponse.json({ ok: false, erreur: "Réservé au fondateur." }, { status: 403 });
 
   const corps = await req.json().catch(() => null);
-  const email = String(corps?.email ?? "").trim().toLowerCase();
   const nom = String(corps?.nom ?? "").trim().slice(0, 80);
   const mdp = String(corps?.motDePasse ?? "");
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ ok: false, erreur: "E-mail invalide." }, { status: 400 });
-  if (mdp.length < 10) return NextResponse.json({ ok: false, erreur: "Mot de passe trop court (10 caractères minimum)." }, { status: 400 });
+  const telephone = String(corps?.telephone ?? "").replace(/\D/g, "").slice(0, 15) || null;
+  const salaire = Number(String(corps?.salaire ?? "").replace(/\D/g, "")) || null;
+  if (nom.length < 2) return NextResponse.json({ ok: false, erreur: "Indique le nom de l’agent." }, { status: 400 });
+  if (mdp.length < 8) return NextResponse.json({ ok: false, erreur: "Mot de passe trop court (8 caractères minimum)." }, { status: 400 });
 
   const serveur = createClient(url, cle, { auth: { persistSession: false, autoRefreshToken: false } });
-  const { error: e2 } = await serveur.auth.admin.createUser({ email, password: mdp, email_confirm: true });
-  let existait = false;
-  if (e2) {
-    if (!/already|registered|exists/i.test(e2.message)) return NextResponse.json({ ok: false, erreur: e2.message }, { status: 500 });
-    existait = true; // le compte existe déjà : on lui donne seulement l'accès
-  }
-  const { error: e3 } = await serveur.from("admins").upsert({ email, nom: nom || null, role: "agent" }, { onConflict: "email", ignoreDuplicates: true });
-  if (e3) return NextResponse.json({ ok: false, erreur: e3.message }, { status: 500 });
+  // Numéro suivant : 2702, 2703… (2701 = fondateur)
+  const { data: dernier } = await serveur.from("admins").select("numero").order("numero", { ascending: false, nullsFirst: false }).limit(1).maybeSingle();
+  const numero = Math.max(Number(dernier?.numero ?? 2701), 2701) + 1;
+  // Identifiant de connexion : le numéro (l'adresse ci-dessous n'est pas une vraie boîte mail)
+  const email = `agent${numero}@tontine-et-cotise.vercel.app`;
+  const { data: cree, error: e2 } = await serveur.auth.admin.createUser({ email, password: mdp, email_confirm: true, user_metadata: { nom, numero } });
+  if (e2) return NextResponse.json({ ok: false, erreur: e2.message }, { status: 500 });
+  const { error: e3 } = await serveur.from("admins").insert({ email, nom, role: "agent", numero, telephone, salaire, embauche_le: new Date().toISOString().slice(0, 10) });
+  if (e3 && cree.user) await serveur.auth.admin.deleteUser(cree.user.id); // pas de compte orphelin
+  if (e3) return NextResponse.json({ ok: false, erreur: e3.message.includes("numero") ? "Fais d’abord la mise à jour SQL n°18." : e3.message }, { status: 500 });
   const { data: qui } = await moi.auth.getUser(jeton);
-  await serveur.from("journal_admin").insert({ admin_email: qui.user?.email ?? null, action: "Agent ajouté", cible: `${nom || "—"} · ${email}`, detail: existait ? "compte déjà existant" : "compte créé" });
-  return NextResponse.json({ ok: true, existait });
+  await serveur.from("journal_admin").insert({ admin_email: qui.user?.email ?? null, action: "Agent ajouté", cible: `${nom} · n°${numero}`, detail: salaire ? `salaire ${salaire} F` : null });
+  return NextResponse.json({ ok: true, numero, email });
 }
