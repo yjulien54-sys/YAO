@@ -9,7 +9,8 @@ export const waLink = (text: string, phone?: string) =>
 /** Lien d'invitation : avec la clé du créateur/trésorier on entre directement, sinon on note qui a invité */
 export function invitation(g: Group, qui: { cle?: string | null; par?: string | null } = {}) {
   const suite = qui.cle ? `?i=${qui.cle}` : qui.par ? `?par=${qui.par}` : "";
-  const texte = `Rejoins « ${g.name} » sur Cotiz pour suivre les cotisations en toute transparence 👇\n${origin()}/groupes/${g.id}${suite}`;
+  const quoi = g.type === "tontine" ? "notre tontine" : g.type === "association" ? "notre association" : "notre collecte";
+  const texte = `Bonjour à tous 👋\n\nPour ${quoi} *${g.name}*, on utilise maintenant *Cotiz* : chacun voit qui a payé et combien il y a dans la caisse. Tout est transparent ✅\n\n1️⃣ Ouvre ce lien 👇\n${origin()}/groupes/${g.id}${suite}\n2️⃣ Inscris-toi avec ton nom et ton numéro\n3️⃣ Quand tu paies ta part (Wave, Orange Money…), touche « Payer ma part » dans l’application\n\nC’est gratuit. En cas de souci, il y a un bouton « Aide » dans l’application.`;
   return waLink(texte);
 }
 

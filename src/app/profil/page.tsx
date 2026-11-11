@@ -54,7 +54,7 @@ export default function ProfilPage() {
   if (!ok || !loaded) return <Loading />;
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const partage = waLink(`Je gère mes tontines et cotisations avec Cotiz : tout le monde voit qui a payé 👌\nTélécharge l’application ici 👇\n${origin}/telecharger`);
+  const partage = waLink(`Bonjour 👋\n\nJe gère mes tontines avec *Cotiz* : chacun voit qui a payé, les retards sont calculés tout seuls et les relances partent sur WhatsApp en 1 clic. Fini le cahier et les palabres 😄\n\nC’est gratuit 👉 ${origin}\nCrée ton groupe, puis touche « Inviter » pour l’envoyer à tes membres.`);
 
   return (
     <Page>
