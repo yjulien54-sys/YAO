@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, Lightbulb, Megaphone, Smartphone, Sparkles } from "lucide-react";
+import { ChevronRight, Lightbulb, Megaphone, Smartphone, Sparkles, Volume2, VolumeX } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
-type Annonce = { id: string; titre: string; texte?: string | null; lien?: string | null; bouton?: string | null; couleur: "vert" | "orange" | "bleu" | "sombre" };
+type Annonce = { id: string; titre: string; texte?: string | null; lien?: string | null; bouton?: string | null; couleur: "vert" | "orange" | "bleu" | "sombre"; video?: string | null };
 
 // Annonces par défaut (si la table n'existe pas encore ou est vide)
 const DEFAUT: Annonce[] = [
@@ -33,14 +33,12 @@ export function Annonces() {
       const c = sessionStorage.getItem("cotiz:annonces");
       if (c) setListe(JSON.parse(c));
     } catch {}
-    supabase
-      .from("annonces")
-      .select("id, titre, texte, lien, bouton, couleur")
-      .order("ordre")
-      .limit(8)
+    const lire = (champs: string) => supabase.from("annonces").select(champs).order("ordre").limit(8);
+    lire("id, titre, texte, lien, bouton, couleur, video")
+      .then((r) => (r.error ? lire("id, titre, texte, lien, bouton, couleur") : r)) // mise à jour SQL n°22 pas encore faite
       .then(({ data, error }) => {
         if (!error && data && data.length) {
-          setListe(data as Annonce[]);
+          setListe(data as unknown as Annonce[]);
           try {
             sessionStorage.setItem("cotiz:annonces", JSON.stringify(data));
           } catch {}
@@ -55,15 +53,33 @@ export function Annonces() {
   const [anime, setAnime] = useState(true);
   const [pause, setPause] = useState(false);
   const toucheX = useRef<number | null>(null);
+  const [dureeVideo, setDureeVideo] = useState<number | null>(null);
+  const actifIdx = n ? pos % n : 0;
+  const enVideo = !!liste[actifIdx]?.video;
+
+  // Hauteur du bandeau = hauteur de l'annonce affichée (une vidéo est plus haute qu'un texte)
+  const diapoRefs = useRef<(HTMLDivElement | null)[]>([]);
+  const [hauteur, setHauteur] = useState<number | undefined>(undefined);
+  useEffect(() => {
+    const el = diapoRefs.current[pos];
+    if (!el) return;
+    const maj = () => setHauteur(el.offsetHeight);
+    maj();
+    const ro = new ResizeObserver(maj);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [pos, liste]);
+
+  const suivante = () => { setAnime(true); setPos((x) => x + 1); };
 
   useEffect(() => {
-    if (n < 2 || pause) return;
+    if (n < 2 || pause || enVideo) return; // une vidéo passe en entier : on attend sa fin
     const t = setTimeout(() => {
       setAnime(true);
       setPos((x) => x + 1);
     }, DUREE);
     return () => clearTimeout(t);
-  }, [n, pos, pause]);
+  }, [n, pos, pause, enVideo]);
 
   useEffect(() => {
     if (anime) return;
@@ -108,12 +124,20 @@ export function Annonces() {
         }}
       >
         <div
-          className="flex"
-          style={{ transform: `translateX(-${pos * 100}%)`, transition: anime ? "transform 700ms cubic-bezier(0.22, 1, 0.36, 1)" : "none" }}
+          className="flex items-start"
+          style={{ height: hauteur, transitionProperty: "transform, height", transitionDuration: anime ? "700ms, 400ms" : "0ms", transitionTimingFunction: "cubic-bezier(0.22, 1, 0.36, 1)", transform: `translateX(-${pos * 100}%)`, }}
           onTransitionEnd={finTransition}
         >
           {diapos.map((a, j) => (
-            <Diapo key={`${a.id}-${j}`} a={a} cachee={j % n !== actif || (j === n && pos !== n)} />
+            <div key={`${a.id}-${j}`} ref={(el) => { diapoRefs.current[j] = el; }} className="w-full shrink-0 self-start">
+              <Diapo
+                a={a}
+                cachee={j % n !== actif || (j === n && pos !== n)}
+                active={j === pos}
+                fin={() => (n > 1 ? suivante() : undefined)}
+                duree={setDureeVideo}
+              />
+            </div>
           ))}
         </div>
       </div>
@@ -131,7 +155,7 @@ export function Annonces() {
                 <span
                   key={`${pos}-${pause}`}
                   className="absolute inset-y-0 left-0 rounded-full bg-emerald-600"
-                  style={{ animation: pause ? "none" : `remplir ${DUREE}ms linear forwards`, width: pause ? "100%" : undefined }}
+                  style={{ animation: pause && !enVideo ? "none" : `remplir ${enVideo ? (dureeVideo ?? 20) * 1000 : DUREE}ms linear forwards`, width: pause && !enVideo ? "100%" : undefined }}
                 />
               )}
             </button>
@@ -149,7 +173,60 @@ function iconeDe(a: Annonce) {
   return Megaphone;
 }
 
-function Diapo({ a, cachee }: { a: Annonce; cachee: boolean }) {
+/** Annonce vidéo : elle démarre quand c'est son tour (avec le son si le téléphone l'autorise), puis passe à la suivante à la fin */
+function DiapoVideo({ a, active, fin, duree }: { a: Annonce; active: boolean; fin: () => void; duree: (s: number | null) => void }) {
+  const ref = useRef<HTMLVideoElement>(null);
+  const [muet, setMuet] = useState(false);
+  useEffect(() => {
+    const v = ref.current;
+    if (!v) return;
+    if (!active) { v.pause(); return; }
+    v.currentTime = 0;
+    v.muted = false;
+    setMuet(false);
+    if (Number.isFinite(v.duration)) duree(v.duration);
+    v.play().catch(() => {
+      // Le téléphone bloque le son sans geste de l'utilisateur : on lance sans le son
+      v.muted = true;
+      setMuet(true);
+      v.play().catch(() => fin());
+    });
+  }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
+  const son = () => {
+    const v = ref.current;
+    if (!v) return;
+    v.muted = !v.muted;
+    setMuet(v.muted);
+    if (v.paused) v.play().catch(() => {});
+  };
+  return (
+    <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#064e3b]">
+      <video
+        ref={ref}
+        src={a.video!}
+        playsInline
+        preload="metadata"
+        onLoadedMetadata={(e) => active && duree(e.currentTarget.duration)}
+        onEnded={fin}
+        onError={fin}
+        onClick={son}
+        className="absolute inset-0 h-full w-full cursor-pointer object-contain"
+      />
+      <button type="button" onClick={son} aria-label={muet ? "Activer le son" : "Couper le son"}
+        className={`absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold shadow-lg backdrop-blur ${muet ? "bg-white text-stone-900" : "bg-black/40 text-white"}`}>
+        {muet ? <><VolumeX size={15} /> Toucher pour le son</> : <Volume2 size={15} />}
+      </button>
+      {a.lien && a.bouton && (
+        a.lien.startsWith("http")
+          ? <a href={a.lien} target="_blank" rel="noreferrer" className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-white px-3 py-2 text-xs font-bold text-stone-900 shadow-lg">{a.bouton} <ChevronRight size={14} /></a>
+          : <Link href={a.lien} className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-white px-3 py-2 text-xs font-bold text-stone-900 shadow-lg">{a.bouton} <ChevronRight size={14} /></Link>
+      )}
+    </div>
+  );
+}
+
+function Diapo({ a, cachee, active = false, fin = () => {}, duree = () => {} }: { a: Annonce; cachee: boolean; active?: boolean; fin?: () => void; duree?: (s: number | null) => void }) {
+  if (a.video) return <div className="block w-full" aria-hidden={cachee}><DiapoVideo a={a} active={active && !cachee} fin={fin} duree={duree} /></div>;
   const Icone = iconeDe(a);
   const externe = a.lien?.startsWith("http");
   const corps = (

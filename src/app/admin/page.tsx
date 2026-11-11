@@ -103,7 +103,16 @@ const MOTIFS = [
   "Accepter un membre", "Retirer un membre", "Changer un rôle", "Supprimer un groupe",
   "Litige / remboursement", "Réclamation d’un client", "Problème technique", "Autre",
 ];
-type Annonce = { id: string; titre: string; texte: string | null; lien: string | null; bouton: string | null; couleur: string; actif: boolean; ordre: number };
+type Annonce = { id: string; titre: string; texte: string | null; lien: string | null; bouton: string | null; couleur: string; actif: boolean; ordre: number; video?: string | null };
+/** Vidéos pub disponibles sur le site (dossier public/pub) */
+const VIDEOS_PUB = [
+  ["/pub/Cotiz-pub-1-transparence-voix.mp4", "Pub 1 · Fini les palabres (voix)"],
+  ["/pub/Cotiz-pub-2-payer-en-1-clic-voix.mp4", "Pub 2 · Payer en 1 clic (voix)"],
+  ["/pub/Cotiz-pub-3-tresoriers-voix.mp4", "Pub 3 · Pour les trésoriers (voix)"],
+  ["/pub/Cotiz-pub-1-transparence-musique.mp4", "Pub 1 · Fini les palabres (musique)"],
+  ["/pub/Cotiz-pub-2-payer-en-1-clic-musique.mp4", "Pub 2 · Payer en 1 clic (musique)"],
+  ["/pub/Cotiz-pub-3-tresoriers-musique.mp4", "Pub 3 · Pour les trésoriers (musique)"],
+] as const;
 
 const ONGLETS = [
   { id: "requetes", label: "Requêtes clients", icon: MessageSquareText, ton: "sky" },
@@ -338,7 +347,8 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
       db.rpc("admin_groupes"),
       db.rpc("admin_paiements_attente"),
       db.rpc("admin_demandes_code"),
-      db.from("annonces").select("id, titre, texte, lien, bouton, couleur, actif, ordre").order("ordre"),
+      db.from("annonces").select("id, titre, texte, lien, bouton, couleur, actif, ordre, video").order("ordre")
+        .then((r) => (r.error ? db.from("annonces").select("id, titre, texte, lien, bouton, couleur, actif, ordre").order("ordre") : r)),
     ]);
     setStats((s.data as Stats) ?? null);
     setInscrits((i.data as Inscrit[]) ?? []);
@@ -1117,7 +1127,7 @@ function Codes({ liste, recharger }: { liste: Demande[]; recharger: () => void }
 }
 
 function Annonces({ liste, recharger }: { liste: Annonce[]; recharger: () => void }) {
-  const vide = { titre: "", texte: "", lien: "", bouton: "", couleur: "vert", ordre: liste.length + 1 };
+  const vide = { titre: "", texte: "", lien: "", bouton: "", couleur: "vert", ordre: liste.length + 1, video: "" };
   const [f, setF] = useState(vide);
   const [msg, setMsg] = useState("");
   const maj = async (id: string, v: Partial<Annonce>) => {
@@ -1128,8 +1138,8 @@ function Annonces({ liste, recharger }: { liste: Annonce[]; recharger: () => voi
   async function ajouter(e: React.FormEvent) {
     e.preventDefault();
     if (!f.titre.trim()) return setMsg("Le titre est obligatoire.");
-    const { error } = await db.from("annonces").insert({ titre: f.titre.trim(), texte: f.texte || null, lien: f.lien || null, bouton: f.bouton || null, couleur: f.couleur, ordre: Number(f.ordre) || 0 });
-    setMsg(error ? "Erreur : " + error.message : "Annonce publiée.");
+    const { error } = await db.from("annonces").insert({ titre: f.titre.trim(), texte: f.texte || null, lien: f.lien || null, bouton: f.bouton || null, couleur: f.couleur, ordre: Number(f.ordre) || 0, ...(f.video ? { video: f.video } : {}) });
+    setMsg(error ? "Erreur : " + (error.message.includes("video") ? "fais d’abord la mise à jour SQL n°22 pour les vidéos." : error.message) : "Annonce publiée.");
     if (!error) setF({ ...vide, ordre: liste.length + 2 });
     recharger();
   }
@@ -1143,7 +1153,7 @@ function Annonces({ liste, recharger }: { liste: Annonce[]; recharger: () => voi
               <span className={`h-8 w-8 shrink-0 rounded-lg ${a.couleur === "orange" ? "degrade-or" : a.couleur === "sombre" ? "bg-stone-800" : a.couleur === "bleu" ? "bg-sky-600" : "degrade-vert"}`} />
               <div className="min-w-0 flex-1">
                 <p className={`truncate font-semibold ${a.actif ? "" : "text-stone-400 line-through"}`}>{a.titre}</p>
-                <p className="truncate text-xs text-stone-500">{a.texte ?? ""}{a.lien ? ` · ${a.lien}` : ""}</p>
+                <p className="truncate text-xs text-stone-500">{a.video && <span className="mr-1 rounded bg-violet-100 px-1.5 py-0.5 font-bold text-violet-700">▶ Vidéo</span>}{a.texte ?? ""}{a.lien ? ` · ${a.lien}` : ""}</p>
               </div>
               <button onClick={() => maj(a.id, { actif: !a.actif })} className={`shrink-0 rounded-lg px-2.5 py-1.5 text-xs font-bold ${a.actif ? "bg-emerald-50 text-emerald-700" : "bg-stone-100 text-stone-600"}`}>{a.actif ? "Visible" : "Masquée"}</button>
               <button
@@ -1173,6 +1183,18 @@ function Annonces({ liste, recharger }: { liste: Annonce[]; recharger: () => voi
           <option value="vert">Vert</option><option value="orange">Orange</option><option value="bleu">Bleu</option><option value="sombre">Sombre</option>
         </select>
         <input type="number" value={f.ordre} onChange={(e) => setF({ ...f, ordre: Number(e.target.value) })} placeholder="Ordre" className={champ} />
+        <label className="md:col-span-2">
+          <span className="mb-1 block text-sm font-semibold">Vidéo (facultatif) : elle passe en entier dans le carrousel</span>
+          <select value={VIDEOS_PUB.some(([u]) => u === f.video) || !f.video ? f.video : "autre"} onChange={(e) => setF({ ...f, video: e.target.value === "autre" ? "https://" : e.target.value })} className={champ}>
+            <option value="">Pas de vidéo</option>
+            {VIDEOS_PUB.map(([u, l]) => <option key={u} value={u}>{l}</option>)}
+            <option value="autre">Autre vidéo (coller un lien .mp4)…</option>
+          </select>
+          {f.video && !VIDEOS_PUB.some(([u]) => u === f.video) && (
+            <input value={f.video} onChange={(e) => setF({ ...f, video: e.target.value })} placeholder="https://…/ma-video.mp4" className={`${champ} mt-2`} />
+          )}
+          {f.video && <video src={f.video} muted playsInline controls className="mt-2 h-56 rounded-xl bg-stone-900" />}
+        </label>
         <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 py-3 text-sm font-bold text-white md:col-span-2"><Plus size={17} /> Publier l’annonce</button>
         {msg && <p className="text-sm font-medium text-emerald-800 md:col-span-2">{msg}</p>}
       </form>
