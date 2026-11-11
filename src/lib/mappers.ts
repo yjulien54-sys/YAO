@@ -46,12 +46,12 @@ export const mapDemandeVersement = (d: any): DemandeVersement => ({
 });
 
 export const mapGroup = (r: any): Group => {
-  const tous: (Member & { pos: number; attente: boolean })[] = (r.members ?? [])
-    .map((m: any) => ({ id: m.id, profileId: m.profile_id, name: m.name, phone: m.phone, role: m.role, archive: !!m.archive, attente: !!m.en_attente, pos: m.turn_position }))
+  const tous: (Member & { pos: number; attente: boolean; invite: string | null })[] = (r.members ?? [])
+    .map((m: any) => ({ id: m.id, profileId: m.profile_id, name: m.name, phone: m.phone, role: m.role, archive: !!m.archive, attente: !!m.en_attente, invite: m.invite_par ?? null, pos: m.turn_position }))
     .sort((a: any, b: any) => a.pos - b.pos);
-  const members = tous.filter((m) => !m.archive && !m.attente).map(({ attente: _a, ...m }) => m); // eslint-disable-line @typescript-eslint/no-unused-vars
-  const anciens = tous.filter((m) => m.archive).map(({ pos: _p, attente: _a, ...m }) => m); // eslint-disable-line @typescript-eslint/no-unused-vars
-  const demandes = tous.filter((m) => m.attente && !m.archive).map(({ pos: _p, attente: _a, ...m }) => m); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const members = tous.filter((m) => !m.archive && !m.attente).map(({ attente: _a, invite: _i, ...m }) => m); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const anciens = tous.filter((m) => m.archive).map(({ pos: _p, attente: _a, invite: _i, ...m }) => m); // eslint-disable-line @typescript-eslint/no-unused-vars
+  const demandes = tous.filter((m) => m.attente && !m.archive).map(({ pos: _p, attente: _a, invite, ...m }) => ({ ...m, invitePar: tous.find((x) => invite && x.profileId === invite)?.name })); // eslint-disable-line @typescript-eslint/no-unused-vars
   return {
     id: r.id,
     name: r.name,

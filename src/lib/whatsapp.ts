@@ -6,8 +6,10 @@ const origin = () => (typeof window !== "undefined" ? window.location.origin : "
 export const waLink = (text: string, phone?: string) =>
   `https://wa.me/${phone ? normaliserTel(phone) : ""}?text=${encodeURIComponent(text)}`;
 
-export function invitation(g: Group) {
-  const texte = `Rejoins « ${g.name} » sur Cotiz pour suivre les cotisations en toute transparence 👇\n${origin()}/groupes/${g.id}`;
+/** Lien d'invitation : avec la clé du créateur/trésorier on entre directement, sinon on note qui a invité */
+export function invitation(g: Group, qui: { cle?: string | null; par?: string | null } = {}) {
+  const suite = qui.cle ? `?i=${qui.cle}` : qui.par ? `?par=${qui.par}` : "";
+  const texte = `Rejoins « ${g.name} » sur Cotiz pour suivre les cotisations en toute transparence 👇\n${origin()}/groupes/${g.id}${suite}`;
   return waLink(texte);
 }
 

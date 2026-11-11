@@ -10,6 +10,7 @@ import { PayoutModal } from "@/components/PayoutModal";
 import { METHOD_LABEL, MODE_PAIEMENT } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
 import { invitation, waLink } from "@/lib/whatsapp";
+import { supabase } from "@/lib/supabase";
 import { MessageModal } from "@/components/MessageModal";
 import { Invitation } from "@/components/Invitation";
 import { Tirage } from "@/components/Tirage";
@@ -39,6 +40,13 @@ export default function GroupeDetail() {
   const [numero, setNumero] = useState<string | null>(null);
   const pret = ok && loaded && !!g;
 
+  // Créateur ou trésorier : son lien d'invitation porte une clé qui fait entrer directement (SQL n°15)
+  const [cleInvit, setCleInvit] = useState<string | null>(null);
+  useEffect(() => {
+    if (!pret) return;
+    supabase.rpc("cle_invitation", { g: id }).then(({ data, error }) => !error && setCleInvit((data as string | null) ?? null));
+  }, [pret, id]);
+
   // Arrivée depuis l'alerte « à confirmer » de l'accueil : on descend jusqu'au bouton « Reçu »
   useEffect(() => {
     const cible = window.location.hash.slice(1);
@@ -53,7 +61,7 @@ export default function GroupeDetail() {
   }, [pret]);
 
   if (!ok || !loaded) return <Loading />;
-  if (!g) return <Invitation id={id} onJoin={() => joinGroup(id)} />;
+  if (!g) return <Invitation id={id} onJoin={(inv) => joinGroup(id, inv)} />;
 
   const st = roundStats(g);
   const ben = beneficiary(g);
@@ -204,7 +212,7 @@ export default function GroupeDetail() {
           <Card className="space-y-3 border-sky-200 bg-sky-50/60">
             <div>
               <p className="flex items-center gap-2 text-sm font-bold"><IconBadge icon={UserPlus} ton="bleu" taille="sm" />Demandes pour rejoindre ({g.demandes.length})</p>
-              <p className="text-xs text-stone-600">Ces personnes ont ouvert le lien du groupe. Accepte seulement celles que tu connais.</p>
+              <p className="text-xs text-stone-600">Ces personnes ont été invitées par un membre. C’est toi qui décides : accepte seulement celles que tu connais.</p>
             </div>
             {g.demandes.map((d) => (
               <div key={d.id} className="flex items-center gap-3 rounded-xl bg-white p-3 ring-1 ring-stone-200">
@@ -212,6 +220,7 @@ export default function GroupeDetail() {
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold">{d.name}</p>
                   <p className="whitespace-nowrap text-xs text-stone-500">{telAffiche(d.phone)}</p>
+                  {d.invitePar && <p className="truncate text-xs font-medium text-sky-800">Invité(e) par {d.invitePar}</p>}
                 </div>
                 <button
                   type="button"
@@ -399,7 +408,7 @@ export default function GroupeDetail() {
             >
               <WhatsAppIcon size={20} />
             </ActionRapide>
-            <ActionRapide label="Inviter" href={invitation(g)}>
+            <ActionRapide label="Inviter" href={invitation(g, { cle: cleInvit, par: userId })}>
               <UserPlus size={20} strokeWidth={1.75} />
             </ActionRapide>
             <ActionRapide label="Historique" onClick={() => setTab("historique")}>

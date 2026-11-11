@@ -71,7 +71,7 @@ function Payer() {
 
   if (!ok || !loaded) return <Loading />;
   // Lien reçu sur WhatsApp par quelqu'un qui n'est pas encore membre : on l'invite à rejoindre, puis il paie
-  if (!g) return <Invitation id={id} onJoin={() => joinGroup(id)} />;
+  if (!g) return <Invitation id={id} onJoin={(inv) => joinGroup(id, inv)} />;
   if (!member)
     return (
       <Page>

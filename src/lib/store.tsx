@@ -78,7 +78,7 @@ interface Ctx {
   validerVersement: (demandeId: string, accord: boolean) => Promise<string>;
   annulerVersement: (demandeId: string) => Promise<void>;
   nextRound: (groupId: string) => Promise<void>;
-  joinGroup: (groupId: string) => Promise<"membre" | "en_attente" | "aucun">;
+  joinGroup: (groupId: string, invitation?: { cle?: string | null; par?: string | null }) => Promise<"membre" | "en_attente" | "aucun">;
   repondreDemande: (memberId: string, accepter: boolean) => Promise<void>;
   retrouverCompte: (telephone: string, naissance: string, code: string) => Promise<{ ok: boolean; raison?: string; restants?: number }>;
   quitterGroupe: (groupId: string) => Promise<void>;
@@ -653,8 +653,10 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const joinGroup = useCallback(
-    async (groupId: string) => {
-      const { error } = await supabase.rpc("join_group", { g: groupId });
+    async (groupId: string, invitation: { cle?: string | null; par?: string | null } = {}) => {
+      let { error } = await supabase.rpc("join_group", { g: groupId, cle: invitation.cle ?? null, par: invitation.par ?? null });
+      // Mise à jour SQL n°15 pas encore faite : ancienne version (sans clé)
+      if (error && /function|schema cache|argument/i.test(error.message)) ({ error } = await supabase.rpc("join_group", { g: groupId }));
       fail(error);
       await reload();
       const { data, error: e2 } = await supabase.rpc("etat_adhesion", { g: groupId });

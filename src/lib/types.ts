@@ -79,7 +79,7 @@ export interface Group {
   paymentPhone?: string; // numéro Wave qui reçoit les cotisations
   paymentPhoneChangedAt?: string; // dernier changement du numéro de réception
   anciens: Member[]; // membres retirés (archivés), pour l'historique
-  demandes: Member[]; // personnes qui ont ouvert le lien et attendent d'être acceptées
+  demandes: (Member & { invitePar?: string })[]; // personnes qui ont ouvert le lien et attendent d'être acceptées
   waveLink?: string; // lien de paiement Wave Business (montant pré-rempli)
   addPolicy: AddPolicy; // qui peut ajouter des membres
   createdBy?: string;

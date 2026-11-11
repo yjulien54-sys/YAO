@@ -9,11 +9,17 @@ import { supabase } from "@/lib/supabase";
 /** Page d'invitation : affichée quand on ouvre le lien d'un groupe dont on n'est pas encore membre */
 const TYPE_NOM: Record<string, string> = { tontine: "la tontine", association: "l’association", collecte: "la collecte" };
 
-export function Invitation({ id, onJoin }: { id: string; onJoin: () => Promise<string | void> }) {
+export function Invitation({ id, onJoin }: { id: string; onJoin: (inv: { cle?: string | null; par?: string | null }) => Promise<string | void> }) {
   const [info, setInfo] = useState<{ name: string; type: string; members_count: number } | null | undefined>(undefined);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [attente, setAttente] = useState(false);
+  // Lien reçu : ?i=… (créateur ou trésorier : entrée directe) ou ?par=… (invité par un membre)
+  const [inv, setInv] = useState<{ cle?: string | null; par?: string | null }>({});
+  useEffect(() => {
+    const q = new URLSearchParams(window.location.search);
+    setInv({ cle: q.get("i"), par: q.get("par") });
+  }, []);
 
   useEffect(() => {
     supabase.rpc("group_preview", { g: id }).then(({ data }) => setInfo(data?.[0] ?? null));
@@ -44,7 +50,7 @@ export function Invitation({ id, onJoin }: { id: string; onJoin: () => Promise<s
         {attente ? (
           <div className="carte space-y-2 p-4 text-left">
             <p className="flex items-center gap-2 font-bold text-amber-800"><Clock size={18} strokeWidth={2} /> Demande envoyée</p>
-            <p className="text-sm text-stone-600">Le trésorier du groupe doit accepter ta demande. Tu verras le groupe dans tes groupes dès qu’il l’aura acceptée.</p>
+            <p className="text-sm text-stone-600">Tu as été invité(e) par un membre : le créateur ou le trésorier du groupe doit accepter ta demande. Tu verras le groupe dans tes groupes dès qu’elle sera acceptée.</p>
             <p className="text-sm text-stone-600">Tu peux le prévenir sur WhatsApp pour aller plus vite.</p>
           </div>
         ) : (
@@ -54,7 +60,7 @@ export function Invitation({ id, onJoin }: { id: string; onJoin: () => Promise<s
           onClick={async () => {
             setBusy(true);
             try {
-              const etat = await onJoin();
+              const etat = await onJoin(inv);
               if (etat === "en_attente") {
                 setAttente(true);
                 setBusy(false);
@@ -65,7 +71,7 @@ export function Invitation({ id, onJoin }: { id: string; onJoin: () => Promise<s
             }
           }}
         >
-          {busy ? "Un instant…" : "Demander à rejoindre le groupe"}
+          {busy ? "Un instant…" : inv.cle ? "Rejoindre le groupe" : "Demander à rejoindre le groupe"}
         </Button>
         )}
       </div>

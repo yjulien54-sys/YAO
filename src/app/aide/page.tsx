@@ -8,7 +8,7 @@ export const metadata: Metadata = { title: "Aide — Cotiz" };
 
 const FAQ: { q: string; r: string; id?: string }[] = [
   { q: "Comment créer une tontine ?", r: "Touche « Créer un groupe », choisis « Tontine », indique le montant, la fréquence et la date de la première échéance, puis ajoute les membres avec leur numéro. Tu deviens automatiquement le trésorier." },
-  { q: "Comment inviter les membres ?", r: "Dans le groupe, touche « Inviter » : un message WhatsApp est prêt avec le lien du groupe. Le membre ouvre le lien, entre son nom et son numéro, puis touche « Rejoindre le groupe »." },
+  { q: "Comment inviter les membres ?", r: "Dans le groupe, touche « Inviter » : un message WhatsApp est prêt avec le lien du groupe. Si c’est le créateur ou le trésorier qui invite, la personne entre directement dans le groupe. Si c’est un autre membre, la demande attend que le créateur ou le trésorier l’accepte." },
   { q: "Comment payer ma cotisation ?", r: "Dans le groupe, touche « Payer ma part », choisis le nombre de tours, puis « Ouvrir Wave et payer » : le numéro du trésorier est copié et Wave s’ouvre. Envoie le montant affiché, vérifie le nom du trésorier, valide, puis reviens et touche « J’ai envoyé »." },
   { q: "Qui reçoit l’argent ?", r: "L’argent est envoyé directement sur le numéro Mobile Money du trésorier. Cotiz ne touche jamais l’argent. Quand la caisse est complète, le trésorier la verse au bénéficiaire du tour et l’enregistre dans l’application." },
   { q: "Pourquoi mon paiement est « en attente » ?", r: "Le trésorier doit vérifier sur son téléphone qu’il a bien reçu l’argent, puis le confirmer. Tu peux le prévenir sur WhatsApp depuis l’écran de paiement. Personne ne peut se marquer « payé » tout seul." },
