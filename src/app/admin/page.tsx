@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { DateNaissance } from "@/components/DateNaissance";
 import {
   Ban, BarChart3, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LogOut, Megaphone, Plus, RefreshCw, Search, ShieldAlert, Trash2, Users, UsersRound, Wallet, X,
 } from "lucide-react";
@@ -597,7 +598,7 @@ function FicheUtilisateur({ id, fermer, ouvrirGroupe, recharger }: { id: string;
             >
               <label className="text-xs font-semibold text-stone-500">Nom<input value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} className={champ} /></label>
               <label className="text-xs font-semibold text-stone-500">Téléphone<input value={form.tel} onChange={(e) => setForm({ ...form, tel: e.target.value })} inputMode="tel" className={champ} /></label>
-              <label className="text-xs font-semibold text-stone-500">Naissance<input type="date" value={form.naissance} onChange={(e) => setForm({ ...form, naissance: e.target.value })} className={champ} /></label>
+              <label className="text-xs font-semibold text-stone-500">Naissance<DateNaissance value={form.naissance} onChange={(v) => setForm((x) => ({ ...x, naissance: v }))} /></label>
               <button className="rounded-xl bg-emerald-700 py-2.5 text-sm font-bold text-white sm:col-span-3">Enregistrer les modifications</button>
             </form>
           </Bloc>

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { DateNaissance } from "./DateNaissance";
 import { CalendarDays, Delete, Fingerprint, Headset, Lock, ShieldCheck, X } from "lucide-react";
 import { ESSAIS_MAX, aEmpreinte, activerEmpreinte, definirCode, empreinteDisponible, enregistrerNaissance, reinitialiserParNaissance, verifierCode, verifierEmpreinte } from "@/lib/verrou";
 import { vibrer } from "@/lib/haptique";
@@ -243,7 +244,7 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
           </div>
         ) : mode === "naissance" ? (
           <div className="mt-5 space-y-3">
-            <input type="date" value={naissance} onChange={(e) => setNaissance(e.target.value)} max={new Date().toISOString().slice(0, 10)} className="w-full rounded-[14px] border border-stone-300/80 bg-white px-4 py-3 text-base outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" aria-label="Date de naissance" />
+            <DateNaissance value={naissance} onChange={setNaissance} />
             {erreur && <p className="text-sm font-medium text-red-600">{erreur}</p>}
             <button type="button" disabled={occupe} onClick={enregistrerDate} className="w-full rounded-[14px] bg-emerald-700 py-3.5 text-[0.95rem] font-bold text-white disabled:opacity-60">{occupe ? "Enregistrement…" : "Enregistrer"}</button>
             <button type="button" onClick={() => { vibrer("touche"); suite("naissance"); }} className="w-full py-2 text-sm font-semibold text-stone-500">Plus tard</button>
@@ -256,7 +257,7 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
             </label>
             <label className="block">
               <span className="mb-1 block font-semibold text-stone-700">Date de naissance</span>
-              <input type="date" value={naissance} onChange={(e) => setNaissance(e.target.value)} max={new Date().toISOString().slice(0, 10)} className="w-full rounded-[14px] border border-stone-300/80 bg-white px-4 py-3 text-base text-stone-900 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" />
+              <DateNaissance value={naissance} onChange={setNaissance} />
             </label>
             {erreur && <p className="font-medium text-red-600">{erreur}</p>}
             <button type="submit" disabled={occupe} className="w-full rounded-[14px] bg-emerald-700 py-3.5 text-[0.95rem] font-bold text-white disabled:opacity-60">{occupe ? "Vérification…" : "Valider"}</button>

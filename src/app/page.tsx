@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { DateNaissance } from "@/components/DateNaissance";
 import { Suspense, useEffect, useState } from "react";
 import { Button, Card, Field, Loading, Logo, inputClass } from "@/components/ui";
 import { useStore } from "@/lib/store";
@@ -175,7 +176,7 @@ function Accueil() {
                 </div>
               </Field>
               <Field label="Date de naissance">
-                <input type="date" className={inputClass} value={naissance} onChange={(e) => setNaissance(e.target.value)} max={new Date().toISOString().slice(0, 10)} autoComplete="bday" />
+                <DateNaissance value={naissance} onChange={setNaissance} />
               </Field>
               <Field label="Code secret Cotiz (4 chiffres)">
                 <input
@@ -220,7 +221,7 @@ function Accueil() {
               <input className={inputClass} value={name} onChange={(e) => setName(e.target.value)} placeholder="ex : Yao Kouassi" autoComplete="name" />
             </Field>
             <Field label="Date de naissance" hint="Elle sert à récupérer ton code secret si tu l’oublies.">
-              <input type="date" className={inputClass} value={naissance} onChange={(e) => setNaissance(e.target.value)} max={new Date().toISOString().slice(0, 10)} autoComplete="bday" />
+              <DateNaissance value={naissance} onChange={setNaissance} />
             </Field>
             <Field label="Numéro de téléphone" hint="Le même numéro que celui donné au trésorier de ton groupe.">
               <div className="flex gap-2">
