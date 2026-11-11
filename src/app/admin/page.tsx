@@ -1,9 +1,9 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { DateNaissance } from "@/components/DateNaissance";
 import {
-  Ban, BarChart3, BadgeCheck, CalendarDays, Camera, CheckCircle2, ChevronLeft, Contact, Download, ExternalLink, FolderOpen, Headset, IdCard, MessageSquareText, Phone, ScrollText, Send, ShieldX, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
+  Ban, BarChart3, BadgeCheck, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronLeft, Contact, Download, ExternalLink, FolderOpen, Headset, IdCard, MessageSquareText, Phone, ScrollText, Send, ShieldX, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
 } from "lucide-react";
 import { supabaseAdmin as db } from "@/lib/supabaseAdmin";
 import { dateCourte, fcfa, telAffiche } from "@/lib/format";
@@ -35,28 +35,60 @@ const FONCTIONS: { groupe: string; postes: string[] }[] = [
   { groupe: "Technique et terrain", postes: ["Informatique / développeur", "Agent de terrain", "Formateur(trice)", "Stagiaire"] },
 ];
 
-/** Cases à cocher des fonctions */
+/** Liste déroulante des fonctions : on clique, on cherche, on coche */
 function ChoixFonctions({ valeur, onChange }: { valeur: string[]; onChange: (v: string[]) => void }) {
+  const [ouvert, setOuvert] = useState(false);
+  const [q, setQ] = useState("");
+  const ref = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    if (!ouvert) return;
+    const fermer = (e: MouseEvent) => { if (ref.current && !ref.current.contains(e.target as Node)) setOuvert(false); };
+    document.addEventListener("mousedown", fermer);
+    return () => document.removeEventListener("mousedown", fermer);
+  }, [ouvert]);
   const basculer = (x: string) => onChange(valeur.includes(x) ? valeur.filter((y) => y !== x) : [...valeur, x]);
+  const groupes = FONCTIONS.map((g) => ({ ...g, postes: g.postes.filter((x) => !q || norm(x).includes(norm(q))) })).filter((g) => g.postes.length);
   return (
-    <div className="space-y-3">
-      {FONCTIONS.map((g) => (
-        <div key={g.groupe}>
-          <p className="mb-1.5 text-[0.7rem] font-bold uppercase tracking-wide text-stone-500">{g.groupe}</p>
-          <div className="flex flex-wrap gap-1.5">
-            {g.postes.map((x) => {
-              const coche = valeur.includes(x);
-              return (
-                <button key={x} type="button" onClick={() => basculer(x)} aria-pressed={coche}
-                  className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-xs font-semibold transition ${coche ? "border-sky-600 bg-sky-600 text-white" : "border-stone-200 bg-white text-stone-700 hover:border-sky-300"}`}>
-                  <span className={`grid h-3.5 w-3.5 place-items-center rounded-[4px] border ${coche ? "border-white bg-white text-sky-700" : "border-stone-300"}`}>{coche && "✓"}</span>
-                  {x}
-                </button>
-              );
-            })}
+    <div ref={ref} className="relative">
+      <button type="button" onClick={() => setOuvert(!ouvert)} aria-expanded={ouvert}
+        className={`${champ} flex items-center justify-between gap-2 text-left`}>
+        <span className={`min-w-0 truncate ${valeur.length ? "text-stone-900" : "text-stone-400"}`}>{valeur.length ? valeur.join(", ") : "Choisir la ou les fonctions…"}</span>
+        <span className="flex shrink-0 items-center gap-1.5">
+          {valeur.length > 0 && <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[0.7rem] font-bold text-white">{valeur.length}</span>}
+          <ChevronDown size={16} className={`text-stone-400 transition ${ouvert ? "rotate-180" : ""}`} />
+        </span>
+      </button>
+      {ouvert && (
+        <div className="absolute inset-x-0 top-full z-30 mt-1 overflow-hidden rounded-xl border border-stone-200 bg-white shadow-xl">
+          <div className="border-b border-stone-100 p-2">
+            <div className="relative">
+              <Search size={15} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-stone-400" />
+              <input autoFocus value={q} onChange={(e) => setQ(e.target.value)} placeholder="Chercher une fonction…" className="w-full rounded-lg bg-stone-50 py-2 pl-8 pr-2 text-sm outline-none focus:bg-white focus:ring-2 focus:ring-sky-100" />
+            </div>
+          </div>
+          <div className="max-h-64 overflow-y-auto py-1">
+            {groupes.length === 0 && <p className="px-3 py-3 text-sm text-stone-500">Aucune fonction trouvée.</p>}
+            {groupes.map((g) => (
+              <div key={g.groupe}>
+                <p className="px-3 pb-1 pt-2 text-[0.65rem] font-bold uppercase tracking-wide text-stone-400">{g.groupe}</p>
+                {g.postes.map((x) => {
+                  const coche = valeur.includes(x);
+                  return (
+                    <label key={x} className="flex cursor-pointer items-center gap-2.5 px-3 py-2 text-sm hover:bg-sky-50">
+                      <input type="checkbox" checked={coche} onChange={() => basculer(x)} className="h-4 w-4 accent-sky-600" />
+                      <span className={coche ? "font-semibold text-sky-800" : "text-stone-700"}>{x}</span>
+                    </label>
+                  );
+                })}
+              </div>
+            ))}
+          </div>
+          <div className="flex items-center justify-between border-t border-stone-100 px-3 py-2">
+            <button type="button" onClick={() => onChange([])} className="text-xs font-semibold text-stone-500 hover:text-stone-700">Tout décocher</button>
+            <button type="button" onClick={() => setOuvert(false)} className="rounded-lg bg-sky-600 px-3 py-1.5 text-xs font-bold text-white">OK</button>
           </div>
         </div>
-      ))}
+      )}
     </div>
   );
 }
