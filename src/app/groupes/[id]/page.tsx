@@ -7,7 +7,7 @@ import { Avatar, Button, Card, Header, Loading, Page, Progress, StatusBadge, Wha
 import { dateCourte, dateLongue, fcfa, prenom, telAffiche } from "@/lib/format";
 import { NATURE_LABEL, ROLE_LABEL, TYPE_LABEL, amountDue, droits, impayes, arrears, beneficiary, caisse, dueDate, isLate, memberStatus, netDuTour, paidUntil, payoutFor, paymentsOf, roundStats, roundsToPay, sum, unpaidMembers } from "@/lib/logic";
 import { PayoutModal } from "@/components/PayoutModal";
-import { METHOD_LABEL, MODE_PAIEMENT } from "@/lib/payments";
+import { METHOD_LABEL, MODE_PAIEMENT, lienWaveValide } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
 import { invitation, waLink } from "@/lib/whatsapp";
 import { supabase } from "@/lib/supabase";
@@ -27,7 +27,7 @@ type Tab = "membres" | "historique" | "tours";
 export default function GroupeDetail() {
   const ok = useRequireUser();
   const { id } = useParams<{ id: string }>();
-  const { getGroup, recordPayment, recordPayout, confirmPayments, setPaymentPhone, addMember, nextRound, joinGroup, repondreDemande, annulerDeclaration, quitterGroupe, validerVersement, annulerVersement, loaded, userId } = useStore();
+  const { getGroup, recordPayment, recordPayout, confirmPayments, setPaymentPhone, setWaveLink, addMember, nextRound, joinGroup, repondreDemande, annulerDeclaration, quitterGroupe, validerVersement, annulerVersement, loaded, userId } = useStore();
   const router = useRouter();
   const g = getGroup(id);
   const me = useMe(g);
@@ -39,6 +39,7 @@ export default function GroupeDetail() {
   const [msg, setMsg] = useState<{ type: "relance" | "groupe"; member?: Member } | null>(null);
   const [versement, setVersement] = useState(false);
   const [numero, setNumero] = useState<string | null>(null);
+  const [lienWave, setLienWave] = useState<string | null>(null);
   const pret = ok && loaded && !!g;
 
   // Créateur ou trésorier : son lien d'invitation porte une clé qui fait entrer directement (SQL n°15)
@@ -670,6 +671,38 @@ export default function GroupeDetail() {
                 <Button type="submit" className="shrink-0 !px-4">OK</Button>
               </form>
             )}
+            {/* Lien de paiement Wave marchand : les membres paient en un clic, montant déjà rempli */}
+            <div className="border-t border-stone-100 pt-2">
+              {lienWave === null ? (
+                <div className="flex items-center justify-between gap-2">
+                  <p className="min-w-0 text-sm text-stone-700">
+                    <b>Lien Wave marchand</b>
+                    <span className="block truncate text-xs text-stone-500">{lienWaveValide(g.waveLink) ? `✓ Activé : les membres paient en 1 clic par Wave` : "Facultatif : si tu as un compte Wave marchand, colle ton lien pour que les membres paient en 1 clic."}</span>
+                  </p>
+                  <button onClick={() => setLienWave(g.waveLink ?? "")} className="shrink-0 rounded-lg bg-stone-100 px-3 py-1.5 text-sm font-semibold text-stone-700">
+                    {g.waveLink ? "Modifier" : "Ajouter"}
+                  </button>
+                </div>
+              ) : (
+                <form
+                  className="space-y-2"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (lienWave.trim() && !lienWaveValide(lienWave)) return flash("Le lien doit commencer par https://pay.wave.com/");
+                    setWaveLink(g.id, lienWave)
+                      .then(() => { setLienWave(null); flash(lienWave.trim() ? "Lien Wave enregistré" : "Lien Wave retiré"); })
+                      .catch((err) => flash("Erreur : " + err.message));
+                  }}
+                >
+                  <input className={inputClass} value={lienWave} onChange={(e) => setLienWave(e.target.value)} placeholder="https://pay.wave.com/m/…" autoCapitalize="none" />
+                  <p className="text-xs text-stone-500">Dans ton application <b>Wave Business</b> : Paramètres → ton lien de paiement (ou QR code marchand) → copier le lien. Laisse vide pour le retirer.</p>
+                  <div className="flex gap-2">
+                    <Button type="submit" className="flex-1">Enregistrer</Button>
+                    <Button type="button" variant="secondary" onClick={() => setLienWave(null)}>Annuler</Button>
+                  </div>
+                </form>
+              )}
+            </div>
           </Card>
         )}
 
