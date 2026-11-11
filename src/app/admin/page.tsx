@@ -1452,7 +1452,10 @@ function Planning({ fondateur, equipe }: { fondateur: boolean; equipe: Membre_Eq
   const [lundi, setLundi] = useState(() => lundiDe(new Date()));
   const [liste, setListe] = useState<Creneau[] | null>(null);
   const [msg, setMsg] = useState("");
-  const [f, setF] = useState({ email: "", jour: iso(new Date()), debut: "08:00", fin: "16:00", note: "" });
+  const vide = { email: "", jour: iso(new Date()), debut: "08:00", fin: "16:00", note: "" };
+  const [f, setF] = useState(vide);
+  const [enEdition, setEnEdition] = useState<Creneau | null>(null);
+  const [occupe, setOccupe] = useState(false);
   const jours = Array.from({ length: 7 }, (_, k) => { const d = new Date(lundi); d.setDate(d.getDate() + k); return d; });
   const charger = useCallback(async () => {
     const { data, error } = await db.rpc("admin_planning", { du: iso(jours[0]), au: iso(jours[6]) });
@@ -1460,16 +1463,71 @@ function Planning({ fondateur, equipe }: { fondateur: boolean; equipe: Membre_Eq
   }, [lundi]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { charger(); }, [charger]);
   const decaler = (n: number) => { const d = new Date(lundi); d.setDate(d.getDate() + 7 * n); setLundi(d); };
-  async function ajouter(e: React.FormEvent) {
+  const h = (t: string) => t.slice(0, 5).replace(":", "h");
+  const nomDe = (email: string) => { const a = equipe.find((x) => x.email === email); return a ? `${a.numero ?? ""} ${a.nom ?? a.email}`.trim() : email; };
+
+  const supprimer = async (c: Creneau, demander = true) => {
+    if (demander && !confirm(`Supprimer le créneau de ${c.nom ?? c.email} le ${new Date(c.jour + "T12:00").toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" })} (${h(c.debut)} – ${h(c.fin)}) ?`)) return false;
+    const { error } = await db.rpc("admin_planning_supprimer", { i: c.id });
+    if (error) { setMsg("Erreur : " + error.message); return false; }
+    return true;
+  };
+
+  const modifier = (c: Creneau) => {
+    setEnEdition(c);
+    setF({ email: c.email, jour: c.jour, debut: c.debut.slice(0, 5), fin: c.fin.slice(0, 5), note: c.note ?? "" });
+    setMsg("");
+    setTimeout(() => document.getElementById("form-creneau")?.scrollIntoView({ behavior: "smooth", block: "center" }), 50);
+  };
+  const annulerEdition = () => { setEnEdition(null); setF(vide); setMsg(""); };
+
+  async function enregistrer(e: React.FormEvent) {
     e.preventDefault();
     if (!f.email) return setMsg("Choisis un agent.");
+    if (f.fin <= f.debut) return setMsg("L’heure de fin doit être après l’heure de début.");
+    // Pas deux créneaux qui se chevauchent pour le même agent le même jour
+    const chevauche = (liste ?? []).find((c) => c.email === f.email && c.jour === f.jour && c.id !== enEdition?.id && f.debut < c.fin.slice(0, 5) && f.fin > c.debut.slice(0, 5));
+    if (chevauche) return setMsg(`Ce créneau chevauche celui de ${h(chevauche.debut)} – ${h(chevauche.fin)} pour cet agent. Modifie ou supprime l’autre d’abord.`);
+    setOccupe(true); setMsg("");
     const { error } = await db.rpc("admin_planning_ajouter", { adresse: f.email, j: f.jour, de: f.debut, a: f.fin, remarque: f.note || null });
-    setMsg(error ? "Erreur : " + error.message : "Créneau ajouté.");
-    if (!error) charger();
+    if (!error && enEdition) await supprimer(enEdition, false); // modification = nouveau créneau, puis on retire l'ancien
+    setOccupe(false);
+    if (error) return setMsg("Erreur : " + error.message);
+    setMsg(enEdition ? "Créneau modifié." : "Créneau ajouté.");
+    setEnEdition(null);
+    setF((x) => ({ ...vide, email: x.email }));
+    charger();
   }
+
+  const viderSemaine = async () => {
+    if (!liste?.length) return;
+    if (!confirm(`Supprimer les ${liste.length} créneaux de cette semaine ? Cette action ne peut pas être annulée.`)) return;
+    setOccupe(true);
+    for (const c of liste) await supprimer(c, false);
+    setOccupe(false);
+    setMsg("Semaine vidée.");
+    charger();
+  };
+  const copierSemainePrecedente = async () => {
+    const avant = jours.map((d) => { const x = new Date(d); x.setDate(x.getDate() - 7); return x; });
+    const { data, error } = await db.rpc("admin_planning", { du: iso(avant[0]), au: iso(avant[6]) });
+    if (error) return setMsg("Erreur : " + error.message);
+    const anciens = (data as Creneau[]) ?? [];
+    if (!anciens.length) return setMsg("La semaine précédente est vide : rien à copier.");
+    if (!confirm(`Copier les ${anciens.length} créneaux de la semaine précédente sur cette semaine ?`)) return;
+    setOccupe(true);
+    for (const c of anciens) {
+      const d = new Date(c.jour + "T12:00"); d.setDate(d.getDate() + 7);
+      const deja = (liste ?? []).some((x) => x.email === c.email && x.jour === iso(d) && x.debut === c.debut);
+      if (!deja) await db.rpc("admin_planning_ajouter", { adresse: c.email, j: iso(d), de: c.debut.slice(0, 5), a: c.fin.slice(0, 5), remarque: c.note });
+    }
+    setOccupe(false);
+    setMsg("Semaine précédente copiée.");
+    charger();
+  };
+
   if (liste === null) return <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Pour le planning, fais d’abord la <b>mise à jour SQL n°18</b> dans Supabase.</p>;
   const aujourdhui = iso(new Date());
-  const h = (t: string) => t.slice(0, 5).replace(":", "h");
   const agents = equipe.filter((a) => a.role === "agent");
   return (
     <>
@@ -1479,20 +1537,37 @@ function Planning({ fondateur, equipe }: { fondateur: boolean; equipe: Membre_Eq
         <button onClick={() => decaler(1)} className="grid h-10 w-10 place-items-center rounded-xl border border-stone-200 bg-white" aria-label="Semaine suivante"><ChevronRight size={18} /></button>
         <button onClick={() => setLundi(lundiDe(new Date()))} className="rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-semibold">Aujourd’hui</button>
       </div>
+      {fondateur && (
+        <div className="flex flex-wrap gap-2">
+          <button disabled={occupe} onClick={copierSemainePrecedente} className="inline-flex items-center gap-1.5 rounded-xl border border-teal-200 bg-teal-50 px-3 py-2 text-sm font-semibold text-teal-800 disabled:opacity-50"><Copy size={15} /> Copier la semaine précédente</button>
+          {liste.length > 0 && <button disabled={occupe} onClick={viderSemaine} className="inline-flex items-center gap-1.5 rounded-xl border border-red-200 bg-white px-3 py-2 text-sm font-semibold text-red-600 disabled:opacity-50"><Trash2 size={15} /> Vider cette semaine</button>}
+        </div>
+      )}
+      {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") || msg.includes("chevauche") || msg.includes("doit") || msg.includes("Choisis") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}>{msg}</p>}
       <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-7">
         {jours.map((d, k) => {
           const duJour = liste.filter((c) => c.jour === iso(d));
           const estAuj = iso(d) === aujourdhui;
           return (
             <div key={k} className={`min-h-[110px] rounded-2xl border p-2.5 ${estAuj ? "border-teal-400 bg-teal-50/60" : "border-stone-200/80 bg-white"}`}>
-              <p className={`mb-2 text-xs font-bold ${estAuj ? "text-teal-800" : "text-stone-500"}`}>{JOURS_SEMAINE[k]} {d.getDate()}{estAuj && " · aujourd’hui"}</p>
+              <div className="mb-2 flex items-center justify-between gap-1">
+                <p className={`text-xs font-bold ${estAuj ? "text-teal-800" : "text-stone-500"}`}>{JOURS_SEMAINE[k]} {d.getDate()}{estAuj && " · aujourd’hui"}</p>
+                {fondateur && (
+                  <button onClick={() => { setEnEdition(null); setF((x) => ({ ...x, jour: iso(d) })); document.getElementById("form-creneau")?.scrollIntoView({ behavior: "smooth", block: "center" }); }} className="grid h-6 w-6 place-items-center rounded-full bg-stone-100 text-stone-500 hover:bg-teal-100 hover:text-teal-800" aria-label={`Ajouter un créneau le ${JOURS_SEMAINE[k]} ${d.getDate()}`}><Plus size={14} /></button>
+                )}
+              </div>
               <div className="space-y-1.5">
                 {duJour.map((c) => (
-                  <div key={c.id} className="group rounded-xl bg-teal-600 px-2.5 py-2 text-white">
+                  <div key={c.id} className={`rounded-xl px-2.5 py-2 text-white ${enEdition?.id === c.id ? "bg-amber-500 ring-2 ring-amber-300" : "bg-teal-600"}`}>
                     <p className="text-xs font-bold">{h(c.debut)} – {h(c.fin)}</p>
                     {fondateur && <p className="truncate text-[0.7rem] text-teal-50">{c.numero ? `${c.numero} · ` : ""}{c.nom ?? c.email}</p>}
                     {c.note && <p className="truncate text-[0.7rem] text-teal-50/90">{c.note}</p>}
-                    {fondateur && <button onClick={async () => { if (!confirm("Supprimer ce créneau ?")) return; await db.rpc("admin_planning_supprimer", { i: c.id }); charger(); }} className="mt-1 text-[0.65rem] font-bold text-teal-100 underline">Supprimer</button>}
+                    {fondateur && (
+                      <div className="mt-1.5 flex gap-1">
+                        <button onClick={() => modifier(c)} className="flex-1 rounded-lg bg-white/20 px-1.5 py-1 text-[0.7rem] font-bold hover:bg-white/30">Modifier</button>
+                        <button onClick={async () => { if (await supprimer(c)) { if (enEdition?.id === c.id) annulerEdition(); setMsg("Créneau supprimé."); charger(); } }} className="grid w-7 place-items-center rounded-lg bg-white/20 hover:bg-red-500" aria-label="Supprimer ce créneau"><Trash2 size={12} /></button>
+                      </div>
+                    )}
                   </div>
                 ))}
                 {duJour.length === 0 && <p className="text-[0.7rem] text-stone-300">—</p>}
@@ -1502,22 +1577,26 @@ function Planning({ fondateur, equipe }: { fondateur: boolean; equipe: Membre_Eq
         })}
       </div>
       {fondateur && (
-        <Bloc titre="Ajouter un créneau de travail" sous="Choisis l’agent, le jour et les heures">
-          {agents.length === 0 ? <p className="text-sm text-stone-500">Ajoute d’abord un agent dans l’onglet Équipe.</p> : (
-            <form onSubmit={ajouter} className="grid gap-2 sm:grid-cols-6">
-              <select value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} className={`${champ} sm:col-span-2`}>
-                <option value="">Agent…</option>
-                {agents.map((a) => <option key={a.email} value={a.email}>{a.numero ? `${a.numero} · ` : ""}{a.nom ?? a.email}</option>)}
-              </select>
-              <input type="date" value={f.jour} onChange={(e) => setF({ ...f, jour: e.target.value })} className={champ} />
-              <input type="time" value={f.debut} onChange={(e) => setF({ ...f, debut: e.target.value })} className={champ} />
-              <input type="time" value={f.fin} onChange={(e) => setF({ ...f, fin: e.target.value })} className={champ} />
-              <input value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="Note (facultatif)" className={champ} />
-              <button className="rounded-xl bg-teal-700 py-2.5 text-sm font-bold text-white sm:col-span-6">Ajouter au planning</button>
-              {msg && <p className="text-sm font-medium text-emerald-800 sm:col-span-6">{msg}</p>}
-            </form>
-          )}
-        </Bloc>
+        <div id="form-creneau" className="scroll-mt-24">
+          <Bloc titre={enEdition ? "Modifier le créneau" : "Ajouter un créneau de travail"} sous={enEdition ? `Créneau de ${enEdition.nom ?? enEdition.email} : change le jour ou les heures, puis enregistre.` : "Choisis l’agent, le jour et les heures. Le « + » d’un jour remplit la date."}>
+            {agents.length === 0 ? <p className="text-sm text-stone-500">Ajoute d’abord un agent dans l’onglet Équipe.</p> : (
+              <form onSubmit={enregistrer} className="grid gap-2 sm:grid-cols-6">
+                <select value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} className={`${champ} sm:col-span-2`}>
+                  <option value="">Agent…</option>
+                  {agents.map((a) => <option key={a.email} value={a.email}>{nomDe(a.email)}</option>)}
+                </select>
+                <input type="date" value={f.jour} onChange={(e) => setF({ ...f, jour: e.target.value })} className={champ} />
+                <input type="time" value={f.debut} onChange={(e) => setF({ ...f, debut: e.target.value })} className={champ} aria-label="Heure de début" />
+                <input type="time" value={f.fin} onChange={(e) => setF({ ...f, fin: e.target.value })} className={champ} aria-label="Heure de fin" />
+                <input value={f.note} onChange={(e) => setF({ ...f, note: e.target.value })} placeholder="Note (facultatif)" className={champ} />
+                <div className={`flex gap-2 sm:col-span-6`}>
+                  <button disabled={occupe} className={`flex-1 rounded-xl py-2.5 text-sm font-bold text-white disabled:opacity-50 ${enEdition ? "bg-amber-600" : "bg-teal-700"}`}>{occupe ? "…" : enEdition ? "Enregistrer la modification" : "Ajouter au planning"}</button>
+                  {enEdition && <button type="button" onClick={annulerEdition} className="rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-bold text-stone-700">Annuler</button>}
+                </div>
+              </form>
+            )}
+          </Bloc>
+        </div>
       )}
     </>
   );
