@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { DateNaissance } from "@/components/DateNaissance";
 import {
-  Ban, BarChart3, CheckCircle2, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
+  Ban, BarChart3, CheckCircle2, Contact, ExternalLink, ScrollText, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
 } from "lucide-react";
 import { supabaseAdmin as db } from "@/lib/supabaseAdmin";
 import { dateCourte, fcfa, telAffiche } from "@/lib/format";
@@ -17,6 +17,9 @@ type Inscrit = { id: string; nom: string; telephone: string; naissance: string |
 type Groupe = { id: string; nom: string; type: string; montant: number; frequence: string; tour: number; cree_le: string; nb_membres: number; tresorier: string | null; tresorier_tel: string | null; collecte: number; en_attente: number };
 type Attente = { id: string; le: string; groupe: string; membre: string; montant: number; moyen: string; tresorier_tel: string | null };
 type Demande = { le: string; nom: string | null; telephone: string | null; nom_saisi: string | null; naissance_saisie: string | null; resultat: string };
+type MembreA = { membre_id: string; profile_id: string | null; nom: string; telephone: string; role: string; bloque: boolean; groupe_id: string; groupe: string; type: string; montant: number; tour: number; statut: "a_jour" | "pas_paye" | "en_attente" | "demande"; paye_tour: number; total_paye: number; nb_attente: number };
+type VersementA = { id: string; le: string; groupe_id: string; groupe: string; beneficiaire: string; montant: number; moyen: string; tour: number; requis: number; validations: number; demande_par: string | null };
+type LigneJournal = { id: number; le: string; admin_email: string | null; action: string; cible: string | null; detail: string | null };
 type Annonce = { id: string; titre: string; texte: string | null; lien: string | null; bouton: string | null; couleur: string; actif: boolean; ordre: number };
 
 const ONGLETS = [
@@ -24,9 +27,11 @@ const ONGLETS = [
   { id: "stats", label: "Statistiques", icon: BarChart3, ton: "teal" },
   { id: "inscrits", label: "Inscrits", icon: Users, ton: "sky" },
   { id: "groupes", label: "Groupes", icon: UsersRound, ton: "violet" },
-  { id: "paiements", label: "Paiements", icon: Clock, ton: "amber" },
+  { id: "membres", label: "Membres par groupe", icon: Contact, ton: "teal" },
+  { id: "paiements", label: "À valider", icon: Clock, ton: "amber" },
   { id: "codes", label: "Codes oubliés", icon: KeyRound, ton: "rose" },
   { id: "annonces", label: "Annonces", icon: Megaphone, ton: "orange" },
+  { id: "journal", label: "Journal admin", icon: ScrollText, ton: "emerald" },
 ] as const;
 type Onglet = (typeof ONGLETS)[number]["id"];
 type Ton = (typeof ONGLETS)[number]["ton"] | "red";
@@ -48,6 +53,12 @@ const RESULTAT: Record<string, [string, string]> = {
   echouee: ["Échouée", "bg-red-50 text-red-700"],
   bloquee: ["Bloquée", "bg-stone-200 text-stone-700"],
   sans_naissance: ["Sans date de naissance", "bg-amber-50 text-amber-800"],
+};
+const STATUT_MEMBRE: Record<MembreA["statut"], [string, string]> = {
+  a_jour: ["À jour", "bg-emerald-50 text-emerald-700 ring-emerald-100"],
+  pas_paye: ["Pas encore payé", "bg-red-50 text-red-700 ring-red-100"],
+  en_attente: ["Paiement en attente", "bg-amber-50 text-amber-800 ring-amber-100"],
+  demande: ["Veut rejoindre", "bg-sky-50 text-sky-700 ring-sky-100"],
 };
 const TYPE: Record<string, string> = { tontine: "Tontine", association: "Association", collecte: "Collecte" };
 /** Couleur fixe par type de groupe (palette vérifiée daltonisme) */
@@ -206,6 +217,10 @@ function TableauDeBord({ email }: { email: string }) {
   const [attente, setAttente] = useState<Attente[]>([]);
   const [demandes, setDemandes] = useState<Demande[]>([]);
   const [annonces, setAnnonces] = useState<Annonce[]>([]);
+  const [membres, setMembres] = useState<MembreA[] | null>(null); // null : mise à jour SQL n°16 pas encore faite
+  const [versements, setVersements] = useState<VersementA[]>([]);
+  const [journal, setJournal] = useState<LigneJournal[] | null>(null);
+  const [typeMembres, setTypeMembres] = useState<string>("tous");
   const [charge, setCharge] = useState(false);
   const [maj, setMaj] = useState<Date | null>(null);
   const [msg, setMsg] = useState("");
@@ -227,6 +242,11 @@ function TableauDeBord({ email }: { email: string }) {
     setAttente((a.data as Attente[]) ?? []);
     setDemandes((d.data as Demande[]) ?? []);
     setAnnonces((an.data as Annonce[]) ?? []);
+    // Mise à jour SQL n°16 (facultative tant qu'elle n'est pas faite)
+    const [mb, vs, jn] = await Promise.all([db.rpc("admin_membres"), db.rpc("admin_versements_attente"), db.rpc("admin_journal")]);
+    setMembres(mb.error ? null : ((mb.data as MembreA[]) ?? []));
+    setVersements(vs.error ? [] : ((vs.data as VersementA[]) ?? []));
+    setJournal(jn.error ? null : ((jn.data as LigneJournal[]) ?? []));
     const err = [s, i, g, a, d, an].find((r) => r.error)?.error;
     setMsg(err ? "Erreur : " + err.message : "");
     setMaj(new Date());
@@ -237,8 +257,10 @@ function TableauDeBord({ email }: { email: string }) {
     charger();
   }, [charger]);
 
-  const compteurs: Partial<Record<Onglet, number>> = { inscrits: inscrits.length, groupes: groupes.length, paiements: attente.length, codes: demandes.length, annonces: annonces.length };
-  const alerte: Partial<Record<Onglet, boolean>> = { paiements: attente.length > 0 };
+  const aValider = attente.length + versements.length;
+  const compteurs: Partial<Record<Onglet, number>> = { inscrits: inscrits.length, groupes: groupes.length, membres: membres?.length, paiements: aValider, codes: demandes.length, annonces: annonces.length };
+  const alerte: Partial<Record<Onglet, boolean>> = { paiements: aValider > 0 };
+  const voirMembres = (t: string) => { setTypeMembres(t); setOnglet("membres"); };
   const courant = ONGLETS.find((o) => o.id === onglet)!;
   const heure = new Date().getHours();
   const salut = heure < 12 ? "Bonjour" : heure < 18 ? "Bon après-midi" : "Bonsoir";
@@ -271,6 +293,9 @@ function TableauDeBord({ email }: { email: string }) {
             );
           })}
         </nav>
+        <a href="/groupes" target="_blank" rel="noopener" className="relative mx-3 mb-1 flex items-center gap-2 rounded-xl px-3 py-2.5 text-sm font-semibold text-emerald-50/90 hover:bg-white/10">
+          <ExternalLink size={17} /> Ouvrir l’application
+        </a>
         <div className="relative m-3 rounded-2xl bg-white/10 p-3 ring-1 ring-white/15">
           <p className="truncate text-xs text-emerald-50/80">Connecté : <b className="text-white">{email}</b></p>
           <button onClick={() => db.auth.signOut()} className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-white/15 py-2 text-xs font-bold hover:bg-white/25">
@@ -328,8 +353,10 @@ function TableauDeBord({ email }: { email: string }) {
           {onglet === "apercu" && <Apercu stats={stats} inscrits={inscrits} groupes={groupes} attente={attente} demandes={demandes} aller={setOnglet} ouvrir={(type, id) => setFiche({ type, id })} />}
           {onglet === "stats" && <Statistiques stats={stats} inscrits={inscrits} groupes={groupes} ouvrir={(id) => setFiche({ type: "groupe", id })} />}
           {onglet === "inscrits" && <Inscrits liste={inscrits} ouvrir={(id) => setFiche({ type: "utilisateur", id })} />}
-          {onglet === "groupes" && <Groupes liste={groupes} recharger={charger} ouvrir={(id) => setFiche({ type: "groupe", id })} />}
-          {onglet === "paiements" && <Paiements liste={attente} />}
+          {onglet === "groupes" && <Groupes liste={groupes} recharger={charger} ouvrir={(id) => setFiche({ type: "groupe", id })} voirMembres={voirMembres} />}
+          {onglet === "membres" && <Membres liste={membres} typeInitial={typeMembres} ouvrirGroupe={(id) => setFiche({ type: "groupe", id })} ouvrirUtilisateur={(id) => setFiche({ type: "utilisateur", id })} />}
+          {onglet === "paiements" && <Paiements liste={attente} versements={versements} recharger={charger} ouvrirGroupe={(id) => setFiche({ type: "groupe", id })} />}
+          {onglet === "journal" && <Journal liste={journal} />}
           {onglet === "codes" && <Codes liste={demandes} recharger={charger} />}
           {onglet === "annonces" && <Annonces liste={annonces} recharger={charger} />}
         </main>
@@ -622,7 +649,7 @@ function Inscrits({ liste, ouvrir }: { liste: Inscrit[]; ouvrir: (id: string) =>
   );
 }
 
-function Groupes({ liste, recharger, ouvrir }: { liste: Groupe[]; recharger: () => void; ouvrir: (id: string) => void }) {
+function Groupes({ liste, recharger, ouvrir, voirMembres }: { liste: Groupe[]; recharger: () => void; ouvrir: (id: string) => void; voirMembres: (type: string) => void }) {
   const [q, setQ] = useState("");
   const [msg, setMsg] = useState("");
   const [type, setType] = useState<"tous" | "tontine" | "association" | "collecte" | "attente">("tous");
@@ -662,6 +689,9 @@ function Groupes({ liste, recharger, ouvrir }: { liste: Groupe[]; recharger: () 
         valeur={type}
         onChange={setType}
       />
+      <button onClick={() => voirMembres(type === "attente" ? "tous" : type)} className="inline-flex items-center gap-1.5 rounded-xl bg-teal-50 px-3 py-2 text-sm font-bold text-teal-800 ring-1 ring-teal-100 hover:bg-teal-100">
+        <Contact size={16} /> Voir tous les membres {type === "tous" || type === "attente" ? "" : `des ${TYPE[type].toLowerCase()}s`}, groupe par groupe
+      </button>
       {msg && <p className="text-sm font-medium text-emerald-800">{msg}</p>}
       <div className="grid gap-3 md:grid-cols-2">
         {vus.map((g) => (
@@ -705,12 +735,163 @@ function LigneAttente({ a }: { a: Attente }) {
   );
 }
 
-function Paiements({ liste }: { liste: Attente[] }) {
+function Paiements({ liste, versements, recharger, ouvrirGroupe }: { liste: Attente[]; versements: VersementA[]; recharger: () => void; ouvrirGroupe: (id: string) => void }) {
+  const [msg, setMsg] = useState("");
+  const [occupe, setOccupe] = useState<string | null>(null);
+  const agir = async (cle: string, fn: () => PromiseLike<{ error: { message: string } | null }>, ok: string) => {
+    setOccupe(cle); setMsg("");
+    const { error } = await fn();
+    setMsg(error ? "Erreur : " + error.message : ok);
+    setOccupe(null);
+    recharger();
+  };
   return (
-    <section className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm lg:p-5">
-      <p className="mb-1 text-sm text-stone-600">Paiements déclarés par les membres, que le trésorier n’a pas encore confirmés. Seul le trésorier du groupe peut confirmer.</p>
-      {liste.length === 0 ? <p className="py-3 text-sm text-stone-500">Aucun paiement en attente.</p> : <Liste>{liste.map((a) => <LigneAttente key={a.id} a={a} />)}</Liste>}
-    </section>
+    <>
+      <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-white p-4 text-sm text-amber-900">
+        <b>Tu as la main.</b> Si le trésorier ne répond pas, tu peux confirmer un paiement ou valider un versement à sa place. Vérifie d’abord avec lui ou avec le membre (appel, capture Wave…). Chaque action est notée dans le <b>Journal admin</b>.
+      </div>
+      {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}>{msg}</p>}
+      <Bloc titre={`Paiements à confirmer (${liste.length})`} sous="Déclarés par les membres, pas encore confirmés par le trésorier">
+        {liste.length === 0 ? <p className="text-sm text-stone-500">Aucun paiement en attente.</p> : (
+          <Liste>
+            {liste.map((a) => (
+              <div key={a.id} className="flex flex-wrap items-center gap-3 py-3 text-sm">
+                <div className="min-w-0 flex-1">
+                  <p className="truncate font-semibold">{a.membre} · <span className="text-stone-600">{a.groupe}</span></p>
+                  <p className="text-xs text-stone-500">{dateCourte(a.le)} · {a.moyen}{a.tresorier_tel && <> · trésorier <a href={`tel:${a.tresorier_tel}`} className="font-semibold text-emerald-700 underline">{telAffiche(a.tresorier_tel)}</a></>}</p>
+                </div>
+                <b className="shrink-0">{fcfa(a.montant)}</b>
+                <span className="flex shrink-0 gap-1.5">
+                  <button disabled={!!occupe} onClick={() => confirm(`Confirmer le paiement de ${a.membre} (${fcfa(a.montant)}) à la place du trésorier ?`) && agir(a.id, () => db.rpc("admin_paiement_statut", { paiement: a.id, statut: "reussi" }), `Paiement de ${a.membre} confirmé.`)} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">{occupe === a.id ? "…" : "Confirmer"}</button>
+                  <button disabled={!!occupe} onClick={() => confirm(`Refuser le paiement de ${a.membre} (argent non reçu) ?`) && agir(a.id, () => db.rpc("admin_paiement_statut", { paiement: a.id, statut: "echoue" }), `Paiement de ${a.membre} refusé.`)} className="rounded-lg bg-stone-100 px-3 py-1.5 text-xs font-bold text-stone-700 disabled:opacity-50">Refuser</button>
+                </span>
+              </div>
+            ))}
+          </Liste>
+        )}
+      </Bloc>
+      <Bloc titre={`Versements à valider (${versements.length})`} sous="L’argent sort de la caisse seulement après validation">
+        {versements.length === 0 ? <p className="text-sm text-stone-500">Aucun versement en attente.</p> : (
+          <Liste>
+            {versements.map((v) => (
+              <div key={v.id} className="flex flex-wrap items-center gap-3 py-3 text-sm">
+                <div className="min-w-0 flex-1">
+                  <button onClick={() => ouvrirGroupe(v.groupe_id)} className="truncate text-left font-semibold">Pour {v.beneficiaire} · <span className="text-violet-700 underline decoration-violet-200">{v.groupe}</span></button>
+                  <p className="text-xs text-stone-500">{dateCourte(v.le)} · tour {v.tour} · {v.moyen} · demandé par {v.demande_par ?? "—"} · <b>{v.validations}/{v.requis}</b> accords</p>
+                </div>
+                <b className="shrink-0">{fcfa(v.montant)}</b>
+                <span className="flex shrink-0 gap-1.5">
+                  <button disabled={!!occupe} onClick={() => confirm(`Valider le versement de ${fcfa(v.montant)} pour ${v.beneficiaire} ?`) && agir(v.id, () => db.rpc("admin_versement_decision", { demande: v.id, accepter: true }), "Versement validé.")} className="rounded-lg bg-violet-700 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">{occupe === v.id ? "…" : "Valider"}</button>
+                  <button disabled={!!occupe} onClick={() => confirm("Refuser ce versement ?") && agir(v.id, () => db.rpc("admin_versement_decision", { demande: v.id, accepter: false }), "Versement refusé.")} className="rounded-lg bg-stone-100 px-3 py-1.5 text-xs font-bold text-stone-700 disabled:opacity-50">Refuser</button>
+                </span>
+              </div>
+            ))}
+          </Liste>
+        )}
+      </Bloc>
+    </>
+  );
+}
+
+const SQL16 = <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Pour voir cette rubrique, fais d’abord la <b>mise à jour SQL n°16</b> dans Supabase (fichier <code>migration-16-admin-complet.sql</code>).</p>;
+
+function BadgeStatut({ statut }: { statut: MembreA["statut"] }) {
+  const [l, c] = STATUT_MEMBRE[statut];
+  return <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.7rem] font-bold ring-1 ${c}`}>{l}</span>;
+}
+
+type FiltreStatut = "tous" | MembreA["statut"];
+function Membres({ liste, typeInitial, ouvrirGroupe, ouvrirUtilisateur }: { liste: MembreA[] | null; typeInitial: string; ouvrirGroupe: (id: string) => void; ouvrirUtilisateur: (id: string) => void }) {
+  const [q, setQ] = useState("");
+  const [type, setType] = useState(typeInitial);
+  const [statut, setStatut] = useState<FiltreStatut>("tous");
+  useEffect(() => setType(typeInitial), [typeInitial]);
+  if (!liste) return SQL16;
+  const parType = liste.filter((m) => type === "tous" || m.type === type);
+  const vus = parType.filter((m) => statut === "tous" || m.statut === statut).filter((m) => !q || norm(m.nom).includes(norm(q)) || m.telephone.replace(/\D/g, "").includes(q.replace(/\D/g, "") || "§") || norm(m.groupe).includes(norm(q)));
+  // Regroupement : type → groupe → membres
+  const blocs = (["tontine", "association", "collecte"] as const).map((t) => {
+    const duType = vus.filter((m) => m.type === t);
+    const ids = [...new Set(duType.map((m) => m.groupe_id))];
+    return { t, groupes: ids.map((gid) => ({ id: gid, nom: duType.find((m) => m.groupe_id === gid)!.groupe, membres: duType.filter((m) => m.groupe_id === gid) })) };
+  }).filter((b) => b.groupes.length > 0);
+  const nb = (s: FiltreStatut) => parType.filter((m) => s === "tous" || m.statut === s).length;
+  return (
+    <>
+      <Bloc titre={`${vus.length} membre${vus.length > 1 ? "s" : ""}`} sous="Tous les membres, rangés par type puis par groupe. Touche un nom pour sa fiche, un groupe pour le groupe.">
+        <div className="space-y-3">
+          <Recherche valeur={q} onChange={setQ} placeholder="Chercher un nom, un numéro ou un groupe…" />
+          <Puces options={[{ id: "tous", label: "Tous les types", n: liste.length }, ...(["tontine", "association", "collecte"] as const).map((t) => ({ id: t, label: TYPE[t] + "s", n: liste.filter((m) => m.type === t).length }))]} valeur={type} onChange={setType} />
+          <Puces options={[
+            { id: "tous" as FiltreStatut, label: "Tous", n: nb("tous") },
+            { id: "pas_paye" as FiltreStatut, label: "Pas encore payé", n: nb("pas_paye") },
+            { id: "a_jour" as FiltreStatut, label: "À jour", n: nb("a_jour") },
+            { id: "en_attente" as FiltreStatut, label: "Paiement en attente", n: nb("en_attente") },
+            { id: "demande" as FiltreStatut, label: "Veulent rejoindre", n: nb("demande") },
+          ]} valeur={statut} onChange={setStatut} />
+        </div>
+      </Bloc>
+      {blocs.length === 0 && <p className="text-sm text-stone-500">Personne ne correspond.</p>}
+      {blocs.map((b) => (
+        <div key={b.t} className="space-y-3">
+          <p className="flex items-center gap-2 pt-1 text-sm font-extrabold uppercase tracking-wide" style={{ color: TYPE_COULEUR[b.t] }}>
+            <span className="h-2.5 w-2.5 rounded-full" style={{ background: TYPE_COULEUR[b.t] }} /> {TYPE[b.t]}s · {b.groupes.length} groupe{b.groupes.length > 1 ? "s" : ""}
+          </p>
+          <div className="grid gap-3 lg:grid-cols-2">
+            {b.groupes.map((g) => {
+              const aJour = g.membres.filter((m) => m.statut === "a_jour").length;
+              return (
+                <section key={g.id} className="relative overflow-hidden rounded-2xl border border-stone-200/80 bg-white shadow-sm">
+                  <span className="absolute inset-y-0 left-0 w-1.5" style={{ background: TYPE_COULEUR[b.t] }} />
+                  <button onClick={() => ouvrirGroupe(g.id)} className="flex w-full items-center gap-2 border-b border-stone-100 py-3 pl-5 pr-4 text-left hover:bg-stone-50">
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate font-bold">{g.nom}</span>
+                      <span className="text-xs text-stone-500">{g.membres.length} membre{g.membres.length > 1 ? "s" : ""} · {aJour} à jour · {fcfa(g.membres[0].montant)} · tour {g.membres[0].tour}</span>
+                    </span>
+                    <ChevronRight size={16} className="text-stone-400" />
+                  </button>
+                  <div className="divide-y divide-stone-100 pl-1.5">
+                    {g.membres.map((m) => (
+                      <div key={m.membre_id} className="flex items-center gap-3 px-4 py-2.5 text-sm">
+                        <Pastille nom={m.bloque ? m.nom + " (bloqué)" : m.nom} />
+                        <div className="min-w-0 flex-1">
+                          {m.profile_id ? (
+                            <button onClick={() => ouvrirUtilisateur(m.profile_id!)} className={`truncate text-left font-semibold ${m.bloque ? "text-red-600" : ""}`}>{m.nom}</button>
+                          ) : <p className="truncate font-semibold">{m.nom}</p>}
+                          <p className="truncate text-xs text-stone-500">{telAffiche(m.telephone)} · {ROLE[m.role as keyof typeof ROLE] ?? m.role}{!m.profile_id && " · pas encore inscrit"} · total {fcfa(m.total_paye)}</p>
+                        </div>
+                        <BadgeStatut statut={m.statut} />
+                      </div>
+                    ))}
+                  </div>
+                </section>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+    </>
+  );
+}
+
+function Journal({ liste }: { liste: LigneJournal[] | null }) {
+  if (!liste) return SQL16;
+  return (
+    <Bloc titre={`${liste.length} action${liste.length > 1 ? "s" : ""}`} sous="Tout ce que l’administration a fait : paiements confirmés, comptes bloqués, profils modifiés, groupes supprimés… Ce journal ne peut pas être effacé depuis cette page.">
+      {liste.length === 0 ? <p className="text-sm text-stone-500">Aucune action pour l’instant.</p> : (
+        <ol className="relative space-y-4 border-l-2 border-emerald-100 pl-5">
+          {liste.map((l) => (
+            <li key={l.id} className="relative">
+              <span className="absolute -left-[27px] top-1 h-3 w-3 rounded-full bg-emerald-500 ring-4 ring-white" />
+              <p className="text-sm font-bold">{l.action}</p>
+              {l.cible && <p className="text-sm text-stone-700">{l.cible}</p>}
+              {l.detail && <p className="text-xs text-stone-500">{l.detail}</p>}
+              <p className="mt-0.5 text-[0.7rem] text-stone-400">{new Date(l.le).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" })} · {l.admin_email ?? "—"}</p>
+            </li>
+          ))}
+        </ol>
+      )}
+    </Bloc>
   );
 }
 
@@ -1013,8 +1194,11 @@ function FicheGroupe({ id, fermer, ouvrirUtilisateur, recharger }: { id: string;
   const [f, setF] = useState<FicheG | null>(null);
   const [erreur, setErreur] = useState("");
   const [msg, setMsg] = useState("");
+  const [statuts, setStatuts] = useState<Record<string, MembreA["statut"]> | null>(null);
+  const [filtre, setFiltre] = useState<FiltreStatut>("tous");
 
   const charger = useCallback(async () => {
+    db.rpc("admin_membres", { g: id }).then(({ data, error }) => setStatuts(error ? null : Object.fromEntries(((data as MembreA[]) ?? []).map((m) => [m.membre_id, m.statut]))));
     const { data, error } = await db.rpc("admin_groupe", { g: id });
     if (error) return setErreur(error.message.includes("admin_groupe") ? "Lance d’abord la mise à jour SQL n°14." : error.message);
     setF(data as FicheG);
@@ -1047,13 +1231,26 @@ function FicheGroupe({ id, fermer, ouvrirUtilisateur, recharger }: { id: string;
           </BlocFiche>
 
           <BlocFiche titre={`Membres (${f.membres.filter((m) => !m.archive).length})`}>
+            {statuts && (
+              <div className="mb-2">
+                <Puces
+                  options={(["tous", "pas_paye", "a_jour", "en_attente", "demande"] as FiltreStatut[]).map((k) => ({
+                    id: k,
+                    label: k === "tous" ? "Tous" : STATUT_MEMBRE[k][0],
+                    n: f.membres.filter((m) => !m.archive && (k === "tous" || statuts[m.id] === k)).length,
+                  }))}
+                  valeur={filtre}
+                  onChange={setFiltre}
+                />
+              </div>
+            )}
             <div className="overflow-x-auto">
               <table className="w-full min-w-[560px] text-sm">
                 <thead className="text-left text-xs uppercase tracking-wide text-stone-500">
-                  <tr><th className="py-2">Nom</th><th>Téléphone</th><th>Rôle</th><th className="text-right">Payés</th><th></th></tr>
+                  <tr><th className="py-2">Nom</th><th>Téléphone</th><th>Situation</th><th>Rôle</th><th></th></tr>
                 </thead>
                 <tbody className="divide-y divide-stone-100">
-                  {f.membres.map((m) => (
+                  {f.membres.filter((m) => filtre === "tous" || (!m.archive && statuts?.[m.id] === filtre)).map((m) => (
                     <tr key={m.id} className={m.archive ? "opacity-50" : ""}>
                       <td className="py-2">
                         {m.profile_id ? (
@@ -1064,6 +1261,7 @@ function FicheGroupe({ id, fermer, ouvrirUtilisateur, recharger }: { id: string;
                         <span className="block text-xs text-stone-500">{!m.profile_id ? "pas encore inscrit" : m.en_attente ? "demande en attente" : m.archive ? "a quitté le groupe" : m.bloque ? "bloqué" : "inscrit"}</span>
                       </td>
                       <td className="whitespace-nowrap">{telAffiche(m.phone)}</td>
+                      <td>{statuts?.[m.id] && !m.archive ? <BadgeStatut statut={statuts[m.id]} /> : <span className="text-xs text-stone-400">{m.nb_paiements} paiement(s)</span>}</td>
                       <td>
                         <select
                           value={m.role}
@@ -1076,6 +1274,9 @@ function FicheGroupe({ id, fermer, ouvrirUtilisateur, recharger }: { id: string;
                       </td>
                       <td className="text-right">{m.nb_paiements}</td>
                       <td className="text-right">
+                        {m.en_attente && !m.archive && (
+                          <button onClick={() => action(async () => await db.rpc("admin_modifier_membre", { membre: m.id, nom: null, telephone: null, nouveau_role: null }), `${m.name} accepté dans le groupe.`)} className="mr-1 rounded-lg bg-sky-600 px-2 py-1 text-xs font-bold text-white">Accepter</button>
+                        )}
                         {!m.archive && (
                           <button onClick={() => confirm(`Retirer ${m.name} du groupe ?`) && action(async () => await db.rpc("admin_retirer_membre", { membre: m.id }), `${m.name} retiré du groupe.`)} className="rounded-lg px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50">Retirer</button>
                         )}
@@ -1113,7 +1314,11 @@ function FicheGroupe({ id, fermer, ouvrirUtilisateur, recharger }: { id: string;
 
           <BlocFiche titre={`Versements (${f.versements.length})`}>
             {f.demandes_versement.filter((d) => d.statut === "en_attente").map((d) => (
-              <p key={d.id} className="mb-2 rounded-xl bg-violet-50 p-2 text-sm text-violet-900">En attente de validation : {fcfa(d.amount)} pour {d.beneficiary_name} ({d.validations}/{d.requis})</p>
+              <div key={d.id} className="mb-2 flex flex-wrap items-center gap-2 rounded-xl bg-violet-50 p-2.5 text-sm text-violet-900">
+                <span className="min-w-0 flex-1">En attente de validation : <b>{fcfa(d.amount)}</b> pour {d.beneficiary_name} ({d.validations}/{d.requis})</span>
+                <button onClick={() => confirm(`Valider le versement de ${fcfa(d.amount)} pour ${d.beneficiary_name} ?`) && action(async () => await db.rpc("admin_versement_decision", { demande: d.id, accepter: true }), "Versement validé.")} className="rounded-lg bg-violet-700 px-2.5 py-1 text-xs font-bold text-white">Valider</button>
+                <button onClick={() => confirm("Refuser ce versement ?") && action(async () => await db.rpc("admin_versement_decision", { demande: d.id, accepter: false }), "Versement refusé.")} className="rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-stone-700">Refuser</button>
+              </div>
             ))}
             {f.versements.length === 0 ? <p className="text-sm text-stone-500">Aucun versement.</p> : (
               <Liste>
