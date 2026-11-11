@@ -60,7 +60,7 @@ interface Ctx {
   /** Paie un ou plusieurs tours (paiement en avance / arriérés). Pour une collecte, utiliser `amount`. */
   recordPayments: (groupId: string, memberId: string, method: PayMethod, opts: { rounds?: number[]; amount?: number }) => Promise<Payment[]>;
   /** Le membre déclare avoir envoyé l'argent au trésorier (en attente de confirmation). */
-  declarePayments: (groupId: string, memberId: string, method: PayMethod, opts: { rounds?: number[]; amount?: number; ref?: string }) => Promise<Payment[]>;
+  declarePayments: (groupId: string, memberId: string, method: PayMethod, opts: { rounds?: number[]; amount?: number; ref?: string; cotiz?: boolean }) => Promise<Payment[]>;
   /** Le trésorier confirme (ok = true) ou refuse un paiement déclaré. */
   confirmPayments: (paymentIds: string[], ok: boolean) => Promise<void>;
   setPaymentPhone: (groupId: string, phone: string) => Promise<void>;
@@ -396,7 +396,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   );
 
   const declarePayments = useCallback(
-    async (groupId: string, memberId: string, method: PayMethod, opts: { rounds?: number[]; amount?: number; ref?: string }) => {
+    async (groupId: string, memberId: string, method: PayMethod, opts: { rounds?: number[]; amount?: number; ref?: string; cotiz?: boolean }) => {
       const g = groups.find((x) => x.id === groupId)!;
       const rows =
         g.type === "collecte"
@@ -420,6 +420,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
             status: "en_attente",
             transaction_id: tx,
             reference: reference(),
+            ...(opts.cotiz ? { encaisse_cotiz: true } : {}),
           }))
         )
         .select();

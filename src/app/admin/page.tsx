@@ -15,7 +15,7 @@ type Stats = {
 };
 type Inscrit = { id: string; nom: string; telephone: string; naissance: string | null; inscrit_le: string; nb_groupes: number; code_defini: boolean };
 type Groupe = { id: string; nom: string; type: string; montant: number; frequence: string; tour: number; cree_le: string; nb_membres: number; tresorier: string | null; tresorier_tel: string | null; collecte: number; en_attente: number };
-type Attente = { id: string; le: string; groupe: string; membre: string; montant: number; moyen: string; tresorier_tel: string | null };
+type Attente = { id: string; le: string; groupe: string; membre: string; montant: number; moyen: string; tresorier_tel: string | null; encaisse_cotiz?: boolean; reference?: string | null; membre_tel?: string | null };
 type Demande = { le: string; nom: string | null; telephone: string | null; nom_saisi: string | null; naissance_saisie: string | null; resultat: string };
 type MembreA = { membre_id: string; profile_id: string | null; nom: string; telephone: string; role: string; bloque: boolean; groupe_id: string; groupe: string; type: string; montant: number; tour: number; statut: "a_jour" | "pas_paye" | "en_attente" | "demande"; paye_tour: number; total_paye: number; nb_attente: number };
 type VersementA = { id: string; le: string; groupe_id: string; groupe: string; beneficiaire: string; montant: number; moyen: string; tour: number; requis: number; validations: number; demande_par: string | null };
@@ -814,6 +814,7 @@ function Paiements({ liste, versements, recharger, ouvrirGroupe }: { liste: Atte
       <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-white p-4 text-sm text-amber-900">
         {fondateur ? <><b>Tu as la main.</b> Si le trésorier ne répond pas, tu peux confirmer un paiement ou valider un versement à sa place. Vérifie d’abord avec lui ou avec le membre (appel, capture Wave…). Chaque action est notée dans le <b>Journal admin</b>.</> : <><b>Tu ne peux pas confirmer toi-même.</b> Vérifie la situation (appel, capture Wave…) puis touche <b>« Envoyer au fondateur »</b> : il recevra un dossier avec tes informations et validera.</>}
       </div>
+      {fondateur && <ReglageCaisse />}
       {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}>{msg}</p>}
       <Bloc titre={`Paiements à confirmer (${liste.length})`} sous="Déclarés par les membres, pas encore confirmés par le trésorier">
         {liste.length === 0 ? <p className="text-sm text-stone-500">Aucun paiement en attente.</p> : (
@@ -821,7 +822,8 @@ function Paiements({ liste, versements, recharger, ouvrirGroupe }: { liste: Atte
             {liste.map((a) => (
               <div key={a.id} className="flex flex-wrap items-center gap-3 py-3 text-sm">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{a.membre} · <span className="text-stone-600">{a.groupe}</span></p>
+                  <p className="truncate font-semibold">{a.encaisse_cotiz && <span className="mr-1.5 rounded-md bg-sky-100 px-1.5 py-0.5 text-[0.7rem] font-bold text-sky-800">Compte Cotiz</span>}{a.membre} · <span className="text-stone-600">{a.groupe}</span></p>
+                  {(a.reference || a.membre_tel) && <p className="text-xs text-stone-500">{a.reference && <>Réf. Wave : <b className="text-stone-800">{a.reference}</b></>}{a.reference && a.membre_tel && " · "}{a.membre_tel && <a href={`tel:${a.membre_tel}`} className="text-emerald-700 underline">{telAffiche(a.membre_tel)}</a>}</p>}
                   <p className="text-xs text-stone-500">{dateCourte(a.le)} · {a.moyen}{a.tresorier_tel && <> · trésorier <a href={`tel:${a.tresorier_tel}`} className="font-semibold text-emerald-700 underline">{telAffiche(a.tresorier_tel)}</a></>}</p>
                 </div>
                 <b className="shrink-0">{fcfa(a.montant)}</b>
@@ -862,6 +864,42 @@ function Paiements({ liste, versements, recharger, ouvrirGroupe }: { liste: Atte
         )}
       </Bloc>
     </>
+  );
+}
+
+/** Réglage « Caisse Cotiz » : les membres paient par Wave sur le compte marchand de Cotiz */
+function ReglageCaisse() {
+  const [f, setF] = useState<{ actif: boolean; lien: string; nom: string } | null>(null);
+  const [msg, setMsg] = useState("");
+  useEffect(() => {
+    db.from("parametres_app").select("cle, valeur").then(({ data, error }) => {
+      if (error) return setF(null);
+      const v = Object.fromEntries((data ?? []).map((r: { cle: string; valeur: string | null }) => [r.cle, r.valeur ?? ""]));
+      setF({ actif: v.caisse_cotiz_actif === "oui", lien: v.caisse_cotiz_lien ?? "", nom: v.caisse_cotiz_nom ?? "" });
+    });
+  }, []);
+  if (!f) return null;
+  const enregistrer = async (actif = f.actif) => {
+    setMsg("");
+    for (const [c, v] of [["caisse_cotiz_lien", f.lien], ["caisse_cotiz_nom", f.nom], ["caisse_cotiz_actif", actif ? "oui" : "non"]] as const) {
+      const { error } = await db.rpc("admin_parametre", { c, v });
+      if (error) return setMsg("Erreur : " + error.message);
+    }
+    setF({ ...f, actif });
+    setMsg(actif ? "Caisse Cotiz activée : les paiements Wave arrivent sur ton compte marchand." : "Caisse Cotiz désactivée : les membres paient directement le trésorier.");
+  };
+  return (
+    <Bloc titre="Caisse Cotiz (compte marchand Wave)" sous="Quand c’est activé, les membres qui paient par Wave envoient l’argent sur ton compte marchand. Toi seul confirmes ces paiements ; le trésorier est prévenu." action={<span className={`rounded-full px-2.5 py-0.5 text-[0.7rem] font-bold ${f.actif ? "bg-emerald-100 text-emerald-800" : "bg-stone-100 text-stone-600"}`}>{f.actif ? "Activée" : "Désactivée"}</span>}>
+      <div className="grid gap-2 sm:grid-cols-[2fr_1fr]">
+        <label className="text-xs font-semibold text-stone-500">Lien du compte marchand (pay.wave.com ou qr.wave.com)<input value={f.lien} onChange={(e) => setF({ ...f, lien: e.target.value })} placeholder="https://pay.wave.com/m/…" className={champ} autoCapitalize="none" /></label>
+        <label className="text-xs font-semibold text-stone-500">Nom affiché dans Wave<input value={f.nom} onChange={(e) => setF({ ...f, nom: e.target.value })} placeholder="ex : COTIZ" className={champ} /></label>
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2">
+        <button onClick={() => enregistrer(true)} className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white">{f.actif ? "Enregistrer" : "Activer la Caisse Cotiz"}</button>
+        {f.actif && <button onClick={() => confirm("Désactiver ? Les membres paieront de nouveau directement le trésorier.") && enregistrer(false)} className="rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-bold text-stone-700">Désactiver</button>}
+      </div>
+      {msg && <p className={`mt-2 text-sm font-medium ${msg.startsWith("Erreur") ? "text-red-600" : "text-emerald-800"}`}>{msg}</p>}
+    </Bloc>
   );
 }
 

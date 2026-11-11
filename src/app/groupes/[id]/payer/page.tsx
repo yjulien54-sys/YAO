@@ -6,6 +6,7 @@ import Link from "next/link";
 import { Button, Card, Field, Header, Loading, Page, WhatsAppIcon, btnClass, inputClass, useRequireUser } from "@/components/ui";
 import { dateCourte, fcfa, prenom, telAffiche } from "@/lib/format";
 import { dueDate, roundAmount, roundsToPay } from "@/lib/logic";
+import { lienCaisse, useCaisseCotiz } from "@/lib/caisse";
 import { FRAIS_TAUX, MODE_PAIEMENT, fraisTransaction, OPERATEURS, initierPaiement, lienWaveAvecMontant, lienWaveValide } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
@@ -49,6 +50,7 @@ function Payer() {
   const { getGroup, recordPayments, declarePayments, joinGroup, loaded } = useStore();
   const g = getGroup(id);
   const me = useMe(g);
+  const caisse = useCaisseCotiz();
   const member = g?.members.find((m) => m.id === search.get("membre")) ?? me;
 
   const [method, setMethod] = useState<Exclude<PayMethod, "especes">>("wave");
@@ -86,6 +88,8 @@ function Payer() {
   const tresorier = g.members.find((m) => m.role === "tresorier");
   const numeroCaisse = g.paymentPhone || tresorier?.phone || "";
   const jeSuisTresorier = me?.role === "tresorier";
+  // Caisse Cotiz : en Wave, l'argent va sur le compte marchand de Cotiz, qui confirme
+  const viaCotiz = MODE_PAIEMENT === "manuel" && !!caisse?.actif && !!caisse.lien && method === "wave" && !jeSuisTresorier;
   const choix = aPayer.slice(0, Math.min(aPayer.length, 6));
   const tours = choix.slice(0, nb);
   const lignes = tours.map((r) => ({ r, ...roundAmount(g, r) }));
@@ -104,7 +108,7 @@ function Payer() {
           const ps = await recordPayments(g!.id, member!.id, method, isCollecte ? { amount: total } : { rounds: tours });
           router.replace(`/groupes/${g!.id}/recu/${ps[0].id}?nouveau=1${ps.length > 1 ? `&n=${ps.length}` : ""}`);
         } else {
-          await declarePayments(g!.id, member!.id, method, isCollecte ? { amount: total, ref: refWave } : { rounds: tours, ref: refWave });
+          await declarePayments(g!.id, member!.id, method, isCollecte ? { amount: total, ref: refWave, cotiz: viaCotiz } : { rounds: tours, ref: refWave, cotiz: viaCotiz });
           setEtat("declare");
         }
       } catch (err) {
@@ -143,10 +147,12 @@ function Payer() {
             <IconBadge icon={Clock} ton="ambre" taille="xl" className="mx-auto" />
             <h2 className="text-xl font-extrabold">Paiement déclaré !</h2>
             <p className="text-sm leading-relaxed text-stone-600">
-              {tresorier ? prenom(tresorier.name) : "Le trésorier"} va vérifier qu’il a bien reçu <b>{fcfa(total)}</b>, puis confirmer.
-              Tu passeras alors en « Payé » et tu recevras ton reçu.
+              {viaCotiz
+                ? <><b>{caisse?.nom ?? "Cotiz"}</b> va vérifier la réception de <b>{fcfa(total)}</b> sur son compte Wave, puis confirmer. Ton trésorier est prévenu. Tu passeras alors en « Payé » et tu recevras ton reçu.</>
+                : <>{tresorier ? prenom(tresorier.name) : "Le trésorier"} va vérifier qu’il a bien reçu <b>{fcfa(total)}</b>, puis confirmer.
+              Tu passeras alors en « Payé » et tu recevras ton reçu.</>}
             </p>
-            {tresorier && (
+            {tresorier && !viaCotiz && (
               <a
                 href={waLink(`Bonjour ${prenom(tresorier.name)} 👋\n\nJe viens d’envoyer ${fcfa(total)} par ${op.nom} pour « ${g.name} »${refWave ? ` (réf. ${refWave})` : ""}.\n\nMerci de confirmer dans Cotiz 🙏\n${typeof window !== "undefined" ? window.location.origin : ""}/groupes/${g.id}`, tresorier.phone)}
                 target="_blank"
@@ -264,7 +270,7 @@ function Payer() {
             </div>
             {MODE_PAIEMENT === "manuel" && !jeSuisTresorier && (
               <Card className="space-y-3 border-emerald-300 bg-emerald-50/50">
-                <p className="text-sm font-bold">1. Envoie l’argent à {tresorier ? prenom(tresorier.name) : "la caisse"}</p>
+                <p className="text-sm font-bold">1. Envoie l’argent à {viaCotiz ? caisse?.nom : tresorier ? prenom(tresorier.name) : "la caisse"}</p>
                 <div className="rounded-2xl bg-white p-3 ring-1 ring-stone-200">
                   <div className="flex items-end justify-between gap-2">
                     <div>
@@ -277,6 +283,15 @@ function Payer() {
                       )}
                     </div>
                   </div>
+                  {viaCotiz ? (
+                  <div className="mt-3 border-t border-stone-100 pt-3">
+                    <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Payer sur le compte marchand</p>
+                    <p className="mt-2 rounded-xl bg-sky-50 px-3 py-2 text-base font-extrabold uppercase tracking-wide text-sky-800 ring-1 ring-sky-200">{caisse?.nom}</p>
+                    <p className="mt-2 text-xs leading-snug text-stone-500">
+                      L’argent est gardé en sécurité par Cotiz, puis versé au bénéficiaire après validation. Dans Wave, {/^https:\/\/pay\./.test(caisse?.lien ?? "") ? "le montant est déjà rempli" : <>tape exactement <b>{fcfa(total)}</b></>}, vérifie le nom <b>{caisse?.nom}</b> et valide.
+                    </p>
+                  </div>
+                  ) : (
                   <div className="mt-3 border-t border-stone-100 pt-3">
                     <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Envoyer au trésorier</p>
                     <div className="mt-1 flex items-center justify-between gap-2">
@@ -303,12 +318,13 @@ function Payer() {
                       Avant de valider dans {op.nom}, vérifie que le nom affiché est bien <b>{tresorier?.name ?? "celui du trésorier"}</b>.
                     </p>
                   </div>
+                  )}
                 </div>
                 {(() => {
                   const num = numeroCaisse.replace(/\D/g, "").slice(-10);
                   const app = APPS[method];
                   // Lien direct (pas d'attente avant l'ouverture, sinon Android bloque)
-                  const lienBusiness = method === "wave" && lienWaveValide(g.waveLink) ? lienWaveAvecMontant(g.waveLink!, total) : undefined;
+                  const lienBusiness = viaCotiz && caisse?.lien ? lienCaisse(caisse.lien, total) : method === "wave" && lienWaveValide(g.waveLink) ? lienWaveAvecMontant(g.waveLink!, total) : undefined;
                   const href = lienBusiness ?? (app.ussd
                       ? `tel:${encodeURIComponent(app.ussd)}`
                       : enApp && method === "wave"
@@ -316,7 +332,9 @@ function Payer() {
                         : ios && app.ios
                           ? app.ios
                           : app.android);
-                  const consigne = lienBusiness
+                  const consigne = viaCotiz
+                    ? `Wave s’ouvre sur le compte ${caisse?.nom}. Paie exactement ${fcfa(total)}, valide avec ton code, puis reviens ici et touche « J’ai envoyé ».`
+                    : lienBusiness
                     ? `Wave s’ouvre avec ${fcfa(total)} déjà rempli. Vérifie le nom ${tresorier ? tresorier.name : "du trésorier"} et valide avec ton code.`
                     : app.ussd
                     ? `Numéro copié. Dans le menu, choisis « Transfert », colle le numéro ${telAffiche(num)}${tresorier ? ` (${tresorier.name})` : ""} et envoie ${fcfa(total)}.`
@@ -353,7 +371,7 @@ function Payer() {
                 </p>
                 {aide && <p className="rounded-xl bg-white px-3 py-2 text-xs font-medium text-stone-700 ring-1 ring-stone-200">{aide}</p>}
                 <p className="text-sm font-bold">2. Reviens ici et confirme</p>
-                <Field label="Référence de la transaction (facultatif)" hint="Elle se trouve dans le SMS ou l’historique de ton application. Elle aide le trésorier à vérifier.">
+                <Field label={viaCotiz ? "Référence de la transaction Wave (recommandée)" : "Référence de la transaction (facultatif)"} hint={viaCotiz ? "Dans Wave, ouvre le paiement dans ton historique et copie la référence. Elle permet à Cotiz de retrouver ton paiement plus vite." : "Elle se trouve dans le SMS ou l’historique de ton application. Elle aide le trésorier à vérifier."}>
                   <input className={inputClass} value={refWave} onChange={(e) => setRefWave(e.target.value)} placeholder="ex : T_ABC123…" />
                 </Field>
               </Card>

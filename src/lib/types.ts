@@ -41,6 +41,7 @@ export interface Payment {
   fees: number; // frais Mobile Money (pris sur la caisse)
   transactionId?: string; // référence de transaction (opérateur ou déclaration)
   status: "en_attente" | "reussi" | "echoue";
+  encaisseCotiz?: boolean; // envoyé sur le compte marchand Cotiz : confirmé par Cotiz
 }
 
 export type PayoutMethod = PayMethod | "virement" | "cinetpay";

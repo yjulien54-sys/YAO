@@ -13,6 +13,7 @@ export const mapPayment = (p: any): Payment => ({
   fees: p.fees ?? 0,
   transactionId: p.transaction_id ?? undefined,
   status: p.status ?? "reussi",
+  encaisseCotiz: !!p.encaisse_cotiz,
 });
 
 export const mapPayout = (p: any): Payout => ({
