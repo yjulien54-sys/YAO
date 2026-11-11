@@ -4,7 +4,8 @@ import { mapGroup } from "@/lib/mappers";
 import { fraisMobileMoney } from "@/lib/payments";
 import { fournisseurConfigure, initierCinetpay, supabaseAdmin, userFromRequest } from "@/lib/server/cinetpay";
 import { creerSessionWave } from "@/lib/server/wave";
-import { initierGeniuspay } from "@/lib/server/geniuspay";
+import { geniuspayConfigure, initierGeniuspay } from "@/lib/server/geniuspay";
+import { waveConfigured } from "@/lib/server/wave";
 import type { PayMethod } from "@/lib/types";
 
 export const runtime = "nodejs";
@@ -41,6 +42,13 @@ export async function POST(req: Request) {
   const total = lignes.reduce((s, l) => s + l.amount + l.penalty, 0);
   if (total % 5 !== 0) return NextResponse.json({ error: "le montant doit être un multiple de 5 F" }, { status: 400 });
 
+  // Fournisseur : en mode mixte, Wave en direct pour Wave, GeniusPay pour Orange / MTN / Moov
+  const mode = process.env.NEXT_PUBLIC_PAIEMENT_MODE;
+  const fournisseur = mode === "mixte" ? (method === "wave" ? "wave" : "geniuspay") : mode;
+  if (mode === "mixte" && ((fournisseur === "wave" && !waveConfigured()) || (fournisseur === "geniuspay" && !geniuspayConfigure()))) {
+    return NextResponse.json({ error: fournisseur === "wave" ? "Le paiement Wave n’est pas encore activé : choisis un autre moyen." : "Orange Money, MTN et Moov ne sont pas encore activés : choisis Wave." }, { status: 503 });
+  }
+
   const transactionId = `CTZ${Date.now()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
   const { error } = await sb.from("payments").insert(
     lignes.map((l, i) => ({
@@ -50,8 +58,12 @@ export async function POST(req: Request) {
       amount: l.amount,
       penalty: l.penalty,
       // frais estimés ; le frais fixe (s'il existe) est compté sur la première ligne
-      fees: fraisMobileMoney(l.amount + l.penalty, "wave") + (i === 0 ? Number(process.env.NEXT_PUBLIC_FRAIS_FIXE ?? (process.env.NEXT_PUBLIC_PAIEMENT_MODE === "geniuspay" ? 100 : 0)) : 0),
-      method: "wave", // remplacé par l'opérateur réel après confirmation
+      fees: fournisseur === "wave" && mode === "mixte"
+        ? Math.round((l.amount + l.penalty) * 0.01)
+        : mode === "mixte"
+          ? Math.round((l.amount + l.penalty) * 0.025) + (i === 0 ? 100 : 0)
+          : fraisMobileMoney(l.amount + l.penalty, "wave") + (i === 0 ? Number(process.env.NEXT_PUBLIC_FRAIS_FIXE ?? (mode === "geniuspay" ? 100 : 0)) : 0),
+      method: method && ["wave", "orange", "mtn", "moov"].includes(method) ? method : "wave", // corrigé par l'opérateur réel après confirmation
       status: "en_attente",
       transaction_id: transactionId,
       reference: `${transactionId}-${i + 1}`, // permet de retrouver la transaction au retour
@@ -62,7 +74,7 @@ export async function POST(req: Request) {
 
   const origin = new URL(req.url).origin;
 
-  if (process.env.NEXT_PUBLIC_PAIEMENT_MODE === "geniuspay") {
+  if (fournisseur === "geniuspay") {
     try {
       const { paymentUrl, reference } = await initierGeniuspay({
         transactionId,
@@ -74,6 +86,7 @@ export async function POST(req: Request) {
         customerName: membre.name,
         customerPhone: String(phone ?? membre.phone),
         methode: method,
+        imposerOperateur: mode === "mixte",
       });
       // On retient la référence GeniusPay pour vérifier le paiement ensuite
       await sb.from("payments").update({ transaction_id: reference }).eq("transaction_id", transactionId);
@@ -84,7 +97,7 @@ export async function POST(req: Request) {
     }
   }
 
-  if (process.env.NEXT_PUBLIC_PAIEMENT_MODE === "wave") {
+  if (fournisseur === "wave") {
     try {
       const session = await creerSessionWave({
         amount: total,

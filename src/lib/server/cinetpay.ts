@@ -21,6 +21,8 @@ export const cinetpayConfigured = () =>
 export const fournisseurConfigure = () =>
   process.env.NEXT_PUBLIC_PAIEMENT_MODE === "wave"
     ? Boolean(process.env.WAVE_API_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY)
+    : process.env.NEXT_PUBLIC_PAIEMENT_MODE === "mixte"
+      ? Boolean((process.env.WAVE_API_KEY || process.env.GENIUSPAY_SECRET_KEY) && process.env.SUPABASE_SERVICE_ROLE_KEY)
     : process.env.NEXT_PUBLIC_PAIEMENT_MODE === "geniuspay"
       ? Boolean(process.env.GENIUSPAY_PUBLIC_KEY && process.env.GENIUSPAY_SECRET_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY)
       : cinetpayConfigured();
@@ -103,7 +105,9 @@ export async function synchroniserTransaction(transactionId: string) {
   const sb = supabaseAdmin();
   let statut: StatutCinetpay;
   let m: PayMethod | undefined;
-  if (process.env.NEXT_PUBLIC_PAIEMENT_MODE === "geniuspay") {
+  const mode = process.env.NEXT_PUBLIC_PAIEMENT_MODE;
+  // Les sessions Wave commencent par « cos- » ; en mode mixte, le reste vient de GeniusPay
+  if (mode === "geniuspay" || (mode === "mixte" && !transactionId.startsWith("cos-"))) {
     const { lireGeniuspay } = await import("./geniuspay");
     const r = await lireGeniuspay(transactionId);
     statut = r.statut;

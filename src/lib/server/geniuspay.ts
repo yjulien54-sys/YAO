@@ -49,6 +49,7 @@ export async function initierGeniuspay(p: {
   customerName: string;
   customerPhone: string;
   methode?: PayMethod;
+  imposerOperateur?: boolean;
 }): Promise<{ paymentUrl: string; reference: string }> {
   const d = await appel("/payments", {
     method: "POST",
@@ -60,7 +61,7 @@ export async function initierGeniuspay(p: {
       success_url: p.successUrl,
       error_url: p.errorUrl,
       metadata: { cotiz_transaction: p.transactionId, group_id: p.groupId },
-      ...(process.env.GENIUSPAY_OPERATEUR_DIRECT === "1" && p.methode && OPERATEUR[p.methode] ? { payment_method: OPERATEUR[p.methode] } : {}),
+      ...((p.imposerOperateur || process.env.GENIUSPAY_OPERATEUR_DIRECT === "1") && p.methode && OPERATEUR[p.methode] ? { payment_method: OPERATEUR[p.methode] } : {}),
     }),
   });
   const url = String(d.payment_url ?? d.checkout_url ?? "");

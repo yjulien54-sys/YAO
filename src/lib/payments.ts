@@ -12,11 +12,17 @@ export const OPERATEURS: { id: Exclude<PayMethod, "especes">; nom: string; bg: s
  *  - "manuel" (par défaut) : le membre envoie l'argent au trésorier avec son Wave/Orange Money,
  *    déclare son paiement, et le trésorier le confirme.
  *  - "wave" (Wave Business), "cinetpay", "geniuspay" : paiements automatiques via API.
+ *  - "mixte" : Wave en direct (API Wave Business) + Orange / MTN / Moov via GeniusPay.
  *  - "simulation" : démonstration, aucun argent.
  */
 const MODE = process.env.NEXT_PUBLIC_PAIEMENT_MODE;
-export const MODE_PAIEMENT: "manuel" | "simulation" | "wave" | "cinetpay" | "geniuspay" =
-  MODE === "wave" || MODE === "cinetpay" || MODE === "geniuspay" || MODE === "simulation" ? MODE : "manuel";
+export const MODE_PAIEMENT: "manuel" | "simulation" | "wave" | "cinetpay" | "geniuspay" | "mixte" =
+  MODE === "wave" || MODE === "cinetpay" || MODE === "geniuspay" || MODE === "mixte" || MODE === "simulation" ? MODE : "manuel";
+
+/** Fournisseur utilisé pour un moyen de paiement donné */
+export const fournisseurPour = (method: PayMethod): "wave" | "geniuspay" | "cinetpay" | null =>
+  MODE_PAIEMENT === "mixte" ? (method === "wave" ? "wave" : "geniuspay")
+  : MODE_PAIEMENT === "wave" || MODE_PAIEMENT === "geniuspay" || MODE_PAIEMENT === "cinetpay" ? MODE_PAIEMENT : null;
 
 /** Frais estimés (pris sur la caisse du groupe) : ≈1 % chez Wave Business, ≈3 % chez les agrégateurs. À ajuster selon ton contrat. */
 // GeniusPay : 1 % + frais opérateur (~1,5 %) + 100 F fixes par transaction
@@ -47,7 +53,13 @@ export const METHOD_LABEL: Record<PayMethod | "virement" | "cinetpay", string> =
   cinetpay: "Mobile Money (CinetPay)",
 };
 /** Frais estimés d'une transaction complète (taux + frais fixe) */
-export const fraisTransaction = (total: number) => (MODE_PAIEMENT === "manuel" ? 0 : Math.round(total * FRAIS_TAUX) + FRAIS_FIXE);
+export const fraisTransaction = (total: number, method: PayMethod = "wave") => {
+  const f = fournisseurPour(method);
+  if (MODE_PAIEMENT === "manuel" || !f) return 0;
+  // Wave en direct ≈1 % sans frais fixe ; GeniusPay ≈2,5 % + 100 F ; CinetPay ≈3 %
+  if (MODE_PAIEMENT === "mixte") return f === "wave" ? Math.round(total * 0.01) : Math.round(total * 0.025) + 100;
+  return Math.round(total * FRAIS_TAUX) + FRAIS_FIXE;
+};
 
 /**
  * Paiement SIMULÉ pour le prototype.

@@ -7,7 +7,7 @@ import { Button, Card, Field, Header, Loading, Page, WhatsAppIcon, btnClass, inp
 import { dateCourte, fcfa, prenom, telAffiche } from "@/lib/format";
 import { dueDate, roundAmount, roundsToPay } from "@/lib/logic";
 import { lienCaisse, useCaisseCotiz } from "@/lib/caisse";
-import { FRAIS_TAUX, MODE_PAIEMENT, fraisTransaction, OPERATEURS, initierPaiement, lienWaveAvecMontant, lienWaveValide } from "@/lib/payments";
+import { MODE_PAIEMENT, fournisseurPour, fraisTransaction, OPERATEURS, initierPaiement, lienWaveAvecMontant, lienWaveValide } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { waLink } from "@/lib/whatsapp";
@@ -176,7 +176,7 @@ function Payer() {
             <div className="mx-auto mb-6 grid h-20 w-20 animate-pulse place-items-center rounded-full text-2xl font-extrabold" style={{ background: op.bg, color: op.fg }}>
               {op.nom[0]}
             </div>
-            <h2 className="text-xl font-bold">{MODE_PAIEMENT === "wave" ? "Ouverture de Wave…" : MODE_PAIEMENT === "cinetpay" || MODE_PAIEMENT === "geniuspay" ? "Ouverture du paiement sécurisé…" : "Confirme sur ton téléphone"}</h2>
+            <h2 className="text-xl font-bold">{fournisseurPour(method) === "wave" ? "Ouverture de Wave…" : fournisseurPour(method) ? "Ouverture du paiement sécurisé…" : "Confirme sur ton téléphone"}</h2>
             <p className="mt-2 text-sm leading-relaxed text-stone-600">
               Paiement de <b>{fcfa(total)}</b> via {op.nom}.
               {MODE_PAIEMENT === "simulation" && <><br />Valide avec ton code secret.</>}
@@ -376,7 +376,7 @@ function Payer() {
                 </Field>
               </Card>
             )}
-            {MODE_PAIEMENT === "manuel" ? null : MODE_PAIEMENT === "wave" ? (
+            {MODE_PAIEMENT === "manuel" ? null : fournisseurPour(method) === "wave" ? (
               <p className="px-1 text-sm text-stone-600">Tu vas être redirigé vers <b>Wave</b> pour valider le paiement, puis tu reviendras automatiquement sur Cotiz.</p>
             ) : (
               <Field label={`Numéro ${op.nom}`}>
@@ -384,7 +384,7 @@ function Payer() {
               </Field>
             )}
             {erreur && <p className="text-sm font-medium text-red-600">{erreur}</p>}
-            <Button className="w-full text-base" disabled={total <= 0 || (MODE_PAIEMENT !== "wave" && MODE_PAIEMENT !== "manuel" && phone.replace(/\D/g, "").length < 10)} onClick={payer}>
+            <Button className="w-full text-base" disabled={total <= 0 || (MODE_PAIEMENT !== "manuel" && fournisseurPour(method) !== "wave" && phone.replace(/\D/g, "").length < 10)} onClick={payer}>
               {MODE_PAIEMENT === "manuel"
                 ? jeSuisTresorier
                   ? `Enregistrer le paiement de ${fcfa(total)} (reçu par ${op.nom})`
@@ -395,7 +395,7 @@ function Payer() {
               <Lock size={12} strokeWidth={2} className="mr-1 inline -mt-0.5" />
               {MODE_PAIEMENT === "manuel"
                 ? "Ton paiement sera validé par le trésorier après vérification. Tout le groupe verra le reçu."
-                : `Tu paies exactement ${fcfa(total)}. Les frais de paiement (environ ${fcfa(fraisTransaction(total))}, soit ≈${Math.round(FRAIS_TAUX * 100)} %${fraisTransaction(total) - Math.round(total * FRAIS_TAUX) > 0 ? " + frais fixe" : ""}) sont pris sur la caisse du groupe.`}
+                : `Tu paies exactement ${fcfa(total)}. Les frais de paiement (environ ${fcfa(fraisTransaction(total, method))}) sont pris sur la caisse du groupe.`}
               {MODE_PAIEMENT !== "manuel" && !pourAutrui ? ` Reçu visible par tout le groupe.` : ""}
             </p>
             <LienAide sujet={`Bonjour, j’ai besoin d’aide pour payer dans le groupe « ${g.name} ».`} />
