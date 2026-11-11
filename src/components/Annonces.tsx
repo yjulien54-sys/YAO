@@ -200,7 +200,7 @@ function DiapoVideo({ a, active, fin, duree }: { a: Annonce; active: boolean; fi
     if (v.paused) v.play().catch(() => {});
   };
   return (
-    <div className="relative aspect-[4/5] w-full overflow-hidden bg-[#064e3b]">
+    <div className="relative aspect-[16/7] w-full overflow-hidden bg-[#064e3b]">
       <video
         ref={ref}
         src={a.video!}
@@ -210,16 +210,16 @@ function DiapoVideo({ a, active, fin, duree }: { a: Annonce; active: boolean; fi
         onEnded={fin}
         onError={fin}
         onClick={son}
-        className="absolute inset-0 h-full w-full cursor-pointer object-contain"
+        className="absolute inset-0 h-full w-full cursor-pointer object-cover"
       />
       <button type="button" onClick={son} aria-label={muet ? "Activer le son" : "Couper le son"}
-        className={`absolute bottom-3 right-3 inline-flex items-center gap-1.5 rounded-full px-3 py-2 text-xs font-bold shadow-lg backdrop-blur ${muet ? "bg-white text-stone-900" : "bg-black/40 text-white"}`}>
-        {muet ? <><VolumeX size={15} /> Toucher pour le son</> : <Volume2 size={15} />}
+        className={`absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[0.7rem] font-bold shadow-lg backdrop-blur ${muet ? "bg-white text-stone-900" : "bg-black/40 text-white"}`}>
+        {muet ? <><VolumeX size={13} /> Son</> : <Volume2 size={13} />}
       </button>
       {a.lien && a.bouton && (
         a.lien.startsWith("http")
-          ? <a href={a.lien} target="_blank" rel="noreferrer" className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-white px-3 py-2 text-xs font-bold text-stone-900 shadow-lg">{a.bouton} <ChevronRight size={14} /></a>
-          : <Link href={a.lien} className="absolute bottom-3 left-3 inline-flex items-center gap-1 rounded-full bg-white px-3 py-2 text-xs font-bold text-stone-900 shadow-lg">{a.bouton} <ChevronRight size={14} /></Link>
+          ? <a href={a.lien} target="_blank" rel="noreferrer" className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1.5 text-[0.7rem] font-bold text-stone-900 shadow-lg">{a.bouton} <ChevronRight size={14} /></a>
+          : <Link href={a.lien} className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1.5 text-[0.7rem] font-bold text-stone-900 shadow-lg">{a.bouton} <ChevronRight size={14} /></Link>
       )}
     </div>
   );

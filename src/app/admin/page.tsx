@@ -106,12 +106,12 @@ const MOTIFS = [
 type Annonce = { id: string; titre: string; texte: string | null; lien: string | null; bouton: string | null; couleur: string; actif: boolean; ordre: number; video?: string | null };
 /** Vidéos pub disponibles sur le site (dossier public/pub) */
 const VIDEOS_PUB = [
-  ["/pub/Cotiz-pub-1-transparence-voix.mp4", "Pub 1 · Fini les palabres (voix)"],
-  ["/pub/Cotiz-pub-2-payer-en-1-clic-voix.mp4", "Pub 2 · Payer en 1 clic (voix)"],
-  ["/pub/Cotiz-pub-3-tresoriers-voix.mp4", "Pub 3 · Pour les trésoriers (voix)"],
-  ["/pub/Cotiz-pub-1-transparence-musique.mp4", "Pub 1 · Fini les palabres (musique)"],
-  ["/pub/Cotiz-pub-2-payer-en-1-clic-musique.mp4", "Pub 2 · Payer en 1 clic (musique)"],
-  ["/pub/Cotiz-pub-3-tresoriers-musique.mp4", "Pub 3 · Pour les trésoriers (musique)"],
+  ["/pub/Cotiz-bandeau-1-transparence-voix.mp4", "Pub 1 · Fini les palabres (voix)"],
+  ["/pub/Cotiz-bandeau-2-payer-en-1-clic-voix.mp4", "Pub 2 · Payer en 1 clic (voix)"],
+  ["/pub/Cotiz-bandeau-3-tresoriers-voix.mp4", "Pub 3 · Pour les trésoriers (voix)"],
+  ["/pub/Cotiz-bandeau-1-transparence-musique.mp4", "Pub 1 · Fini les palabres (musique)"],
+  ["/pub/Cotiz-bandeau-2-payer-en-1-clic-musique.mp4", "Pub 2 · Payer en 1 clic (musique)"],
+  ["/pub/Cotiz-bandeau-3-tresoriers-musique.mp4", "Pub 3 · Pour les trésoriers (musique)"],
 ] as const;
 
 const ONGLETS = [
@@ -1193,7 +1193,7 @@ function Annonces({ liste, recharger }: { liste: Annonce[]; recharger: () => voi
           {f.video && !VIDEOS_PUB.some(([u]) => u === f.video) && (
             <input value={f.video} onChange={(e) => setF({ ...f, video: e.target.value })} placeholder="https://…/ma-video.mp4" className={`${champ} mt-2`} />
           )}
-          {f.video && <video src={f.video} muted playsInline controls className="mt-2 h-56 rounded-xl bg-stone-900" />}
+          {f.video && <video src={f.video} muted playsInline controls className="mt-2 aspect-[16/7] w-full max-w-md rounded-xl bg-stone-900 object-cover" />}
         </label>
         <button className="inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 py-3 text-sm font-bold text-white md:col-span-2"><Plus size={17} /> Publier l’annonce</button>
         {msg && <p className="text-sm font-medium text-emerald-800 md:col-span-2">{msg}</p>}
