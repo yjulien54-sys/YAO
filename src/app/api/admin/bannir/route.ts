@@ -16,8 +16,11 @@ export async function POST(req: Request) {
   const jeton = req.headers.get("authorization")?.replace(/^Bearer /, "");
   if (!jeton) return NextResponse.json({ ok: false, erreur: "non connecté" }, { status: 401 });
   const moi = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${jeton}` } }, auth: { persistSession: false } });
+  // Réservé au fondateur (mise à jour SQL n°17) ; avant elle, à tout administrateur
+  const { data: role, error: eRole } = await moi.rpc("mon_role_admin");
   const { data: admin } = await moi.rpc("is_admin");
-  if (admin !== true) return NextResponse.json({ ok: false, erreur: "réservé à l’administrateur" }, { status: 403 });
+  const autorise = eRole ? admin === true : role === "fondateur";
+  if (!autorise) return NextResponse.json({ ok: false, erreur: "réservé au fondateur" }, { status: 403 });
 
   const corps = await req.json().catch(() => null);
   const id = String(corps?.profileId ?? "");

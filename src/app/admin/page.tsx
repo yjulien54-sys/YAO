@@ -1,9 +1,9 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
 import { DateNaissance } from "@/components/DateNaissance";
 import {
-  Ban, BarChart3, CheckCircle2, Contact, ExternalLink, ScrollText, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
+  Ban, BarChart3, CheckCircle2, Contact, ExternalLink, FolderOpen, ScrollText, Send, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
 } from "lucide-react";
 import { supabaseAdmin as db } from "@/lib/supabaseAdmin";
 import { dateCourte, fcfa, telAffiche } from "@/lib/format";
@@ -20,6 +20,17 @@ type Demande = { le: string; nom: string | null; telephone: string | null; nom_s
 type MembreA = { membre_id: string; profile_id: string | null; nom: string; telephone: string; role: string; bloque: boolean; groupe_id: string; groupe: string; type: string; montant: number; tour: number; statut: "a_jour" | "pas_paye" | "en_attente" | "demande"; paye_tour: number; total_paye: number; nb_attente: number };
 type VersementA = { id: string; le: string; groupe_id: string; groupe: string; beneficiaire: string; montant: number; moyen: string; tour: number; requis: number; validations: number; demande_par: string | null };
 type LigneJournal = { id: number; le: string; admin_email: string | null; action: string; cible: string | null; detail: string | null };
+type Dossier = { id: string; numero: number; cree_le: string; cree_par: string; motif: string; priorite: "normale" | "urgente"; client_profile_id: string | null; client_nom: string | null; client_tel: string | null; groupe_id: string | null; groupe_nom: string | null; montant: number | null; reference: string | null; description: string; donnees: Record<string, string>; statut: "ouvert" | "valide" | "refuse"; reponse: string | null; traite_par: string | null; traite_le: string | null };
+type DossierInit = { motif?: string; client_profile_id?: string | null; client_nom?: string | null; client_tel?: string | null; groupe_id?: string | null; groupe_nom?: string | null; montant?: number | null; reference?: string | null; donnees?: Record<string, string>; resume?: string };
+type Membre_Equipe = { email: string; nom: string | null; role: "fondateur" | "agent"; ajoute_le: string };
+/** Rôle de la personne connectée + ouverture du formulaire « dossier » */
+const AdminCtx = createContext<{ fondateur: boolean; demander: (d: DossierInit) => void }>({ fondateur: true, demander: () => {} });
+const MOTIFS = [
+  "Confirmer un paiement", "Refuser un paiement", "Valider un versement", "Refuser un versement",
+  "Modifier nom / numéro / date de naissance", "Bloquer un compte", "Débloquer un compte",
+  "Accepter un membre", "Retirer un membre", "Changer un rôle", "Supprimer un groupe",
+  "Litige / remboursement", "Réclamation d’un client", "Problème technique", "Autre",
+];
 type Annonce = { id: string; titre: string; texte: string | null; lien: string | null; bouton: string | null; couleur: string; actif: boolean; ordre: number };
 
 const ONGLETS = [
@@ -31,9 +42,12 @@ const ONGLETS = [
   { id: "paiements", label: "À valider", icon: Clock, ton: "amber" },
   { id: "codes", label: "Codes oubliés", icon: KeyRound, ton: "rose" },
   { id: "annonces", label: "Annonces", icon: Megaphone, ton: "orange" },
+  { id: "dossiers", label: "Dossiers", icon: FolderOpen, ton: "violet" },
   { id: "journal", label: "Journal admin", icon: ScrollText, ton: "emerald" },
+  { id: "equipe", label: "Équipe", icon: UserCog, ton: "sky" },
 ] as const;
 type Onglet = (typeof ONGLETS)[number]["id"];
+const RESERVE_FONDATEUR: Onglet[] = ["annonces", "journal", "equipe"];
 type Ton = (typeof ONGLETS)[number]["ton"] | "red";
 
 /** Couleurs par rubrique (pastille d'icône, carte chiffrée) */
@@ -69,6 +83,7 @@ export default function Admin() {
   const [pret, setPret] = useState(false);
   const [email, setEmail] = useState<string | null>(null);
   const [autorise, setAutorise] = useState<boolean | null>(null);
+  const [role, setRole] = useState<"fondateur" | "agent">("fondateur");
 
   useEffect(() => {
     db.auth.getSession().then(({ data }) => {
@@ -81,7 +96,12 @@ export default function Admin() {
 
   useEffect(() => {
     if (!email) return setAutorise(null);
-    db.rpc("is_admin").then(({ data, error }) => setAutorise(!error && data === true));
+    db.rpc("is_admin").then(async ({ data, error }) => {
+      // Rôle (mise à jour SQL n°17) : sans elle, tout administrateur est fondateur
+      const r = await db.rpc("mon_role_admin");
+      setRole(!r.error && r.data === "agent" ? "agent" : "fondateur");
+      setAutorise(!error && data === true);
+    });
   }, [email]);
 
   if (!pret) return <Attente_ texte="Chargement…" />;
@@ -98,7 +118,7 @@ export default function Admin() {
         </div>
       </FondVert>
     );
-  return <TableauDeBord email={email} />;
+  return <TableauDeBord email={email} role={role} />;
 }
 
 function Attente_({ texte }: { texte: string }) {
@@ -209,7 +229,8 @@ function Connexion() {
   );
 }
 
-function TableauDeBord({ email }: { email: string }) {
+function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "agent" }) {
+  const fondateur = role === "fondateur";
   const [onglet, setOnglet] = useState<Onglet>("apercu");
   const [stats, setStats] = useState<Stats | null>(null);
   const [inscrits, setInscrits] = useState<Inscrit[]>([]);
@@ -221,6 +242,9 @@ function TableauDeBord({ email }: { email: string }) {
   const [versements, setVersements] = useState<VersementA[]>([]);
   const [journal, setJournal] = useState<LigneJournal[] | null>(null);
   const [typeMembres, setTypeMembres] = useState<string>("tous");
+  const [dossiers, setDossiers] = useState<Dossier[] | null>(null); // null : mise à jour SQL n°17 pas encore faite
+  const [equipe, setEquipe] = useState<Membre_Equipe[]>([]);
+  const [formDossier, setFormDossier] = useState<DossierInit | null>(null);
   const [charge, setCharge] = useState(false);
   const [maj, setMaj] = useState<Date | null>(null);
   const [msg, setMsg] = useState("");
@@ -243,7 +267,9 @@ function TableauDeBord({ email }: { email: string }) {
     setDemandes((d.data as Demande[]) ?? []);
     setAnnonces((an.data as Annonce[]) ?? []);
     // Mise à jour SQL n°16 (facultative tant qu'elle n'est pas faite)
-    const [mb, vs, jn] = await Promise.all([db.rpc("admin_membres"), db.rpc("admin_versements_attente"), db.rpc("admin_journal")]);
+    const [mb, vs, jn, ds, eq] = await Promise.all([db.rpc("admin_membres"), db.rpc("admin_versements_attente"), db.rpc("admin_journal"), db.rpc("admin_dossiers"), db.rpc("admin_equipe")]);
+    setDossiers(ds.error ? null : ((ds.data as Dossier[]) ?? []));
+    setEquipe(eq.error ? [] : ((eq.data as Membre_Equipe[]) ?? []));
     setMembres(mb.error ? null : ((mb.data as MembreA[]) ?? []));
     setVersements(vs.error ? [] : ((vs.data as VersementA[]) ?? []));
     setJournal(jn.error ? null : ((jn.data as LigneJournal[]) ?? []));
@@ -258,14 +284,17 @@ function TableauDeBord({ email }: { email: string }) {
   }, [charger]);
 
   const aValider = attente.length + versements.length;
-  const compteurs: Partial<Record<Onglet, number>> = { inscrits: inscrits.length, groupes: groupes.length, membres: membres?.length, paiements: aValider, codes: demandes.length, annonces: annonces.length };
-  const alerte: Partial<Record<Onglet, boolean>> = { paiements: aValider > 0 };
+  const ouverts = (dossiers ?? []).filter((d) => d.statut === "ouvert").length;
+  const compteurs: Partial<Record<Onglet, number>> = { inscrits: inscrits.length, groupes: groupes.length, membres: membres?.length, paiements: aValider, codes: demandes.length, annonces: annonces.length, dossiers: dossiers ? ouverts : undefined, equipe: equipe.length || undefined };
+  const alerte: Partial<Record<Onglet, boolean>> = { paiements: aValider > 0, dossiers: fondateur && ouverts > 0 };
+  const onglets = ONGLETS.filter((o) => fondateur || !RESERVE_FONDATEUR.includes(o.id));
   const voirMembres = (t: string) => { setTypeMembres(t); setOnglet("membres"); };
-  const courant = ONGLETS.find((o) => o.id === onglet)!;
+  const courant = onglets.find((o) => o.id === onglet) ?? onglets[0];
   const heure = new Date().getHours();
   const salut = heure < 12 ? "Bonjour" : heure < 18 ? "Bon après-midi" : "Bonsoir";
 
   return (
+    <AdminCtx.Provider value={{ fondateur, demander: (d) => setFormDossier(d) }}>
     <div className="min-h-dvh bg-[#f4f2ec] text-stone-900 lg:flex">
       {/* Barre latérale (ordinateur) */}
       <aside className="degrade-vert relative hidden w-[260px] shrink-0 overflow-hidden text-white lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col">
@@ -279,7 +308,7 @@ function TableauDeBord({ email }: { email: string }) {
           </div>
         </div>
         <nav className="relative flex-1 space-y-1 px-3">
-          {ONGLETS.map(({ id, label, icon: I }) => {
+          {onglets.map(({ id, label, icon: I }) => {
             const actif = onglet === id;
             return (
               <button key={id} onClick={() => setOnglet(id)}
@@ -297,6 +326,7 @@ function TableauDeBord({ email }: { email: string }) {
           <ExternalLink size={17} /> Ouvrir l’application
         </a>
         <div className="relative m-3 rounded-2xl bg-white/10 p-3 ring-1 ring-white/15">
+          <p className="mb-1 inline-block rounded-full bg-white/20 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide">{fondateur ? "Fondateur" : "Agent service client"}</p>
           <p className="truncate text-xs text-emerald-50/80">Connecté : <b className="text-white">{email}</b></p>
           <button onClick={() => db.auth.signOut()} className="mt-2 inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-white/15 py-2 text-xs font-bold hover:bg-white/25">
             <LogOut size={14} /> Se déconnecter
@@ -313,14 +343,14 @@ function TableauDeBord({ email }: { email: string }) {
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons/logo.svg" alt="" width={36} height={36} className="h-9 w-9 rounded-xl shadow" />
             <div className="min-w-0 flex-1">
-              <p className="font-extrabold leading-tight">Cotiz · Admin</p>
+              <p className="font-extrabold leading-tight">Cotiz · {fondateur ? "Admin" : "Service client"}</p>
               <p className="truncate text-xs text-emerald-50/80">{email}</p>
             </div>
             <button onClick={charger} className="grid h-9 w-9 place-items-center rounded-full bg-white/15" aria-label="Actualiser"><RefreshCw size={17} className={charge ? "animate-spin" : ""} /></button>
             <button onClick={() => db.auth.signOut()} className="grid h-9 w-9 place-items-center rounded-full bg-white/15" aria-label="Se déconnecter"><LogOut size={16} /></button>
           </div>
           <nav className="relative flex gap-1.5 overflow-x-auto px-3 pb-3" data-pas-glisser>
-            {ONGLETS.map(({ id, label, icon: I }) => (
+            {onglets.map(({ id, label, icon: I }) => (
               <button key={id} onClick={() => setOnglet(id)}
                 className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-[0.8rem] font-semibold transition ${onglet === id ? "bg-white text-emerald-900" : "bg-white/10 text-emerald-50"}`}>
                 <I size={15} /> {label}
@@ -356,14 +386,18 @@ function TableauDeBord({ email }: { email: string }) {
           {onglet === "groupes" && <Groupes liste={groupes} recharger={charger} ouvrir={(id) => setFiche({ type: "groupe", id })} voirMembres={voirMembres} />}
           {onglet === "membres" && <Membres liste={membres} typeInitial={typeMembres} ouvrirGroupe={(id) => setFiche({ type: "groupe", id })} ouvrirUtilisateur={(id) => setFiche({ type: "utilisateur", id })} />}
           {onglet === "paiements" && <Paiements liste={attente} versements={versements} recharger={charger} ouvrirGroupe={(id) => setFiche({ type: "groupe", id })} />}
-          {onglet === "journal" && <Journal liste={journal} />}
+          {onglet === "journal" && fondateur && <Journal liste={journal} />}
+          {onglet === "dossiers" && <Dossiers liste={dossiers} fondateur={fondateur} recharger={charger} nouveau={() => setFormDossier({})} ouvrirUtilisateur={(id) => setFiche({ type: "utilisateur", id })} ouvrirGroupe={(id) => setFiche({ type: "groupe", id })} />}
+          {onglet === "equipe" && fondateur && <Equipe liste={equipe} moi={email} recharger={charger} />}
           {onglet === "codes" && <Codes liste={demandes} recharger={charger} />}
-          {onglet === "annonces" && <Annonces liste={annonces} recharger={charger} />}
+          {onglet === "annonces" && fondateur && <Annonces liste={annonces} recharger={charger} />}
         </main>
       </div>
       {fiche?.type === "utilisateur" && <FicheUtilisateur id={fiche.id} fermer={() => setFiche(null)} ouvrirGroupe={(id) => setFiche({ type: "groupe", id })} recharger={charger} />}
       {fiche?.type === "groupe" && <FicheGroupe id={fiche.id} fermer={() => setFiche(null)} ouvrirUtilisateur={(id) => setFiche({ type: "utilisateur", id })} recharger={charger} />}
+      {formDossier && <FormDossier init={formDossier} fermer={() => setFormDossier(null)} envoye={() => { setFormDossier(null); charger(); setOnglet("dossiers"); }} />}
     </div>
+    </AdminCtx.Provider>
   );
 }
 
@@ -650,6 +684,7 @@ function Inscrits({ liste, ouvrir }: { liste: Inscrit[]; ouvrir: (id: string) =>
 }
 
 function Groupes({ liste, recharger, ouvrir, voirMembres }: { liste: Groupe[]; recharger: () => void; ouvrir: (id: string) => void; voirMembres: (type: string) => void }) {
+  const { fondateur } = useContext(AdminCtx);
   const [q, setQ] = useState("");
   const [msg, setMsg] = useState("");
   const [type, setType] = useState<"tous" | "tontine" | "association" | "collecte" | "attente">("tous");
@@ -674,7 +709,7 @@ function Groupes({ liste, recharger, ouvrir, voirMembres }: { liste: Groupe[]; r
     <section className="space-y-3 rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm lg:p-5">
       <div className="flex flex-wrap items-center gap-2">
         <div className="min-w-0 flex-1"><Recherche valeur={q} onChange={setQ} placeholder="Chercher un groupe ou un trésorier…" /></div>
-        {liste.length > 0 && (
+        {fondateur && liste.length > 0 && (
           <button onClick={toutSupprimer} className="inline-flex shrink-0 items-center gap-1.5 rounded-xl border border-red-200 px-3 py-2.5 text-sm font-bold text-red-600 hover:bg-red-50">
             <Trash2 size={16} /> Supprimer tous les groupes
           </button>
@@ -711,9 +746,9 @@ function Groupes({ liste, recharger, ouvrir, voirMembres }: { liste: Groupe[]; r
             </div>
             <div className="mt-2 flex items-center justify-between gap-2">
               <p className="min-w-0 text-xs text-stone-600">Trésorier : <b>{g.tresorier ?? "—"}</b>{g.tresorier_tel && ` · ${telAffiche(g.tresorier_tel)}`}</p>
-              <button onClick={() => supprimer(g)} className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50" aria-label={`Supprimer ${g.nom}`}>
+              {fondateur && <button onClick={() => supprimer(g)} className="inline-flex shrink-0 items-center gap-1 rounded-lg px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50" aria-label={`Supprimer ${g.nom}`}>
                 <Trash2 size={14} /> Supprimer
-              </button>
+              </button>}
             </div>
           </div>
         ))}
@@ -736,6 +771,7 @@ function LigneAttente({ a }: { a: Attente }) {
 }
 
 function Paiements({ liste, versements, recharger, ouvrirGroupe }: { liste: Attente[]; versements: VersementA[]; recharger: () => void; ouvrirGroupe: (id: string) => void }) {
+  const { fondateur, demander } = useContext(AdminCtx);
   const [msg, setMsg] = useState("");
   const [occupe, setOccupe] = useState<string | null>(null);
   const agir = async (cle: string, fn: () => PromiseLike<{ error: { message: string } | null }>, ok: string) => {
@@ -748,7 +784,7 @@ function Paiements({ liste, versements, recharger, ouvrirGroupe }: { liste: Atte
   return (
     <>
       <div className="rounded-2xl border border-amber-200 bg-gradient-to-r from-amber-50 to-white p-4 text-sm text-amber-900">
-        <b>Tu as la main.</b> Si le trésorier ne répond pas, tu peux confirmer un paiement ou valider un versement à sa place. Vérifie d’abord avec lui ou avec le membre (appel, capture Wave…). Chaque action est notée dans le <b>Journal admin</b>.
+        {fondateur ? <><b>Tu as la main.</b> Si le trésorier ne répond pas, tu peux confirmer un paiement ou valider un versement à sa place. Vérifie d’abord avec lui ou avec le membre (appel, capture Wave…). Chaque action est notée dans le <b>Journal admin</b>.</> : <><b>Tu ne peux pas confirmer toi-même.</b> Vérifie la situation (appel, capture Wave…) puis touche <b>« Envoyer au fondateur »</b> : il recevra un dossier avec tes informations et validera.</>}
       </div>
       {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}>{msg}</p>}
       <Bloc titre={`Paiements à confirmer (${liste.length})`} sous="Déclarés par les membres, pas encore confirmés par le trésorier">
@@ -761,10 +797,14 @@ function Paiements({ liste, versements, recharger, ouvrirGroupe }: { liste: Atte
                   <p className="text-xs text-stone-500">{dateCourte(a.le)} · {a.moyen}{a.tresorier_tel && <> · trésorier <a href={`tel:${a.tresorier_tel}`} className="font-semibold text-emerald-700 underline">{telAffiche(a.tresorier_tel)}</a></>}</p>
                 </div>
                 <b className="shrink-0">{fcfa(a.montant)}</b>
+                {!fondateur ? (
+                  <button onClick={() => demander({ motif: "Confirmer un paiement", client_nom: a.membre, groupe_nom: a.groupe, montant: a.montant, donnees: { action: "confirmer_paiement", paiement_id: a.id }, resume: `Confirmer le paiement de ${a.membre} (${fcfa(a.montant)}) · ${a.groupe}` })} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-violet-700 px-3 py-1.5 text-xs font-bold text-white"><Send size={13} /> Envoyer au fondateur</button>
+                ) : (
                 <span className="flex shrink-0 gap-1.5">
                   <button disabled={!!occupe} onClick={() => confirm(`Confirmer le paiement de ${a.membre} (${fcfa(a.montant)}) à la place du trésorier ?`) && agir(a.id, () => db.rpc("admin_paiement_statut", { paiement: a.id, statut: "reussi" }), `Paiement de ${a.membre} confirmé.`)} className="rounded-lg bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">{occupe === a.id ? "…" : "Confirmer"}</button>
                   <button disabled={!!occupe} onClick={() => confirm(`Refuser le paiement de ${a.membre} (argent non reçu) ?`) && agir(a.id, () => db.rpc("admin_paiement_statut", { paiement: a.id, statut: "echoue" }), `Paiement de ${a.membre} refusé.`)} className="rounded-lg bg-stone-100 px-3 py-1.5 text-xs font-bold text-stone-700 disabled:opacity-50">Refuser</button>
                 </span>
+                )}
               </div>
             ))}
           </Liste>
@@ -780,10 +820,14 @@ function Paiements({ liste, versements, recharger, ouvrirGroupe }: { liste: Atte
                   <p className="text-xs text-stone-500">{dateCourte(v.le)} · tour {v.tour} · {v.moyen} · demandé par {v.demande_par ?? "—"} · <b>{v.validations}/{v.requis}</b> accords</p>
                 </div>
                 <b className="shrink-0">{fcfa(v.montant)}</b>
+                {!fondateur ? (
+                  <button onClick={() => demander({ motif: "Valider un versement", client_nom: v.beneficiaire, groupe_id: v.groupe_id, groupe_nom: v.groupe, montant: v.montant, donnees: { action: "valider_versement", versement_id: v.id }, resume: `Valider le versement de ${fcfa(v.montant)} pour ${v.beneficiaire} · ${v.groupe}` })} className="inline-flex shrink-0 items-center gap-1.5 rounded-lg bg-violet-700 px-3 py-1.5 text-xs font-bold text-white"><Send size={13} /> Envoyer au fondateur</button>
+                ) : (
                 <span className="flex shrink-0 gap-1.5">
                   <button disabled={!!occupe} onClick={() => confirm(`Valider le versement de ${fcfa(v.montant)} pour ${v.beneficiaire} ?`) && agir(v.id, () => db.rpc("admin_versement_decision", { demande: v.id, accepter: true }), "Versement validé.")} className="rounded-lg bg-violet-700 px-3 py-1.5 text-xs font-bold text-white disabled:opacity-50">{occupe === v.id ? "…" : "Valider"}</button>
                   <button disabled={!!occupe} onClick={() => confirm("Refuser ce versement ?") && agir(v.id, () => db.rpc("admin_versement_decision", { demande: v.id, accepter: false }), "Versement refusé.")} className="rounded-lg bg-stone-100 px-3 py-1.5 text-xs font-bold text-stone-700 disabled:opacity-50">Refuser</button>
                 </span>
+                )}
               </div>
             ))}
           </Liste>
@@ -1029,6 +1073,243 @@ const STATUT_PAIEMENT: Record<string, [string, string]> = {
 };
 const ROLE: Record<string, string> = { tresorier: "Trésorier", gestionnaire: "Co-gestionnaire", membre: "Membre" };
 
+/** Formulaire « dossier » : l'agent explique la situation, le fondateur valide */
+function FormDossier({ init, fermer, envoye }: { init: DossierInit; fermer: () => void; envoye: () => void }) {
+  const [f, setF] = useState({
+    motif: init.motif ?? "", priorite: "normale" as "normale" | "urgente",
+    client_nom: init.client_nom ?? "", client_tel: init.client_tel ?? "", groupe_nom: init.groupe_nom ?? "",
+    montant: init.montant ? String(init.montant) : "", reference: init.reference ?? "", description: "", verifie: false,
+  });
+  const [erreur, setErreur] = useState("");
+  const [occupe, setOccupe] = useState(false);
+  const auto = !!init.donnees?.action;
+  const maj = (k: keyof typeof f) => (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => setF({ ...f, [k]: e.target.value });
+
+  async function envoyer(e: React.FormEvent) {
+    e.preventDefault();
+    if (!f.motif) return setErreur("Choisis un motif.");
+    if (f.description.trim().length < 10) return setErreur("Explique la situation en quelques phrases (au moins 10 caractères).");
+    setOccupe(true); setErreur("");
+    const description = (auto && init.resume ? `➜ ${init.resume}\n\n` : "") + f.description.trim() + (f.verifie ? "\n\n✓ Identité du client vérifiée par téléphone." : "");
+    const { error } = await db.rpc("admin_dossier_creer", {
+      motif: f.motif, description, priorite: f.priorite,
+      client_profile_id: init.client_profile_id ?? null, client_nom: f.client_nom || null, client_tel: f.client_tel || null,
+      groupe_id: init.groupe_id ?? null, groupe_nom: f.groupe_nom || null,
+      montant: f.montant ? Number(f.montant.replace(/\D/g, "")) || null : null, reference: f.reference || null,
+      donnees: init.donnees ?? {},
+    });
+    setOccupe(false);
+    if (error) return setErreur(error.message.includes("admin_dossier_creer") ? "Fais d’abord la mise à jour SQL n°17." : error.message);
+    envoye();
+  }
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 sm:items-center sm:p-4" onClick={fermer}>
+      <form onSubmit={envoyer} onClick={(e) => e.stopPropagation()} className="max-h-[92dvh] w-full max-w-xl overflow-y-auto rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl">
+        <div className="degrade-vert relative overflow-hidden px-6 pb-5 pt-6 text-white">
+          <div className="motif pointer-events-none absolute inset-0 opacity-30" />
+          <div className="relative flex items-start gap-3">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/15 ring-1 ring-white/20"><FolderOpen size={22} /></span>
+            <div className="min-w-0 flex-1">
+              <p className="text-lg font-extrabold">Nouveau dossier pour le fondateur</p>
+              <p className="text-sm text-emerald-50/85">Il le reçoit tout de suite dans son espace et le valide ou le refuse.</p>
+            </div>
+            <button type="button" onClick={fermer} className="grid h-9 w-9 place-items-center rounded-full bg-white/15" aria-label="Fermer"><X size={18} /></button>
+          </div>
+        </div>
+        <div className="space-y-4 p-6">
+          {auto && init.resume && (
+            <div className="rounded-2xl border border-violet-200 bg-violet-50 p-3 text-sm text-violet-900">
+              <p className="text-xs font-bold uppercase tracking-wide text-violet-600">Si le fondateur valide, Cotiz fera automatiquement :</p>
+              <p className="mt-1 font-semibold">{init.resume}</p>
+            </div>
+          )}
+          <label className="block">
+            <span className="mb-1 block text-sm font-semibold">Motif *</span>
+            <select value={f.motif} onChange={maj("motif")} className={champ} required disabled={auto}>
+              <option value="">Choisir un motif…</option>
+              {MOTIFS.map((m) => <option key={m} value={m}>{m}</option>)}
+            </select>
+          </label>
+          <div>
+            <span className="mb-1 block text-sm font-semibold">Priorité</span>
+            <div className="grid grid-cols-2 gap-2">
+              {(["normale", "urgente"] as const).map((pr) => (
+                <button key={pr} type="button" onClick={() => setF({ ...f, priorite: pr })}
+                  className={`rounded-xl border py-2.5 text-sm font-bold transition ${f.priorite === pr ? (pr === "urgente" ? "border-red-500 bg-red-50 text-red-700" : "border-emerald-600 bg-emerald-50 text-emerald-800") : "border-stone-200 text-stone-600"}`}>
+                  {pr === "urgente" ? "🔴 Urgente" : "Normale"}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="block"><span className="mb-1 block text-sm font-semibold">Client concerné</span><input value={f.client_nom} onChange={maj("client_nom")} placeholder="Nom et prénom" className={champ} /></label>
+            <label className="block"><span className="mb-1 block text-sm font-semibold">Téléphone du client</span><input value={f.client_tel} onChange={maj("client_tel")} inputMode="tel" placeholder="07 07 12 34 56" className={champ} /></label>
+            <label className="block"><span className="mb-1 block text-sm font-semibold">Groupe</span><input value={f.groupe_nom} onChange={maj("groupe_nom")} placeholder="Nom du groupe" className={champ} /></label>
+            <label className="block"><span className="mb-1 block text-sm font-semibold">Montant (F CFA)</span><input value={f.montant} onChange={maj("montant")} inputMode="numeric" placeholder="ex : 25000" className={champ} /></label>
+          </div>
+          <label className="block"><span className="mb-1 block text-sm font-semibold">Référence de la transaction</span><input value={f.reference} onChange={maj("reference")} placeholder="ex : référence Wave / Orange Money" className={champ} /></label>
+          <label className="block">
+            <span className="mb-1 block text-sm font-semibold">Explication *</span>
+            <textarea value={f.description} onChange={maj("description")} rows={5} required placeholder="Que s’est-il passé ? Qu’a dit le client ? Quelle preuve as-tu vue (capture, appel au trésorier…) ? Que proposes-tu ?" className={`${champ} resize-y`} />
+          </label>
+          <label className="flex items-start gap-2.5 text-sm">
+            <input type="checkbox" checked={f.verifie} onChange={(e) => setF({ ...f, verifie: e.target.checked })} className="mt-0.5 h-4 w-4 accent-emerald-700" />
+            <span>J’ai vérifié l’identité du client par téléphone.</span>
+          </label>
+          {erreur && <p className="rounded-xl bg-red-50 px-3 py-2.5 text-sm font-medium text-red-700">{erreur}</p>}
+          <div className="flex gap-2">
+            <button type="button" onClick={fermer} className="flex-1 rounded-xl border border-stone-200 py-3 text-sm font-bold text-stone-700">Annuler</button>
+            <button disabled={occupe} className="inline-flex flex-[2] items-center justify-center gap-2 rounded-xl bg-violet-700 py-3 text-sm font-bold text-white shadow-lg shadow-violet-700/25 disabled:opacity-60"><Send size={16} /> {occupe ? "Envoi…" : "Envoyer au fondateur"}</button>
+          </div>
+        </div>
+      </form>
+    </div>
+  );
+}
+
+const STATUT_DOSSIER: Record<Dossier["statut"], [string, string]> = {
+  ouvert: ["À traiter", "bg-amber-50 text-amber-800 ring-amber-200"],
+  valide: ["Validé", "bg-emerald-50 text-emerald-700 ring-emerald-200"],
+  refuse: ["Refusé", "bg-stone-100 text-stone-600 ring-stone-200"],
+};
+
+function Dossiers({ liste, fondateur, recharger, nouveau, ouvrirUtilisateur, ouvrirGroupe }: { liste: Dossier[] | null; fondateur: boolean; recharger: () => void; nouveau: () => void; ouvrirUtilisateur: (id: string) => void; ouvrirGroupe: (id: string) => void }) {
+  const [filtre, setFiltre] = useState<"ouvert" | "valide" | "refuse" | "tous">("ouvert");
+  const [reponses, setReponses] = useState<Record<string, string>>({});
+  const [msg, setMsg] = useState("");
+  const [occupe, setOccupe] = useState<string | null>(null);
+  if (!liste) return <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Pour utiliser les dossiers, fais d’abord la <b>mise à jour SQL n°17</b> dans Supabase (fichier <code>migration-17-agents-dossiers.sql</code>).</p>;
+  const vus = liste.filter((d) => filtre === "tous" || d.statut === filtre);
+  const traiter = async (d: Dossier, accepter: boolean) => {
+    if (!confirm(accepter ? `Valider le dossier n°${d.numero} ?${d.donnees?.action ? "\n\nL’action demandée sera faite automatiquement." : ""}` : `Refuser le dossier n°${d.numero} ?`)) return;
+    setOccupe(d.id); setMsg("");
+    const { error } = await db.rpc("admin_dossier_traiter", { dossier: d.id, accepter, reponse: reponses[d.id] ?? null });
+    // Blocage : on coupe aussi la connexion du compte
+    if (!error && accepter && (d.donnees?.action === "bloquer" || d.donnees?.action === "debloquer") && d.donnees.profile_id) {
+      const { data } = await db.auth.getSession();
+      await fetch("/api/admin/bannir", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` }, body: JSON.stringify({ profileId: d.donnees.profile_id, bannir: d.donnees.action === "bloquer" }) }).catch(() => null);
+    }
+    setOccupe(null);
+    setMsg(error ? "Erreur : " + error.message : accepter ? `Dossier n°${d.numero} validé.` : `Dossier n°${d.numero} refusé.`);
+    recharger();
+  };
+  return (
+    <>
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="min-w-0 flex-1">
+          <Puces options={[
+            { id: "ouvert" as const, label: "À traiter", n: liste.filter((d) => d.statut === "ouvert").length },
+            { id: "valide" as const, label: "Validés", n: liste.filter((d) => d.statut === "valide").length },
+            { id: "refuse" as const, label: "Refusés", n: liste.filter((d) => d.statut === "refuse").length },
+            { id: "tous" as const, label: "Tous", n: liste.length },
+          ]} valeur={filtre} onChange={setFiltre} />
+        </div>
+        <button onClick={nouveau} className="inline-flex items-center gap-1.5 rounded-xl bg-violet-700 px-4 py-2.5 text-sm font-bold text-white shadow-sm"><Plus size={16} /> Nouveau dossier</button>
+      </div>
+      {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}>{msg}</p>}
+      {vus.length === 0 && <p className="rounded-2xl border border-dashed border-stone-300 p-8 text-center text-sm text-stone-500">{filtre === "ouvert" ? "Aucun dossier à traiter." : "Aucun dossier."}</p>}
+      <div className="space-y-3">
+        {vus.map((d) => {
+          const [l, c] = STATUT_DOSSIER[d.statut];
+          return (
+            <article key={d.id} className={`relative overflow-hidden rounded-2xl border bg-white p-4 shadow-sm lg:p-5 ${d.priorite === "urgente" && d.statut === "ouvert" ? "border-red-200" : "border-stone-200/80"}`}>
+              <span className={`absolute inset-y-0 left-0 w-1.5 ${d.statut === "ouvert" ? (d.priorite === "urgente" ? "bg-red-500" : "bg-amber-400") : d.statut === "valide" ? "bg-emerald-500" : "bg-stone-300"}`} />
+              <div className="flex flex-wrap items-start gap-2">
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-semibold text-stone-400">Dossier n°{d.numero} · {new Date(d.cree_le).toLocaleString("fr-FR", { dateStyle: "medium", timeStyle: "short" })} · par {d.cree_par}</p>
+                  <p className="mt-0.5 text-base font-extrabold">{d.motif}</p>
+                </div>
+                {d.priorite === "urgente" && <span className="rounded-full bg-red-600 px-2.5 py-0.5 text-[0.7rem] font-bold text-white">URGENT</span>}
+                <span className={`rounded-full px-2.5 py-0.5 text-[0.7rem] font-bold ring-1 ${c}`}>{l}</span>
+              </div>
+              <div className="mt-3 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-2">
+                {d.client_nom && <p><span className="text-stone-500">Client : </span>{d.client_profile_id ? <button onClick={() => ouvrirUtilisateur(d.client_profile_id!)} className="font-semibold text-sky-700 underline decoration-sky-200">{d.client_nom}</button> : <b>{d.client_nom}</b>}{d.client_tel && <> · <a href={`tel:${d.client_tel}`} className="text-emerald-700 underline">{telAffiche(d.client_tel)}</a></>}</p>}
+                {d.groupe_nom && <p><span className="text-stone-500">Groupe : </span>{d.groupe_id ? <button onClick={() => ouvrirGroupe(d.groupe_id!)} className="font-semibold text-violet-700 underline decoration-violet-200">{d.groupe_nom}</button> : <b>{d.groupe_nom}</b>}</p>}
+                {d.montant !== null && <p><span className="text-stone-500">Montant : </span><b>{fcfa(d.montant)}</b></p>}
+                {d.reference && <p><span className="text-stone-500">Référence : </span><b>{d.reference}</b></p>}
+              </div>
+              <p className="mt-3 whitespace-pre-line rounded-xl bg-stone-50 p-3 text-sm text-stone-800">{d.description}</p>
+              {d.donnees?.action && d.statut === "ouvert" && <p className="mt-2 text-xs font-semibold text-violet-700">⚡ Si tu valides, l’action est faite automatiquement.</p>}
+              {d.statut !== "ouvert" && (
+                <p className="mt-3 text-sm text-stone-600"><b>{d.statut === "valide" ? "Validé" : "Refusé"}</b> par {d.traite_par ?? "—"}{d.traite_le && ` le ${dateCourte(d.traite_le)}`}{d.reponse && <> · « {d.reponse} »</>}</p>
+              )}
+              {fondateur && d.statut === "ouvert" && (
+                <div className="mt-3 space-y-2">
+                  <input value={reponses[d.id] ?? ""} onChange={(e) => setReponses({ ...reponses, [d.id]: e.target.value })} placeholder="Réponse à l’agent (facultatif)" className={champ} />
+                  <div className="flex gap-2">
+                    <button disabled={!!occupe} onClick={() => traiter(d, true)} className="flex-1 rounded-xl bg-emerald-700 py-2.5 text-sm font-bold text-white disabled:opacity-50">{occupe === d.id ? "…" : "Valider"}</button>
+                    <button disabled={!!occupe} onClick={() => traiter(d, false)} className="flex-1 rounded-xl border border-stone-200 py-2.5 text-sm font-bold text-stone-700 disabled:opacity-50">Refuser</button>
+                  </div>
+                </div>
+              )}
+            </article>
+          );
+        })}
+      </div>
+    </>
+  );
+}
+
+function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string; recharger: () => void }) {
+  const [f, setF] = useState({ nom: "", email: "", mdp: "" });
+  const [msg, setMsg] = useState("");
+  const [occupe, setOccupe] = useState(false);
+  const proposer = () => {
+    const c = "ABCDEFGHJKMNPQRSTUVWXYZabcdefghjkmnpqrstuvwxyz23456789";
+    const a = new Uint32Array(12); crypto.getRandomValues(a);
+    setF((x) => ({ ...x, mdp: [...a].map((n) => c[n % c.length]).join("") }));
+  };
+  async function ajouter(e: React.FormEvent) {
+    e.preventDefault();
+    setOccupe(true); setMsg("");
+    const { data } = await db.auth.getSession();
+    const r = await fetch("/api/admin/equipe", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` }, body: JSON.stringify({ nom: f.nom, email: f.email, motDePasse: f.mdp }) }).then((x) => x.json()).catch(() => ({ ok: false, erreur: "Réseau indisponible." }));
+    setOccupe(false);
+    if (!r.ok) return setMsg("Erreur : " + r.erreur);
+    setMsg(r.existait ? `${f.email} avait déjà un compte : il a maintenant l’accès agent (avec son mot de passe actuel).` : `Agent ajouté. Donne-lui : l’adresse /admin, son e-mail ${f.email} et le mot de passe provisoire.`);
+    setF({ nom: "", email: "", mdp: "" });
+    recharger();
+  }
+  const retirer = async (m: Membre_Equipe) => {
+    if (!confirm(`Retirer l’accès de ${m.nom ?? m.email} ? Il ne pourra plus ouvrir l’administration.`)) return;
+    const { error } = await db.rpc("admin_retirer_agent", { adresse: m.email });
+    setMsg(error ? "Erreur : " + error.message : `${m.email} n’a plus accès.`);
+    recharger();
+  };
+  return (
+    <div className="grid gap-4 lg:grid-cols-[1fr_1.1fr]">
+      <Bloc titre="Ajouter un agent du service client" sous="Il pourra tout voir, réinitialiser les codes oubliés et t’envoyer des dossiers. Il ne pourra rien confirmer, modifier, bloquer ni supprimer.">
+        <form onSubmit={ajouter} className="space-y-3">
+          <label className="block"><span className="mb-1 block text-sm font-semibold">Nom</span><input value={f.nom} onChange={(e) => setF({ ...f, nom: e.target.value })} placeholder="ex : Aïcha Koné" className={champ} required /></label>
+          <label className="block"><span className="mb-1 block text-sm font-semibold">E-mail</span><input type="email" value={f.email} onChange={(e) => setF({ ...f, email: e.target.value })} placeholder="agent@email.com" className={champ} required /></label>
+          <label className="block">
+            <span className="mb-1 flex items-center justify-between text-sm font-semibold">Mot de passe provisoire <button type="button" onClick={proposer} className="text-xs font-bold text-sky-700">Générer</button></span>
+            <input value={f.mdp} onChange={(e) => setF({ ...f, mdp: e.target.value })} placeholder="10 caractères minimum" minLength={10} className={`${champ} font-mono`} required />
+          </label>
+          <button disabled={occupe} className="w-full rounded-xl bg-sky-700 py-3 text-sm font-bold text-white disabled:opacity-60">{occupe ? "Ajout…" : "Ajouter l’agent"}</button>
+          {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}>{msg}</p>}
+        </form>
+      </Bloc>
+      <Bloc titre={`Équipe (${liste.length})`} sous="Qui a accès à l’administration">
+        <Liste>
+          {liste.map((m) => (
+            <div key={m.email} className="flex items-center gap-3 py-3 text-sm">
+              <Pastille nom={m.nom ?? m.email} />
+              <div className="min-w-0 flex-1">
+                <p className="truncate font-semibold">{m.nom ?? m.email}{m.email.toLowerCase() === moi.toLowerCase() && <span className="font-normal text-stone-400"> (toi)</span>}</p>
+                <p className="truncate text-xs text-stone-500">{m.email} · depuis le {dateCourte(m.ajoute_le)}</p>
+              </div>
+              <span className={`rounded-full px-2.5 py-0.5 text-[0.7rem] font-bold ${m.role === "fondateur" ? "bg-emerald-100 text-emerald-800" : "bg-sky-100 text-sky-800"}`}>{m.role === "fondateur" ? "Fondateur" : "Agent"}</span>
+              {m.role === "agent" && <button onClick={() => retirer(m)} className="rounded-lg px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50">Retirer</button>}
+            </div>
+          ))}
+        </Liste>
+      </Bloc>
+    </div>
+  );
+}
+
 function Volet({ titre, sousTitre, fermer, children }: { titre: string; sousTitre?: string; fermer: () => void; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-stone-900/40" onClick={fermer}>
@@ -1063,6 +1344,7 @@ function Identifiant({ id }: { id: string }) {
 }
 
 function FicheUtilisateur({ id, fermer, ouvrirGroupe, recharger }: { id: string; fermer: () => void; ouvrirGroupe: (id: string) => void; recharger: () => void }) {
+  const { fondateur, demander } = useContext(AdminCtx);
   const [f, setF] = useState<FicheU | null>(null);
   const [erreur, setErreur] = useState("");
   const [msg, setMsg] = useState("");
@@ -1116,13 +1398,19 @@ function FicheUtilisateur({ id, fermer, ouvrirGroupe, recharger }: { id: string;
               className="mt-3 grid gap-2 sm:grid-cols-3"
               onSubmit={(e) => {
                 e.preventDefault();
+                if (!fondateur) {
+                  demander({ motif: "Modifier nom / numéro / date de naissance", client_profile_id: id, client_nom: p!.name, client_tel: p!.phone,
+                    donnees: { action: "modifier_profil", profile_id: id, nom: form.nom, telephone: form.tel, naissance: form.naissance },
+                    resume: `Nouvelles informations : ${form.nom} · ${form.tel} · ${form.naissance ? dateCourte(form.naissance) : "—"}` });
+                  return;
+                }
                 action(async () => await db.rpc("admin_modifier_profil", { p: id, nom: form.nom, telephone: form.tel, naissance: form.naissance || null }), "Informations modifiées.");
               }}
             >
               <label className="text-xs font-semibold text-stone-500">Nom<input value={form.nom} onChange={(e) => setForm({ ...form, nom: e.target.value })} className={champ} /></label>
               <label className="text-xs font-semibold text-stone-500">Téléphone<input value={form.tel} onChange={(e) => setForm({ ...form, tel: e.target.value })} inputMode="tel" className={champ} /></label>
               <label className="text-xs font-semibold text-stone-500">Naissance<DateNaissance value={form.naissance} onChange={(v) => setForm((x) => ({ ...x, naissance: v }))} /></label>
-              <button className="rounded-xl bg-emerald-700 py-2.5 text-sm font-bold text-white sm:col-span-3">Enregistrer les modifications</button>
+              <button className={`rounded-xl py-2.5 text-sm font-bold text-white sm:col-span-3 ${fondateur ? "bg-emerald-700" : "bg-violet-700"}`}>{fondateur ? "Enregistrer les modifications" : "Demander la modification au fondateur"}</button>
             </form>
           </BlocFiche>
 
@@ -1132,7 +1420,11 @@ function FicheUtilisateur({ id, fermer, ouvrirGroupe, recharger }: { id: string;
               <button onClick={() => confirm("Réinitialiser son code secret ? La personne en créera un nouveau à sa prochaine ouverture.") && action(async () => await db.rpc("admin_reinitialiser_code_profil", { p: id }), "Code réinitialisé.")} className="rounded-xl border border-stone-200 px-3 py-2 text-sm font-bold">
                 <KeyRound size={15} className="mr-1 inline" /> Réinitialiser le code
               </button>
-              {p.bloque ? (
+              {!fondateur ? (
+                <button onClick={() => demander({ motif: p.bloque ? "Débloquer un compte" : "Bloquer un compte", client_profile_id: id, client_nom: p.name, client_tel: p.phone, donnees: { action: p.bloque ? "debloquer" : "bloquer", profile_id: id }, resume: `${p.bloque ? "Débloquer" : "Bloquer à vie"} le compte de ${p.name}` })} className="inline-flex items-center gap-1.5 rounded-xl bg-violet-700 px-3 py-2 text-sm font-bold text-white">
+                  <Send size={15} /> {p.bloque ? "Demander le déblocage" : "Demander le blocage"}
+                </button>
+              ) : p.bloque ? (
                 <button onClick={() => confirm(`Débloquer ${p.name} ?`) && action(async () => { const r = await db.rpc("admin_bloquer", { p: id, bloquer: false }); await bannir(false); return r; }, "Compte débloqué.")} className="rounded-xl bg-emerald-700 px-3 py-2 text-sm font-bold text-white">
                   Débloquer
                 </button>
@@ -1152,6 +1444,12 @@ function FicheUtilisateur({ id, fermer, ouvrirGroupe, recharger }: { id: string;
             {f.historique_code.length > 0 && <p className="mt-3 text-xs text-stone-500">Historique du code : {f.historique_code.slice(0, 6).map((h) => `${h.action} (${dateCourte(h.le)})`).join(" · ")}</p>}
             {f.tentatives.length > 0 && <p className="mt-1 text-xs text-stone-500">Connexions sur un autre téléphone : {f.tentatives.filter((t) => t.reussie).length} réussie(s), {f.tentatives.filter((t) => !t.reussie).length} échouée(s)</p>}
           </BlocFiche>
+
+          {!fondateur && (
+            <button onClick={() => demander({ client_profile_id: id, client_nom: p.name, client_tel: p.phone })} className="flex w-full items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 py-3 text-sm font-bold text-violet-800">
+              <Send size={16} /> Ouvrir un dossier pour {p.name}
+            </button>
+          )}
 
           <BlocFiche titre={`Groupes (${f.groupes.length})`}>
             {f.groupes.length === 0 ? <p className="text-sm text-stone-500">Aucun groupe.</p> : (
@@ -1191,6 +1489,7 @@ function FicheUtilisateur({ id, fermer, ouvrirGroupe, recharger }: { id: string;
 }
 
 function FicheGroupe({ id, fermer, ouvrirUtilisateur, recharger }: { id: string; fermer: () => void; ouvrirUtilisateur: (id: string) => void; recharger: () => void }) {
+  const { fondateur, demander } = useContext(AdminCtx);
   const [f, setF] = useState<FicheG | null>(null);
   const [erreur, setErreur] = useState("");
   const [msg, setMsg] = useState("");
@@ -1265,7 +1564,8 @@ function FicheGroupe({ id, fermer, ouvrirUtilisateur, recharger }: { id: string;
                       <td>
                         <select
                           value={m.role}
-                          disabled={m.archive}
+                          disabled={m.archive || !fondateur}
+                          title={fondateur ? undefined : "Changement de rôle : envoie un dossier au fondateur"}
                           onChange={(e) => action(async () => await db.rpc("admin_modifier_membre", { membre: m.id, nom: null, telephone: null, nouveau_role: e.target.value }), "Rôle modifié.")}
                           className="rounded-lg border border-stone-200 bg-white px-2 py-1 text-xs"
                         >
@@ -1274,10 +1574,13 @@ function FicheGroupe({ id, fermer, ouvrirUtilisateur, recharger }: { id: string;
                       </td>
                       <td className="text-right">{m.nb_paiements}</td>
                       <td className="text-right">
-                        {m.en_attente && !m.archive && (
+                        {!fondateur && !m.archive && (
+                          <button onClick={() => demander({ motif: m.en_attente ? "Accepter un membre" : "Retirer un membre", client_profile_id: m.profile_id, client_nom: m.name, client_tel: m.phone, groupe_id: g!.id, groupe_nom: g!.name, donnees: { action: m.en_attente ? "accepter_membre" : "retirer_membre", membre_id: m.id }, resume: `${m.en_attente ? "Accepter" : "Retirer"} ${m.name} · ${g!.name}` })} className="rounded-lg bg-violet-50 px-2 py-1 text-xs font-bold text-violet-700">{m.en_attente ? "Demander l’accord" : "Demander le retrait"}</button>
+                        )}
+                        {fondateur && m.en_attente && !m.archive && (
                           <button onClick={() => action(async () => await db.rpc("admin_modifier_membre", { membre: m.id, nom: null, telephone: null, nouveau_role: null }), `${m.name} accepté dans le groupe.`)} className="mr-1 rounded-lg bg-sky-600 px-2 py-1 text-xs font-bold text-white">Accepter</button>
                         )}
-                        {!m.archive && (
+                        {fondateur && !m.archive && (
                           <button onClick={() => confirm(`Retirer ${m.name} du groupe ?`) && action(async () => await db.rpc("admin_retirer_membre", { membre: m.id }), `${m.name} retiré du groupe.`)} className="rounded-lg px-2 py-1 text-xs font-bold text-red-600 hover:bg-red-50">Retirer</button>
                         )}
                       </td>
@@ -1299,7 +1602,10 @@ function FicheGroupe({ id, fermer, ouvrirUtilisateur, recharger }: { id: string;
                       <span className="text-xs text-stone-500">{dateCourte(x.created_at)}</span>
                       <b>{fcfa(x.amount + x.penalty)}</b>
                       <span className={`rounded-md px-2 py-0.5 text-xs font-bold ${c}`}>{l}</span>
-                      {x.status === "en_attente" && (
+                      {x.status === "en_attente" && !fondateur && (
+                        <button onClick={() => demander({ motif: "Confirmer un paiement", client_nom: x.membre, groupe_id: g!.id, groupe_nom: g!.name, montant: x.amount + x.penalty, reference: x.transaction_id && !x.transaction_id.startsWith("DECL-") ? x.transaction_id : null, donnees: { action: "confirmer_paiement", paiement_id: x.id }, resume: `Confirmer le paiement de ${x.membre} (${fcfa(x.amount + x.penalty)}) · ${g!.name}` })} className="inline-flex items-center gap-1 rounded-lg bg-violet-700 px-2 py-1 text-xs font-bold text-white"><Send size={12} /> Au fondateur</button>
+                      )}
+                      {x.status === "en_attente" && fondateur && (
                         <span className="flex gap-1">
                           <button onClick={() => action(async () => await db.rpc("admin_paiement_statut", { paiement: x.id, statut: "reussi" }), "Paiement confirmé.")} className="rounded-lg bg-emerald-700 px-2 py-1 text-xs font-bold text-white">Confirmer</button>
                           <button onClick={() => confirm("Refuser ce paiement (argent non reçu) ?") && action(async () => await db.rpc("admin_paiement_statut", { paiement: x.id, statut: "echoue" }), "Paiement refusé.")} className="rounded-lg bg-stone-100 px-2 py-1 text-xs font-bold text-stone-700">Refuser</button>
@@ -1316,8 +1622,12 @@ function FicheGroupe({ id, fermer, ouvrirUtilisateur, recharger }: { id: string;
             {f.demandes_versement.filter((d) => d.statut === "en_attente").map((d) => (
               <div key={d.id} className="mb-2 flex flex-wrap items-center gap-2 rounded-xl bg-violet-50 p-2.5 text-sm text-violet-900">
                 <span className="min-w-0 flex-1">En attente de validation : <b>{fcfa(d.amount)}</b> pour {d.beneficiary_name} ({d.validations}/{d.requis})</span>
+                {!fondateur ? (
+                  <button onClick={() => demander({ motif: "Valider un versement", client_nom: d.beneficiary_name, groupe_id: g!.id, groupe_nom: g!.name, montant: d.amount, donnees: { action: "valider_versement", versement_id: d.id }, resume: `Valider le versement de ${fcfa(d.amount)} pour ${d.beneficiary_name} · ${g!.name}` })} className="inline-flex items-center gap-1 rounded-lg bg-violet-700 px-2.5 py-1 text-xs font-bold text-white"><Send size={12} /> Au fondateur</button>
+                ) : <>
                 <button onClick={() => confirm(`Valider le versement de ${fcfa(d.amount)} pour ${d.beneficiary_name} ?`) && action(async () => await db.rpc("admin_versement_decision", { demande: d.id, accepter: true }), "Versement validé.")} className="rounded-lg bg-violet-700 px-2.5 py-1 text-xs font-bold text-white">Valider</button>
                 <button onClick={() => confirm("Refuser ce versement ?") && action(async () => await db.rpc("admin_versement_decision", { demande: d.id, accepter: false }), "Versement refusé.")} className="rounded-lg bg-white px-2.5 py-1 text-xs font-bold text-stone-700">Refuser</button>
+                </>}
               </div>
             ))}
             {f.versements.length === 0 ? <p className="text-sm text-stone-500">Aucun versement.</p> : (
@@ -1333,6 +1643,12 @@ function FicheGroupe({ id, fermer, ouvrirUtilisateur, recharger }: { id: string;
             )}
           </BlocFiche>
 
+          {!fondateur ? (
+            <div className="grid gap-2 sm:grid-cols-2">
+              <button onClick={() => demander({ groupe_id: g.id, groupe_nom: g.name, client_nom: g.createur_nom, client_tel: g.createur_tel })} className="flex items-center justify-center gap-2 rounded-xl border border-violet-200 bg-violet-50 py-3 text-sm font-bold text-violet-800"><Send size={15} /> Ouvrir un dossier sur ce groupe</button>
+              <button onClick={() => demander({ motif: "Supprimer un groupe", groupe_id: g.id, groupe_nom: g.name, donnees: { action: "supprimer_groupe", groupe_id: g.id }, resume: `Supprimer le groupe « ${g.name} »` })} className="rounded-xl border border-red-200 py-3 text-sm font-bold text-red-600">Demander la suppression</button>
+            </div>
+          ) : (
           <button
             onClick={async () => {
               if (!confirm(`Supprimer définitivement « ${g.name} » ?`)) return;
@@ -1345,6 +1661,7 @@ function FicheGroupe({ id, fermer, ouvrirUtilisateur, recharger }: { id: string;
           >
             <Trash2 size={15} className="mr-1 inline" /> Supprimer ce groupe
           </button>
+          )}
         </>
       )}
     </Volet>
