@@ -1135,6 +1135,24 @@ function Annonces({ liste, recharger }: { liste: Annonce[]; recharger: () => voi
     setMsg(error ? "Erreur : " + error.message : "Annonce mise à jour.");
     recharger();
   };
+  // Déplacer une annonce : on renumérote toute la liste 1, 2, 3… dans le nouvel ordre
+  const [occupe, setOccupe] = useState(false);
+  const deplacer = async (i: number, sens: -1 | 1) => {
+    const j = i + sens;
+    if (j < 0 || j >= liste.length) return;
+    const ordre = [...liste];
+    [ordre[i], ordre[j]] = [ordre[j], ordre[i]];
+    setOccupe(true);
+    for (let k = 0; k < ordre.length; k++) {
+      if (ordre[k].ordre !== k + 1) {
+        const { error } = await db.from("annonces").update({ ordre: k + 1 }).eq("id", ordre[k].id);
+        if (error) { setOccupe(false); setMsg("Erreur : " + error.message); return; }
+      }
+    }
+    setOccupe(false);
+    setMsg("Ordre enregistré : c’est cet ordre qui passe sur l’accueil.");
+    recharger();
+  };
   async function ajouter(e: React.FormEvent) {
     e.preventDefault();
     if (!f.titre.trim()) return setMsg("Le titre est obligatoire.");
@@ -1146,10 +1164,16 @@ function Annonces({ liste, recharger }: { liste: Annonce[]; recharger: () => voi
   return (
     <>
       <section className="rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm lg:p-5">
-        <p className="mb-2 font-bold">Annonces affichées sur l’accueil</p>
+        <p className="font-bold">Annonces affichées sur l’accueil</p>
+        <p className="mb-2 text-xs text-stone-500">Elles passent dans cet ordre, de haut en bas. Utilise les flèches pour les déplacer.</p>
         <Liste>
-          {liste.map((a) => (
+          {liste.map((a, i) => (
             <div key={a.id} className="flex items-center gap-3 py-2.5 text-sm">
+              <span className="flex shrink-0 flex-col items-center">
+                <button disabled={occupe || i === 0} onClick={() => deplacer(i, -1)} aria-label={`Monter « ${a.titre} »`} className="grid h-6 w-7 place-items-center rounded-md text-stone-500 hover:bg-stone-100 disabled:opacity-25"><ChevronDown size={16} className="rotate-180" /></button>
+                <span className="text-[0.65rem] font-bold text-stone-400">{i + 1}</span>
+                <button disabled={occupe || i === liste.length - 1} onClick={() => deplacer(i, 1)} aria-label={`Descendre « ${a.titre} »`} className="grid h-6 w-7 place-items-center rounded-md text-stone-500 hover:bg-stone-100 disabled:opacity-25"><ChevronDown size={16} /></button>
+              </span>
               <span className={`h-8 w-8 shrink-0 rounded-lg ${a.couleur === "orange" ? "degrade-or" : a.couleur === "sombre" ? "bg-stone-800" : a.couleur === "bleu" ? "bg-sky-600" : "degrade-vert"}`} />
               <div className="min-w-0 flex-1">
                 <p className={`truncate font-semibold ${a.actif ? "" : "text-stone-400 line-through"}`}>{a.titre}</p>
