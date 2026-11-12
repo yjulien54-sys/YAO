@@ -1757,6 +1757,7 @@ function PhotoPrivee({ chemin, nom, taille = 44 }: { chemin: string | null; nom:
 function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string; recharger: () => void }) {
   const [f, setF] = useState({ nom: "", telephone: "", salaire: "", mdp: "" });
   const [fonctionsNouveau, setFonctionsNouveau] = useState<string[]>(["Agent du service client"]);
+  const [roleNouveau, setRoleNouveau] = useState<"agent" | "fondateur">("agent");
   const [msg, setMsg] = useState("");
   const [nouveau, setNouveau] = useState<{ numero: number; mdp: string; nom: string } | null>(null);
   const [occupe, setOccupe] = useState(false);
@@ -1770,7 +1771,7 @@ function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string
     e.preventDefault();
     setOccupe(true); setMsg(""); setNouveau(null);
     const { data } = await db.auth.getSession();
-    const r = await fetch("/api/admin/equipe", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` }, body: JSON.stringify({ nom: f.nom, telephone: f.telephone, salaire: f.salaire, motDePasse: f.mdp, fonctions: fonctionsNouveau }) }).then((x) => x.json()).catch(() => ({ ok: false, erreur: "Réseau indisponible." }));
+    const r = await fetch("/api/admin/equipe", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${data.session?.access_token ?? ""}` }, body: JSON.stringify({ nom: f.nom, telephone: f.telephone, salaire: f.salaire, motDePasse: f.mdp, fonctions: fonctionsNouveau, role: roleNouveau }) }).then((x) => x.json()).catch(() => ({ ok: false, erreur: "Réseau indisponible." }));
     setOccupe(false);
     if (!r.ok) return setMsg("Erreur : " + r.erreur);
     setNouveau({ numero: r.numero, mdp: f.mdp, nom: f.nom });
@@ -1809,7 +1810,7 @@ function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string
           {nouveau ? (
             <div className="space-y-3">
               <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 p-5 text-white">
-                <p className="text-sm text-emerald-100">Accès de {nouveau.nom}</p>
+                <p className="text-sm text-emerald-100">Accès de {nouveau.nom}{roleNouveau === "fondateur" ? " · co-fondateur" : ""}</p>
                 <p className="mt-2 text-xs uppercase tracking-wide text-emerald-200">Adresse</p>
                 <p className="font-bold">tontine-et-cotise.vercel.app/admin</p>
                 <div className="mt-3 grid grid-cols-2 gap-3">
@@ -1829,6 +1830,16 @@ function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string
                 <label className="block"><span className="mb-1 block text-sm font-semibold">Salaire mensuel</span><input value={f.salaire} onChange={(e) => setF({ ...f, salaire: e.target.value })} inputMode="numeric" placeholder="ex : 120000" className={champ} /></label>
               </div>
               <div>
+                <span className="mb-1.5 block text-sm font-semibold">Rôle</span>
+                <div className="grid grid-cols-2 gap-2">
+                  {([["agent", "Agent", "Service client, sans pouvoirs sensibles"], ["fondateur", "Co-fondateur", "Tous les pouvoirs, comme toi"]] as const).map(([id, t, d]) => (
+                    <button key={id} type="button" onClick={() => setRoleNouveau(id)} className={`rounded-xl border p-2.5 text-left text-xs ${roleNouveau === id ? (id === "fondateur" ? "border-emerald-600 bg-emerald-50" : "border-sky-600 bg-sky-50") : "border-stone-200"}`}>
+                      <span className="block text-sm font-bold">{t}</span>{d}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <div>
                 <span className="mb-1.5 block text-sm font-semibold">Fonction(s)</span>
                 <ChoixFonctions valeur={fonctionsNouveau} onChange={setFonctionsNouveau} />
               </div>
@@ -1843,20 +1854,21 @@ function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string
         <Bloc titre={`Équipe (${liste.length})`} sous="Touche un agent pour ouvrir son dossier" action={agents.length > 0 ? <button onClick={retirerTous} className="text-xs font-bold text-red-600">Retirer tous les agents</button> : undefined}>
           <Liste>
             {liste.map((m) => (
-              <button key={m.email} onClick={() => m.role === "agent" && setFiche(m.email)} className="flex w-full items-center gap-3 py-3 text-left text-sm enabled:hover:bg-stone-50" disabled={m.role !== "agent"}>
+              <button key={m.email} onClick={() => setFiche(m.email)} className="flex w-full items-center gap-3 py-3 text-left text-sm enabled:hover:bg-stone-50" disabled={m.email.toLowerCase() === moi.toLowerCase()}>
                 <PhotoPrivee chemin={m.photo_path} nom={m.nom ?? m.email} />
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold"><span className="mr-1.5 rounded-md bg-stone-900 px-1.5 py-0.5 font-mono text-[0.7rem] text-white">{m.numero ?? "—"}</span>{m.nom ?? m.email}{m.email.toLowerCase() === moi.toLowerCase() && <span className="font-normal text-stone-400"> (toi)</span>}</p>
                   {!!m.fonctions?.length && <p className="truncate text-xs font-semibold text-sky-700">{m.fonctions.join(" · ")}</p>}
                   <p className="truncate text-xs text-stone-500">{m.role === "fondateur" ? "Fondateur" : `${m.telephone ? telAffiche(m.telephone) : "pas de numéro Wave"} · ${m.salaire ? fcfa(m.salaire) + "/mois" : "salaire non renseigné"}`}</p>
                 </div>
-                {m.role === "agent" ? <BadgeCnps ok={m.cnps_declare} /> : <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[0.7rem] font-bold text-emerald-800">Fondateur</span>}
+                {m.role === "agent" ? <BadgeCnps ok={m.cnps_declare} /> : <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[0.7rem] font-bold text-emerald-800">{m.email.toLowerCase() === moi.toLowerCase() ? "Fondateur (toi)" : "Co-fondateur"}</span>}
               </button>
             ))}
           </Liste>
         </Bloc>
       </div>
       {ouverte && <FicheAgent a={ouverte} fermer={() => setFiche(null)} recharger={recharger} retirer={() => { setFiche(null); retirer(ouverte); }} />}
+      <p className="text-xs text-stone-500">Plusieurs fondateurs ont exactement les mêmes pouvoirs (revenus, salaires, suppression, équipe…). Nomme co-fondateur seulement un associé de confiance. Pour retirer un co-fondateur : repasse-le agent, puis retire-le.</p>
     </>
   );
 }
@@ -1891,7 +1903,22 @@ function FicheAgent({ a, fermer, recharger, retirer }: { a: Membre_Equipe; ferme
     recharger();
   }
   return (
-    <Volet titre={`${a.numero ?? ""} · ${a.nom ?? a.email}`} sousTitre={`Agent service client · identifiant de connexion : ${a.numero ?? "—"}`} fermer={fermer}>
+    <Volet titre={`${a.numero ?? ""} · ${a.nom ?? a.email}`} sousTitre={`${a.role === "fondateur" ? "Co-fondateur" : "Agent service client"} · identifiant de connexion : ${a.numero ?? a.email}`} fermer={fermer}>
+      <div className={`flex flex-wrap items-center gap-3 rounded-2xl p-4 text-sm ring-1 ${a.role === "fondateur" ? "bg-emerald-50 ring-emerald-200" : "bg-sky-50 ring-sky-200"}`}>
+        <span className="flex-1"><b>{a.role === "fondateur" ? "Co-fondateur" : "Agent"}</b> · {a.role === "fondateur" ? "a tous les pouvoirs, comme toi." : "ne peut rien confirmer ni supprimer, il t’envoie des dossiers."}</span>
+        <button
+          onClick={async () => {
+            const vers = a.role === "fondateur" ? "agent" : "fondateur";
+            if (!confirm(vers === "fondateur" ? `Nommer ${a.nom ?? a.email} co-fondateur ? Il aura TOUS les pouvoirs : revenus, salaires, suppression des groupes, gestion de l’équipe.` : `Repasser ${a.nom ?? a.email} agent ? Il perdra ses pouvoirs de fondateur.`)) return;
+            const { error } = await db.rpc("admin_changer_role", { adresse: a.email, nouveau_role: vers });
+            setMsg(error ? "Erreur : " + (error.message.includes("admin_changer_role") ? "fais d’abord la mise à jour SQL n°25." : error.message) : vers === "fondateur" ? "Nommé co-fondateur." : "Repassé agent.");
+            recharger();
+          }}
+          className={`rounded-xl px-3 py-2 text-xs font-bold text-white ${a.role === "fondateur" ? "bg-stone-700" : "bg-emerald-700"}`}
+        >
+          {a.role === "fondateur" ? "Repasser agent" : "Nommer co-fondateur"}
+        </button>
+      </div>
       <div className="flex items-center gap-4 rounded-2xl bg-white p-4 ring-1 ring-stone-200/80">
         <PhotoPrivee chemin={a.photo_path} nom={a.nom ?? a.email} taille={72} />
         <div className="min-w-0 flex-1 space-y-1">
@@ -1956,7 +1983,7 @@ function FicheAgent({ a, fermer, recharger, retirer }: { a: Membre_Equipe; ferme
         </BlocFiche>
         <button className="w-full rounded-xl bg-emerald-700 py-3 text-sm font-bold text-white">Enregistrer le dossier</button>
       </form>
-      <button onClick={retirer} className="w-full rounded-xl border border-red-200 py-3 text-sm font-bold text-red-600 hover:bg-red-50">Retirer cet agent</button>
+      {a.role === "agent" && <button onClick={retirer} className="w-full rounded-xl border border-red-200 py-3 text-sm font-bold text-red-600 hover:bg-red-50">Retirer cet agent</button>}
     </Volet>
   );
 }
