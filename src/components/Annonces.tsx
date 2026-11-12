@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { ChevronRight, Lightbulb, Megaphone, Smartphone, Sparkles, Volume2, VolumeX } from "lucide-react";
+import { ChevronRight, Lightbulb, Megaphone, Smartphone, Sparkles } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type Annonce = { id: string; titre: string; texte?: string | null; lien?: string | null; bouton?: string | null; couleur: "vert" | "orange" | "bleu" | "sombre"; video?: string | null };
@@ -173,49 +173,31 @@ function iconeDe(a: Annonce) {
   return Megaphone;
 }
 
-/** Annonce vidéo : elle démarre quand c'est son tour (avec le son si le téléphone l'autorise), puis passe à la suivante à la fin */
+/** Annonce vidéo : elle passe sans le son quand c'est son tour, puis l'annonce suivante arrive à la fin */
 function DiapoVideo({ a, active, fin, duree }: { a: Annonce; active: boolean; fin: () => void; duree: (s: number | null) => void }) {
   const ref = useRef<HTMLVideoElement>(null);
-  const [muet, setMuet] = useState(false);
   useEffect(() => {
     const v = ref.current;
     if (!v) return;
     if (!active) { v.pause(); return; }
     v.currentTime = 0;
-    v.muted = false;
-    setMuet(false);
+    v.muted = true;
     if (Number.isFinite(v.duration)) duree(v.duration);
-    v.play().catch(() => {
-      // Le téléphone bloque le son sans geste de l'utilisateur : on lance sans le son
-      v.muted = true;
-      setMuet(true);
-      v.play().catch(() => fin());
-    });
+    v.play().catch(() => fin());
   }, [active]); // eslint-disable-line react-hooks/exhaustive-deps
-  const son = () => {
-    const v = ref.current;
-    if (!v) return;
-    v.muted = !v.muted;
-    setMuet(v.muted);
-    if (v.paused) v.play().catch(() => {});
-  };
   return (
     <div className="relative aspect-[16/7] w-full overflow-hidden bg-[#064e3b]">
       <video
         ref={ref}
         src={a.video!}
+        muted
         playsInline
         preload="metadata"
         onLoadedMetadata={(e) => active && duree(e.currentTarget.duration)}
         onEnded={fin}
         onError={fin}
-        onClick={son}
-        className="absolute inset-0 h-full w-full cursor-pointer object-cover"
+        className="absolute inset-0 h-full w-full object-cover"
       />
-      <button type="button" onClick={son} aria-label={muet ? "Activer le son" : "Couper le son"}
-        className={`absolute bottom-2 right-2 inline-flex items-center gap-1 rounded-full px-2.5 py-1.5 text-[0.7rem] font-bold shadow-lg backdrop-blur ${muet ? "bg-white text-stone-900" : "bg-black/40 text-white"}`}>
-        {muet ? <><VolumeX size={13} /> Son</> : <Volume2 size={13} />}
-      </button>
       {a.lien && a.bouton && (
         a.lien.startsWith("http")
           ? <a href={a.lien} target="_blank" rel="noreferrer" className="absolute bottom-2 left-2 inline-flex items-center gap-1 rounded-full bg-white px-2.5 py-1.5 text-[0.7rem] font-bold text-stone-900 shadow-lg">{a.bouton} <ChevronRight size={14} /></a>
