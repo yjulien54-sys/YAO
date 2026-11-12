@@ -2182,7 +2182,7 @@ function Revenus() {
               <span className="font-semibold">%</span>
             </div>
             <div className="flex flex-wrap gap-1.5">
-              {["0", "40", "50", "60"].map((x) => (
+              {["0", "40", "50", "60", "70", "80"].map((x) => (
                 <button key={x} onClick={() => setPartPen(x)} className={`rounded-full border px-2.5 py-1 text-xs font-bold ${partPen === x ? "border-red-600 bg-red-600 text-white" : "border-stone-200 bg-white text-stone-600"}`}>{x} % Cotiz · {100 - Number(x)} % groupe</button>
               ))}
             </div>
