@@ -79,8 +79,9 @@ export async function POST(req: Request) {
     })) as Record<string, unknown>[];
   let { error } = await sb.from("payments").insert(lignesPaiement);
   // Mises à jour SQL n°23 / n°27 pas encore faites : on enregistre sans les colonnes manquantes
-  for (const col of ["penalite_cotiz", "frais_operateur", "frais_service"]) {
-    if (!error || !error.message.includes(col)) continue;
+  for (let essai = 0; essai < 4 && error; essai++) {
+    const col = ["penalite_cotiz", "frais_operateur", "frais_service"].find((c) => error!.message.includes(c));
+    if (!col) break;
     lignesPaiement.forEach((l) => delete l[col]);
     ({ error } = await sb.from("payments").insert(lignesPaiement));
   }
