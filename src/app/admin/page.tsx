@@ -101,7 +101,7 @@ const AdminCtx = createContext<{ fondateur: boolean; demander: (d: DossierInit) 
 const MOTIFS = [
   "Confirmer un paiement", "Refuser un paiement", "Valider un versement", "Refuser un versement",
   "Modifier nom / numéro / date de naissance", "Bloquer un compte", "Débloquer un compte",
-  "Accepter un membre", "Retirer un membre", "Changer un rôle", "Supprimer un groupe",
+  "Accepter un membre", "Retirer un membre", "Changer un rôle", "Supprimer un groupe", "Supprimer un compte",
   "Litige / remboursement", "Réclamation d’un client", "Problème technique", "Autre",
 ];
 type Annonce = { id: string; titre: string; texte: string | null; lien: string | null; bouton: string | null; couleur: string; actif: boolean; ordre: number; video?: string | null };
@@ -2329,6 +2329,30 @@ function FicheUtilisateur({ id, fermer, ouvrirGroupe, recharger }: { id: string;
             </div>
             {f.historique_code.length > 0 && <p className="mt-3 text-xs text-stone-500">Historique du code : {f.historique_code.slice(0, 6).map((h) => `${h.action} (${dateCourte(h.le)})`).join(" · ")}</p>}
             {f.tentatives.length > 0 && <p className="mt-1 text-xs text-stone-500">Connexions sur un autre téléphone : {f.tentatives.filter((t) => t.reussie).length} réussie(s), {f.tentatives.filter((t) => !t.reussie).length} échouée(s)</p>}
+          </BlocFiche>
+
+          <BlocFiche titre="Supprimer le compte">
+            <p className="text-sm text-stone-600"><b>Bloquer</b> : la personne ne peut plus rien faire, et son numéro ne peut plus jamais se réinscrire. <b>Supprimer</b> : son compte et ses données personnelles sont effacés, et son numéro pourra se réinscrire plus tard. Ses paiements déjà faits restent dans les groupes (preuves), et les groupes qu’elle a créés passent au trésorier, ou sont effacés si elle était seule.</p>
+            {fondateur ? (
+              <button
+                onClick={async () => {
+                  const saisie = prompt(`Supprimer DÉFINITIVEMENT le compte de ${p.name} (${telAffiche(p.phone)}) ? Rien ne pourra être récupéré.\n\nPour confirmer, écris : SUPPRIMER`);
+                  if (saisie === null) return;
+                  if (saisie.trim().toUpperCase() !== "SUPPRIMER") return setMsg("Confirmation incorrecte : rien n’a été supprimé.");
+                  const { data, error } = await db.rpc("admin_supprimer_compte", { p: id });
+                  if (error) return setMsg("Erreur : " + (error.message.includes("admin_supprimer_compte") ? "fais d’abord la mise à jour SQL n°26." : error.message));
+                  const r = data as { groupes_supprimes: number; groupes_confies: number; places_gardees: number };
+                  alert(`Compte supprimé.\n${r.groupes_supprimes} groupe(s) effacé(s), ${r.groupes_confies} groupe(s) confié(s) au trésorier, ${r.places_gardees} place(s) gardée(s) pour l’historique des paiements.`);
+                  recharger();
+                  fermer();
+                }}
+                className="mt-3 inline-flex items-center gap-1.5 rounded-xl border border-red-300 bg-red-50 px-3 py-2 text-sm font-bold text-red-700 hover:bg-red-100"
+              >
+                <Trash2 size={15} /> Supprimer définitivement ce compte
+              </button>
+            ) : (
+              <button onClick={() => demander({ motif: "Supprimer un compte", client_profile_id: id, client_nom: p.name, client_tel: p.phone, donnees: { action: "supprimer_compte", profile_id: id }, resume: `Supprimer définitivement le compte de ${p.name}` })} className="mt-3 inline-flex items-center gap-1.5 rounded-xl bg-violet-700 px-3 py-2 text-sm font-bold text-white"><Send size={15} /> Demander la suppression au fondateur</button>
+            )}
           </BlocFiche>
 
           {!fondateur && (
