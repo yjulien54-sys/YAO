@@ -116,8 +116,11 @@ export const payoutFor = (g: Group, round = g.currentRound) =>
   g.payouts.find((p) => p.round === round && p.status !== "echoue" && (p.nature ?? "versement") === "versement");
 
 /** Caisse : entrées nettes (après frais) moins les versements. */
+/** Part des pénalités revenue à Cotiz (paiements en ligne) : elle ne va pas dans la caisse du groupe */
+const partCotiz = (ps: Payment[]) => ps.reduce((s, p) => s + (p.penaliteCotiz ?? 0), 0);
+
 export function caisse(g: Group) {
-  const brut = sum(g.payments);
+  const brut = sum(g.payments) - partCotiz(g.payments);
   const frais = feesOf(g.payments);
   const verse = g.payouts.filter((p) => p.status !== "echoue").reduce((s, p) => s + p.amount, 0);
   return { brut, frais, net: brut - frais, verse, solde: brut - frais - verse };
@@ -128,7 +131,7 @@ export function netDuTour(g: Group, round = g.currentRound) {
   const ps = g.payments.filter((p) => p.round === round);
   // Si les pénalités ont une autre destination, elles ne vont pas au bénéficiaire du tour
   const penalites = g.penaltyDestination && g.penaltyDestination !== "beneficiaire" ? ps.reduce((s, p) => s + p.penalty, 0) : 0;
-  return sum(ps) - feesOf(ps) - penalites;
+  return sum(ps) - feesOf(ps) - penalites - (penalites ? 0 : partCotiz(ps));
 }
 
 /* ---------- Destination des pénalités ---------- */
@@ -144,7 +147,7 @@ export const NATURE_LABEL = { versement: "Versé à", don: "Don à", solidarite:
 /** Caisse des pénalités (quand elles ne vont pas au bénéficiaire du tour) */
 export function caissePenalites(g: Group) {
   if (!g.penaltyDestination || g.penaltyDestination === "beneficiaire") return null;
-  const total = g.payments.reduce((s, p) => s + p.penalty, 0);
+  const total = g.payments.reduce((s, p) => s + p.penalty, 0) - partCotiz(g.payments);
   const sorties = g.payouts.filter((p) => p.status !== "echoue" && p.nature && p.nature !== "versement");
   const utilise = sorties.reduce((s, p) => s + p.amount, 0);
   return { total, utilise, solde: total - utilise, sorties };

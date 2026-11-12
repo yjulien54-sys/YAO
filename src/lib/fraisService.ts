@@ -30,3 +30,17 @@ export function fraisPour(montant: number, tranches: Tranche[], pourcent = 0): n
   const t = tranches.find((x) => x.max === null || montant < x.max) ?? tranches[tranches.length - 1];
   return Math.max(0, Math.round(t?.frais ?? 0)) + Math.round((montant * lirePourcent(String(pourcent))) / 100);
 }
+
+/** Frais estimés de l'opérateur de paiement, ajoutés au montant payé par le membre (la caisse reçoit la cotisation entière) */
+export function fraisOperateurPour(montant: number, fournisseur: string | null | undefined): number {
+  if (fournisseur === "wave") return Math.round(montant * 0.01);
+  if (fournisseur === "geniuspay") return Math.round(montant * 0.025) + 100;
+  if (fournisseur === "cinetpay") return Math.round(montant * 0.03);
+  return 0;
+}
+
+/** Part des pénalités qui revient à Cotiz (0 à 100 %) */
+export function lirePartPenalite(valeur?: string | null): number {
+  const n = Number(valeur ?? "0");
+  return Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n))) : 0;
+}

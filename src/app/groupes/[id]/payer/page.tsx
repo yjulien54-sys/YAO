@@ -7,7 +7,8 @@ import { Button, Card, Field, Header, Loading, Page, WhatsAppIcon, btnClass, inp
 import { dateCourte, fcfa, prenom, telAffiche } from "@/lib/format";
 import { dueDate, roundAmount, roundsToPay } from "@/lib/logic";
 import { lienCaisse, useCaisseCotiz, useFraisService } from "@/lib/caisse";
-import { MODE_PAIEMENT, fournisseurPour, fraisTransaction, OPERATEURS, initierPaiement, lienWaveAvecMontant, lienWaveValide } from "@/lib/payments";
+import { fraisOperateurPour } from "@/lib/fraisService";
+import { MODE_PAIEMENT, fournisseurPour, OPERATEURS, initierPaiement, lienWaveAvecMontant, lienWaveValide } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
 import { waLink } from "@/lib/whatsapp";
@@ -97,8 +98,10 @@ function Payer() {
   const total = isCollecte ? Number(montant) || 0 : lignes.reduce((s, l) => s + l.total, 0);
   // Frais de service Cotiz : seulement pour un paiement en ligne (le paiement manuel au trésorier reste gratuit)
   const enLigne = MODE_PAIEMENT !== "manuel" && MODE_PAIEMENT !== "simulation";
+  // Tous les frais (service Cotiz + opérateur) s'ajoutent au montant : la caisse reçoit la cotisation entière.
+  // Ils ne sont pas détaillés ici, seulement sur le reçu.
   const fraisCotiz = enLigne ? service.frais(total) : 0;
-  const totalAPayer = total + fraisCotiz;
+  const totalAPayer = enLigne && total > 0 ? total + fraisCotiz + fraisOperateurPour(total + fraisCotiz, fournisseurPour(method)) : total;
   const rienAPayer = !isCollecte && aPayer.length === 0;
   const operateurs = MODE_PAIEMENT === "wave" ? OPERATEURS.filter((o) => o.id === "wave") : OPERATEURS;
   const op = operateurs.find((o) => o.id === method) ?? operateurs[0];
@@ -388,11 +391,9 @@ function Payer() {
                 <input className={inputClass} inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
               </Field>
             )}
-            {fraisCotiz > 0 && total > 0 && (
-              <div className="rounded-2xl bg-white p-3 text-sm ring-1 ring-stone-200">
-                <div className="flex justify-between"><span className="text-stone-600">Cotisation</span><span className="font-semibold">{fcfa(total)}</span></div>
-                <div className="mt-1 flex justify-between"><span className="text-stone-600">Frais de service Cotiz</span><span className="font-semibold">{fcfa(fraisCotiz)}</span></div>
-                <div className="mt-2 flex justify-between border-t border-stone-100 pt-2"><span className="font-bold">Total à payer</span><span className="text-lg font-extrabold">{fcfa(totalAPayer)}</span></div>
+            {enLigne && totalAPayer > total && (
+              <div className="flex items-center justify-between rounded-2xl bg-white p-3 ring-1 ring-stone-200">
+                <span className="font-bold">Montant à payer</span><span className="text-xl font-extrabold">{fcfa(totalAPayer)}</span>
               </div>
             )}
             {erreur && <p className="text-sm font-medium text-red-600">{erreur}</p>}
@@ -411,9 +412,7 @@ function Payer() {
                   : jeSuisTresorier
                     ? "Le paiement est enregistré tout de suite comme reçu. Tout le groupe verra le reçu."
                     : "Ton paiement sera validé par le trésorier après vérification. Tout le groupe verra le reçu."
-                : fraisCotiz > 0
-                  ? `Ta cotisation (${fcfa(total)}) va entièrement au groupe. Tu paies en plus ${fcfa(fraisCotiz)} de frais de service Cotiz. Les frais de l’opérateur (environ ${fcfa(fraisTransaction(total, method))}) sont pris sur la caisse.`
-                  : `Tu paies exactement ${fcfa(total)}. Les frais de paiement (environ ${fcfa(fraisTransaction(total, method))}) sont pris sur la caisse du groupe.`}
+                : `Ta cotisation de ${fcfa(total)} va entièrement au groupe. Le détail figure sur ton reçu.`}
               {MODE_PAIEMENT !== "manuel" && !pourAutrui ? ` Reçu visible par tout le groupe.` : ""}
             </p>
             <LienAide sujet={`Bonjour, j’ai besoin d’aide pour payer dans le groupe « ${g.name} ».`} />

@@ -79,7 +79,6 @@ export default function GroupeDetail() {
   const versementTour = g.type === "tontine" ? payoutFor(g) : undefined;
   const mesArrieres = me ? arrears(g, me.id) : [];
   const peutAvancer = me && g.type !== "collecte" && roundsToPay(g, me.id).length > 0;
-  const fraisTour = st.collected - netTour;
   // Paiements déclarés, regroupés par déclaration (même membre + même référence)
   const declarations = Object.values(
     g.pending.reduce<Record<string, typeof g.pending>>((acc, p) => {
@@ -147,11 +146,6 @@ export default function GroupeDetail() {
             <p className="mt-0.5 text-[2.1rem] font-extrabold leading-tight tracking-tight">{fcfa(st.collected)}</p>
             <p className="text-sm text-emerald-100">sur {fcfa(st.expected)} {g.type === "collecte" ? "d’objectif" : "attendus"}</p>
             <Progress value={st.progress} className="mt-3 bg-white/25" />
-            {(g.type === "collecte" ? cs.frais : fraisTour) > 0 && (
-              <p className="mt-2 text-xs text-emerald-100">
-                Frais Mobile Money : −{fcfa(g.type === "collecte" ? cs.frais : fraisTour)} · Net : <b className="text-white">{fcfa(g.type === "collecte" ? cs.net : netTour)}</b>
-              </p>
-            )}
             {g.type !== "tontine" && cs.verse > 0 && (
               <p className="mt-1 text-xs text-emerald-100">Déjà versé : {fcfa(cs.verse)} · Solde de la caisse : <b className="text-white">{fcfa(cs.solde)}</b></p>
             )}
@@ -730,7 +724,7 @@ export default function GroupeDetail() {
           <Card className="space-y-2">
             <p className="text-sm font-bold">{g.type === "collecte" ? "Remettre les fonds" : "Sortie de caisse"}</p>
             <p className="text-xs text-stone-600">
-              Solde disponible : <b>{fcfa(cs.solde)}</b> (frais Mobile Money déduits).
+              Solde disponible : <b>{fcfa(cs.solde)}</b>.
               {g.type === "collecte" ? " Remets l’argent à la personne désignée, puis enregistre-le ici." : " Enregistre chaque dépense de l’association pour que tout le monde la voie."}
             </p>
             <Button variant="secondary" className="w-full" disabled={enValidation.length > 0} onClick={() => setVersement(true)}>

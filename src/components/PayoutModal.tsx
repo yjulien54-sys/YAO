@@ -44,7 +44,7 @@ export function PayoutModal({
         <Field label="Bénéficiaire">
           <input className={inputClass} value={nom} onChange={(e) => setNom(e.target.value)} readOnly={!nomModifiable} />
         </Field>
-        <Field label="Montant versé (F CFA)" hint={`Disponible dans la caisse : ${fcfa(max)} (frais Mobile Money déjà déduits)`}>
+        <Field label="Montant versé (F CFA)" hint={`Disponible dans la caisse : ${fcfa(max)}`}>
           <input className={`${inputClass} text-xl font-extrabold`} inputMode="numeric" value={valeur} onChange={(e) => setValeur(e.target.value.replace(/\D/g, ""))} />
         </Field>
         <div>

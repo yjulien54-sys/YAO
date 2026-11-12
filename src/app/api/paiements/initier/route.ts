@@ -1,13 +1,12 @@
 import { NextResponse } from "next/server";
 import { roundAmount, roundsToPay } from "@/lib/logic";
 import { mapGroup } from "@/lib/mappers";
-import { fraisMobileMoney } from "@/lib/payments";
 import { fournisseurConfigure, initierCinetpay, supabaseAdmin, userFromRequest } from "@/lib/server/cinetpay";
 import { creerSessionWave } from "@/lib/server/wave";
 import { geniuspayConfigure, initierGeniuspay } from "@/lib/server/geniuspay";
 import { waveConfigured } from "@/lib/server/wave";
 import type { PayMethod } from "@/lib/types";
-import { fraisPour, lirePourcent, lireTranches } from "@/lib/fraisService";
+import { fraisOperateurPour, fraisPour, lirePartPenalite, lirePourcent, lireTranches } from "@/lib/fraisService";
 
 export const runtime = "nodejs";
 
@@ -54,7 +53,12 @@ export async function POST(req: Request) {
   const { data: reglages } = await sb.from("parametres_app").select("cle, valeur").like("cle", "frais_service_%");
   const r = Object.fromEntries((reglages ?? []).map((x: { cle: string; valeur: string | null }) => [x.cle, x.valeur]));
   const fraisService = reglages?.length && r.frais_service_actif !== "non" ? fraisPour(total, lireTranches(r.frais_service_tranches), lirePourcent(r.frais_service_pourcent)) : 0;
-  const aPayer = total + fraisService;
+  // Frais de l'opérateur ajoutés au paiement : la caisse du groupe reçoit la cotisation entière
+  const fraisOperateur = fraisOperateurPour(total + fraisService, fournisseur);
+  const aPayer = total + fraisService + fraisOperateur;
+  // Part de Cotiz sur les pénalités payées en ligne (réglée dans /admin → Mes revenus)
+  const penalites = lignes.reduce((t, l) => t + l.penalty, 0);
+  const penaliteCotiz = Math.round((penalites * lirePartPenalite(r.frais_service_part_penalite)) / 100);
 
   const transactionId = `CTZ${Date.now()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
   const lignesPaiement = lignes.map((l, i) => ({
@@ -63,23 +67,22 @@ export async function POST(req: Request) {
       round: l.round,
       amount: l.amount,
       penalty: l.penalty,
-      // frais estimés ; le frais fixe (s'il existe) est compté sur la première ligne
-      fees: fournisseur === "wave" && mode === "mixte"
-        ? Math.round((l.amount + l.penalty) * 0.01)
-        : mode === "mixte"
-          ? Math.round((l.amount + l.penalty) * 0.025) + (i === 0 ? 100 : 0)
-          : fraisMobileMoney(l.amount + l.penalty, "wave") + (i === 0 ? Number(process.env.NEXT_PUBLIC_FRAIS_FIXE ?? (mode === "geniuspay" ? 100 : 0)) : 0),
+      fees: 0, // les frais sont payés par le membre en plus : rien n'est retiré de la caisse
       method: method && ["wave", "orange", "mtn", "moov"].includes(method) ? method : "wave", // corrigé par l'opérateur réel après confirmation
       status: "en_attente",
       transaction_id: transactionId,
       reference: `${transactionId}-${i + 1}`, // permet de retrouver la transaction au retour
       created_by: user.id,
       ...(i === 0 && fraisService ? { frais_service: fraisService } : {}),
-    }));
+      ...(i === 0 && fraisOperateur ? { frais_operateur: fraisOperateur } : {}),
+      ...(i === 0 && penaliteCotiz ? { penalite_cotiz: penaliteCotiz } : {}),
+    })) as Record<string, unknown>[];
   let { error } = await sb.from("payments").insert(lignesPaiement);
-  // Mise à jour SQL n°23 pas encore faite : on enregistre sans la colonne des frais
-  if (error && /frais_service/.test(error.message)) {
-    ({ error } = await sb.from("payments").insert(lignesPaiement.map(({ frais_service: _f, ...l }) => l))); // eslint-disable-line @typescript-eslint/no-unused-vars
+  // Mises à jour SQL n°23 / n°27 pas encore faites : on enregistre sans les colonnes manquantes
+  for (const col of ["penalite_cotiz", "frais_operateur", "frais_service"]) {
+    if (!error || !error.message.includes(col)) continue;
+    lignesPaiement.forEach((l) => delete l[col]);
+    ({ error } = await sb.from("payments").insert(lignesPaiement));
   }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 

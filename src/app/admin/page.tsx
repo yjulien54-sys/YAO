@@ -2063,7 +2063,7 @@ function Salaires() {
   );
 }
 
-type Revenus = { total: number; nb: number; volume: number; depuis_debut: number; par_jour: { jour: string; montant: number; nb: number }[]; par_groupe: { groupe: string; montant: number; nb: number }[] };
+type Revenus = { total: number; frais?: number; penalites?: number; nb: number; volume: number; depuis_debut: number; par_jour: { jour: string; montant: number; nb: number }[]; par_groupe: { groupe: string; montant: number; nb: number }[] };
 
 function Revenus() {
   const [periode, setPeriode] = useState<"mois" | "30j" | "annee">("mois");
@@ -2071,6 +2071,7 @@ function Revenus() {
   const [tranches, setTranches] = useState<Tranche[]>(TRANCHES_DEFAUT);
   const [actif, setActif] = useState(true);
   const [pourcent, setPourcent] = useState("0");
+  const [partPen, setPartPen] = useState("50");
   const [msg, setMsg] = useState("");
   const [occupe, setOccupe] = useState(false);
   const bornes = () => {
@@ -2086,6 +2087,7 @@ function Revenus() {
     setTranches(lireTranches(v.frais_service_tranches));
     setActif(v.frais_service_actif !== "non");
     setPourcent(String(lirePourcent(v.frais_service_pourcent)).replace(".", ","));
+    setPartPen(v.frais_service_part_penalite ?? "50");
   }, [periode]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { charger(); }, [charger]);
 
@@ -2103,6 +2105,9 @@ function Revenus() {
     const pc = Number(pourcent.replace(",", ".")) || 0;
     const c = pc >= 0 && pc <= 10 ? await db.rpc("admin_parametre", { c: "frais_service_pourcent", v: String(pc) }) : { error: { message: "le pourcentage doit être entre 0 et 10 %" } };
     setOccupe(false);
+    const pp = Math.round(Number(partPen) || 0);
+    const d = pp >= 0 && pp <= 100 ? await db.rpc("admin_parametre", { c: "frais_service_part_penalite", v: String(pp) }) : { error: { message: "la part des pénalités doit être entre 0 et 100 %" } };
+    if (d.error && !c.error) { setOccupe(false); setMsg("Erreur : " + (d.error.message.includes("inconnu") ? "fais la mise à jour SQL n°27 pour la part des pénalités" : d.error.message)); return; }
     const e = a.error ?? b.error ?? (c.error ? { message: c.error.message.includes("inconnu") ? "fais la mise à jour SQL n°24 pour le pourcentage" : c.error.message } : null);
     setMsg(e ? "Erreur : " + e.message : nouvelActif ? "Frais enregistrés : ils s’appliquent dès maintenant aux paiements en ligne." : "Frais de service désactivés : les paiements en ligne sont sans frais Cotiz.");
     if (!e) setActif(nouvelActif);
@@ -2120,7 +2125,7 @@ function Revenus() {
         ))}
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Chiffre label="Mes revenus" valeur={fcfa(r.total)} detail={`${r.nb} paiement${r.nb > 1 ? "s" : ""} en ligne`} icone={Coins} ton="amber" />
+        <Chiffre label="Mes revenus" valeur={fcfa(r.total)} detail={r.penalites ? `frais ${fcfa(r.frais ?? 0)} + pénalités ${fcfa(r.penalites)}` : `${r.nb} paiement${r.nb > 1 ? "s" : ""} en ligne`} icone={Coins} ton="amber" />
         <Chiffre label="Argent passé en ligne" valeur={fcfa(r.volume)} detail={`soit ${pct} % pour Cotiz`} icone={Wallet} ton="emerald" />
         <Chiffre label="Moyenne par paiement" valeur={fcfa(r.nb ? Math.round(r.total / r.nb) : 0)} detail="frais de service" icone={BarChart3} ton="sky" />
         <Chiffre label="Depuis le début" valeur={fcfa(r.depuis_debut)} detail="total gagné" icone={BadgeCheck} ton="violet" />
@@ -2171,6 +2176,16 @@ function Revenus() {
               ))}
               <span className="self-center text-xs text-stone-500">0 % = seulement les montants fixes · 10 % maximum</span>
             </div>
+            <div className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50/50 p-3 text-sm">
+              <span className="flex-1"><span className="block font-semibold text-red-900">Part de Cotiz sur les pénalités</span><span className="text-xs text-stone-600">Le reste va à la caisse du groupe · paiements en ligne seulement</span></span>
+              <input value={partPen} onChange={(e) => setPartPen(e.target.value.replace(/\D/g, "").slice(0, 3))} inputMode="numeric" className={`${champ} !w-20 text-right font-bold text-red-700`} aria-label="Part de Cotiz sur les pénalités" />
+              <span className="font-semibold">%</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {["0", "40", "50", "60"].map((x) => (
+                <button key={x} onClick={() => setPartPen(x)} className={`rounded-full border px-2.5 py-1 text-xs font-bold ${partPen === x ? "border-red-600 bg-red-600 text-white" : "border-stone-200 bg-white text-stone-600"}`}>{x} % Cotiz · {100 - Number(x)} % groupe</button>
+              ))}
+            </div>
             <button onClick={() => { const der = tranches[tranches.length - 1]; const avant = tranches.slice(0, -1); const plafond = (avant[avant.length - 1]?.max ?? 0) + 10000; setTranches([...avant, { max: plafond, frais: der.frais }, der]); }} className="inline-flex items-center gap-1 text-xs font-bold text-amber-700"><Plus size={14} /> Ajouter une tranche</button>
             <div className="flex gap-2 pt-2">
               <button disabled={occupe} onClick={() => enregistrer()} className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-bold text-white disabled:opacity-50">{occupe ? "…" : "Enregistrer les frais"}</button>
@@ -2188,7 +2203,7 @@ function Revenus() {
                 ); })}
               </tbody>
             </table>
-            <p className="mt-2 text-xs text-stone-500">À cela s’ajoutent les frais de l’opérateur (GeniusPay ≈ 1 % + 100 F), pris sur la caisse du groupe.</p>
+            <p className="mt-2 text-xs text-stone-500">À cela s’ajoutent les frais de l’opérateur (GeniusPay ≈ 2,5 % + 100 F), payés aussi par le membre. Dans l’application, le membre voit seulement le montant total ; le détail figure sur son reçu.</p>
           </div>
         </div>
       </Bloc>

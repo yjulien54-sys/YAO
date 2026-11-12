@@ -42,6 +42,9 @@ export interface Payment {
   transactionId?: string; // référence de transaction (opérateur ou déclaration)
   status: "en_attente" | "reussi" | "echoue";
   encaisseCotiz?: boolean; // envoyé sur le compte marchand Cotiz : confirmé par Cotiz
+  fraisService?: number; // frais de service Cotiz payés en plus (visibles seulement sur le reçu)
+  fraisOperateur?: number; // frais de l'opérateur payés en plus (visibles seulement sur le reçu)
+  penaliteCotiz?: number; // part de la pénalité qui revient à Cotiz (pas dans la caisse du groupe)
 }
 
 export type PayoutMethod = PayMethod | "virement" | "cinetpay";

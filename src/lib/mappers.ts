@@ -14,6 +14,9 @@ export const mapPayment = (p: any): Payment => ({
   transactionId: p.transaction_id ?? undefined,
   status: p.status ?? "reussi",
   encaisseCotiz: !!p.encaisse_cotiz,
+  fraisService: p.frais_service ?? 0,
+  fraisOperateur: p.frais_operateur ?? 0,
+  penaliteCotiz: p.penalite_cotiz ?? 0,
 });
 
 export const mapPayout = (p: any): Payout => ({

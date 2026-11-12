@@ -61,13 +61,7 @@ export function CaisseGroupe({ g, userId }: { g: Group; userId: string | null })
           <dd className="mt-0.5 font-bold text-stone-900">{m(cs.verse)}</dd>
           <dd className="text-[0.7rem] text-stone-500">{g.type === "tontine" ? "aux bénéficiaires" : "sorti de la caisse"}</dd>
         </div>
-        {cs.frais > 0 && (
-          <div className="border-r border-t border-stone-200/80 p-3">
-            <dt className="text-xs text-stone-500">Frais Mobile Money</dt>
-            <dd className="mt-0.5 font-bold text-stone-900">{cache ? "•••• F" : `−${fcfa(cs.frais)}`}</dd>
-          </div>
-        )}
-        <div className={`border-t border-stone-200/80 p-3 ${cs.frais > 0 ? "" : "col-span-2"}`}>
+        <div className="col-span-2 border-t border-stone-200/80 p-3">
           <dt className="text-xs text-stone-500">Reste dans la caisse</dt>
           <dd className="mt-0.5 font-bold text-stone-900">{m(cs.solde)}</dd>
         </div>

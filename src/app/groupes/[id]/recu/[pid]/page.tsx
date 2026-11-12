@@ -39,12 +39,15 @@ function Recu() {
       </Page>
     );
 
+  // Frais payés en plus (service Cotiz + opérateur) : affichés seulement sur le reçu
+  const fraisPayes = (p.fraisService ?? 0) + (p.fraisOperateur ?? 0);
   const rows: [string, string][] = [
     ["Groupe", g.name],
     ["Membre", m?.name ?? "Ancien membre"],
     ...(g.type !== "collecte" ? ([["Tour", String(p.round)]] as [string, string][]) : []),
     ["Cotisation", fcfa(p.amount)],
     ...(p.penalty ? ([["Pénalité", fcfa(p.penalty)]] as [string, string][]) : []),
+    ...(fraisPayes ? ([["Frais de paiement", fcfa(fraisPayes)], ["Total payé", fcfa(p.amount + p.penalty + fraisPayes)]] as [string, string][]) : []),
     ["Moyen", METHOD_LABEL[p.method]],
     ["Date", dateLongue(p.date)],
     ["Référence", p.reference],
