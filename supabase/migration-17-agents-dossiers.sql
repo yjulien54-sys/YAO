@@ -173,6 +173,7 @@ begin
 end $$;
 
 -- 3. L'équipe
+drop function if exists public.admin_equipe();
 create or replace function public.admin_equipe() returns table (email text, nom text, role text, ajoute_le timestamptz)
 language plpgsql security definer set search_path = public as $$
 begin

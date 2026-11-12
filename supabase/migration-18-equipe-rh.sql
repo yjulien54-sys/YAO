@@ -113,6 +113,7 @@ create index if not exists planning_jour_idx on public.planning_agents (jour);
 alter table public.planning_agents enable row level security;
 revoke all on public.planning_agents from anon, authenticated;
 
+drop function if exists public.admin_planning(date, date);
 create or replace function public.admin_planning(du date, au date) returns table (id uuid, email text, nom text, numero integer, jour date, debut time, fin time, note text)
 language plpgsql security definer set search_path = public as $$
 begin
