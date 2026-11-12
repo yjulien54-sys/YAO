@@ -2087,7 +2087,7 @@ function Revenus() {
     setTranches(lireTranches(v.frais_service_tranches));
     setActif(v.frais_service_actif !== "non");
     setPourcent(String(lirePourcent(v.frais_service_pourcent)).replace(".", ","));
-    setTranchesPen(lireTranchesPenalite(v.frais_service_penalite_tranches, v.frais_service_part_penalite));
+    { const t = lireTranchesPenalite(v.frais_service_penalite_tranches, v.frais_service_part_penalite); setTranchesPen([{ max: null, part: t[t.length - 1]?.part ?? 50 }]); }
   }, [periode]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { charger(); }, [charger]);
 
@@ -2181,23 +2181,19 @@ function Revenus() {
               <span className="self-center text-xs text-stone-500">0 % = seulement les montants fixes · 10 % maximum</span>
             </div>
             <div className="space-y-2 rounded-2xl border border-red-200 bg-red-50/50 p-3 text-sm">
-              <p><span className="block font-semibold text-red-900">Part de Cotiz sur les pénalités</span><span className="text-xs text-stone-600">Selon le montant de la pénalité. Le reste va à la caisse du groupe · paiements en ligne seulement</span></p>
-              {tranchesPen.map((t, k) => (
-                <div key={k} className="flex items-center gap-2">
-                  <span className="w-24 shrink-0 text-stone-500">{k === 0 ? "De 0 F" : `De ${fcfa(tranchesPen[k - 1].max ?? 0)}`}</span>
-                  <span className="shrink-0 text-stone-500">à</span>
-                  {t.max === null ? <span className="w-28 shrink-0 rounded-xl bg-white px-3 py-2.5 text-right text-stone-500">au-delà</span> : (
-                    <input value={t.max} onChange={(e) => setTranchesPen(tranchesPen.map((x, j) => (j === k ? { ...x, max: Number(e.target.value.replace(/\D/g, "")) || 0 } : x)))} inputMode="numeric" className={`${champ} !w-28 shrink-0 text-right`} aria-label="Plafond de la tranche de pénalité" />
-                  )}
-                  <span className="shrink-0 text-stone-500">→</span>
-                  <select value={t.part} onChange={(e) => setTranchesPen(tranchesPen.map((x, j) => (j === k ? { ...x, part: Number(e.target.value) } : x)))} className={`${champ} !w-24 shrink-0 font-bold text-red-700`} aria-label="Part de Cotiz">
-                    {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((n) => <option key={n} value={n}>{n} %</option>)}
-                  </select>
-                  {tranchesPen.length > 1 && t.max !== null && <button onClick={() => setTranchesPen(tranchesPen.filter((_, j) => j !== k))} className="grid h-8 w-8 place-items-center rounded-lg text-stone-400 hover:bg-red-100 hover:text-red-600" aria-label="Supprimer la tranche"><Trash2 size={15} /></button>}
-                </div>
-              ))}
-              <button onClick={() => { const der = tranchesPen[tranchesPen.length - 1]; const avant = tranchesPen.slice(0, -1); const plafond = (avant[avant.length - 1]?.max ?? 0) + 1000; setTranchesPen([...avant, { max: plafond, part: der.part }, der]); }} className="inline-flex items-center gap-1 text-xs font-bold text-red-700"><Plus size={14} /> Ajouter une tranche de pénalité</button>
-              <p className="text-xs text-stone-600">Exemple : pénalité de 2 000 F → Cotiz {fcfa(partCotizPenalite(2000, tranchesPen))}, groupe {fcfa(2000 - partCotizPenalite(2000, tranchesPen))}.</p>
+              <p><span className="block font-semibold text-red-900">Part de Cotiz sur les pénalités</span><span className="text-xs text-stone-600">Un seul réglage pour toute l’application. Le reste va à la caisse du groupe · paiements en ligne seulement</span></p>
+              <div className="flex flex-wrap gap-1.5">
+                {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((n) => {
+                  const actuel = tranchesPen[tranchesPen.length - 1]?.part ?? 0;
+                  return (
+                    <button key={n} type="button" onClick={() => setTranchesPen([{ max: null, part: n }])}
+                      className={`rounded-full border px-3 py-1.5 text-xs font-bold ${actuel === n && tranchesPen.length === 1 ? "border-red-600 bg-red-600 text-white" : "border-stone-200 bg-white text-stone-700"}`}>
+                      {n} %
+                    </button>
+                  );
+                })}
+              </div>
+              <p className="text-xs text-stone-600">Choisi : <b className="text-red-700">{tranchesPen[tranchesPen.length - 1]?.part ?? 0} % pour Cotiz</b>, {100 - (tranchesPen[tranchesPen.length - 1]?.part ?? 0)} % pour le groupe. Exemple : pénalité de 1 000 F → Cotiz {fcfa(partCotizPenalite(1000, [{ max: null, part: tranchesPen[tranchesPen.length - 1]?.part ?? 0 }]))}, groupe {fcfa(1000 - partCotizPenalite(1000, [{ max: null, part: tranchesPen[tranchesPen.length - 1]?.part ?? 0 }]))}.</p>
             </div>
 
             <div className="flex gap-2 pt-2">
