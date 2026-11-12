@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Button, Card, Field, Header, Loading, Page, WhatsAppIcon, btnClass, inputClass, useRequireUser } from "@/components/ui";
 import { dateCourte, fcfa, prenom, telAffiche } from "@/lib/format";
 import { dueDate, roundAmount, roundsToPay } from "@/lib/logic";
-import { lienCaisse, useCaisseCotiz } from "@/lib/caisse";
+import { lienCaisse, useCaisseCotiz, useFraisService } from "@/lib/caisse";
 import { MODE_PAIEMENT, fournisseurPour, fraisTransaction, OPERATEURS, initierPaiement, lienWaveAvecMontant, lienWaveValide } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
@@ -51,6 +51,7 @@ function Payer() {
   const g = getGroup(id);
   const me = useMe(g);
   const caisse = useCaisseCotiz();
+  const service = useFraisService();
   const member = g?.members.find((m) => m.id === search.get("membre")) ?? me;
 
   const [method, setMethod] = useState<Exclude<PayMethod, "especes">>("wave");
@@ -94,6 +95,10 @@ function Payer() {
   const tours = choix.slice(0, nb);
   const lignes = tours.map((r) => ({ r, ...roundAmount(g, r) }));
   const total = isCollecte ? Number(montant) || 0 : lignes.reduce((s, l) => s + l.total, 0);
+  // Frais de service Cotiz : seulement pour un paiement en ligne (le paiement manuel au trésorier reste gratuit)
+  const enLigne = MODE_PAIEMENT !== "manuel" && MODE_PAIEMENT !== "simulation";
+  const fraisCotiz = enLigne ? service.frais(total) : 0;
+  const totalAPayer = total + fraisCotiz;
   const rienAPayer = !isCollecte && aPayer.length === 0;
   const operateurs = MODE_PAIEMENT === "wave" ? OPERATEURS.filter((o) => o.id === "wave") : OPERATEURS;
   const op = operateurs.find((o) => o.id === method) ?? operateurs[0];
@@ -383,13 +388,20 @@ function Payer() {
                 <input className={inputClass} inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />
               </Field>
             )}
+            {fraisCotiz > 0 && total > 0 && (
+              <div className="rounded-2xl bg-white p-3 text-sm ring-1 ring-stone-200">
+                <div className="flex justify-between"><span className="text-stone-600">Cotisation</span><span className="font-semibold">{fcfa(total)}</span></div>
+                <div className="mt-1 flex justify-between"><span className="text-stone-600">Frais de service Cotiz</span><span className="font-semibold">{fcfa(fraisCotiz)}</span></div>
+                <div className="mt-2 flex justify-between border-t border-stone-100 pt-2"><span className="font-bold">Total à payer</span><span className="text-lg font-extrabold">{fcfa(totalAPayer)}</span></div>
+              </div>
+            )}
             {erreur && <p className="text-sm font-medium text-red-600">{erreur}</p>}
             <Button className="w-full text-base" disabled={total <= 0 || (MODE_PAIEMENT !== "manuel" && fournisseurPour(method) !== "wave" && phone.replace(/\D/g, "").length < 10)} onClick={payer}>
               {MODE_PAIEMENT === "manuel"
                 ? jeSuisTresorier
                   ? `Enregistrer le paiement de ${fcfa(total)} (reçu par ${op.nom})`
                   : `J’ai envoyé ${fcfa(total)} par ${op.nom}`
-                : `Payer ${fcfa(total)} avec ${op.nom}`}
+                : `Payer ${fcfa(totalAPayer)} avec ${op.nom}`}
             </Button>
             <p className="text-center text-xs leading-relaxed text-stone-500">
               <Lock size={12} strokeWidth={2} className="mr-1 inline -mt-0.5" />
@@ -399,7 +411,9 @@ function Payer() {
                   : jeSuisTresorier
                     ? "Le paiement est enregistré tout de suite comme reçu. Tout le groupe verra le reçu."
                     : "Ton paiement sera validé par le trésorier après vérification. Tout le groupe verra le reçu."
-                : `Tu paies exactement ${fcfa(total)}. Les frais de paiement (environ ${fcfa(fraisTransaction(total, method))}) sont pris sur la caisse du groupe.`}
+                : fraisCotiz > 0
+                  ? `Ta cotisation (${fcfa(total)}) va entièrement au groupe. Tu paies en plus ${fcfa(fraisCotiz)} de frais de service Cotiz. Les frais de l’opérateur (environ ${fcfa(fraisTransaction(total, method))}) sont pris sur la caisse.`
+                  : `Tu paies exactement ${fcfa(total)}. Les frais de paiement (environ ${fcfa(fraisTransaction(total, method))}) sont pris sur la caisse du groupe.`}
               {MODE_PAIEMENT !== "manuel" && !pourAutrui ? ` Reçu visible par tout le groupe.` : ""}
             </p>
             <LienAide sujet={`Bonjour, j’ai besoin d’aide pour payer dans le groupe « ${g.name} ».`} />

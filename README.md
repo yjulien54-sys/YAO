@@ -16,7 +16,7 @@ Cotiz aide à gérer les cotisations en toute transparence : tout le monde voit 
 
 ## Mises à jour SQL
 
-À lancer dans l'ordre dans Supabase (SQL Editor) : `schema.sql`, puis `migration-2` … `migration-22`.
+À lancer dans l'ordre dans Supabase (SQL Editor) : `schema.sql`, puis `migration-2` … `migration-23`.
 `remise-a-zero.sql` efface toutes les données des clients (garde l'équipe) : à utiliser avec prudence.
 
 ## Variables d'environnement (Vercel)

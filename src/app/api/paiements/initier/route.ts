@@ -7,6 +7,7 @@ import { creerSessionWave } from "@/lib/server/wave";
 import { geniuspayConfigure, initierGeniuspay } from "@/lib/server/geniuspay";
 import { waveConfigured } from "@/lib/server/wave";
 import type { PayMethod } from "@/lib/types";
+import { fraisPour, lireTranches } from "@/lib/fraisService";
 
 export const runtime = "nodejs";
 
@@ -49,9 +50,14 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: fournisseur === "wave" ? "Le paiement Wave n’est pas encore activé : choisis un autre moyen." : "Orange Money, MTN et Moov ne sont pas encore activés : choisis Wave." }, { status: 503 });
   }
 
+  // Frais de service Cotiz (réglés dans /admin → Revenus), calculés ici, jamais par le navigateur
+  const { data: reglages } = await sb.from("parametres_app").select("cle, valeur").like("cle", "frais_service_%");
+  const r = Object.fromEntries((reglages ?? []).map((x: { cle: string; valeur: string | null }) => [x.cle, x.valeur]));
+  const fraisService = reglages?.length && r.frais_service_actif !== "non" ? fraisPour(total, lireTranches(r.frais_service_tranches)) : 0;
+  const aPayer = total + fraisService;
+
   const transactionId = `CTZ${Date.now()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
-  const { error } = await sb.from("payments").insert(
-    lignes.map((l, i) => ({
+  const lignesPaiement = lignes.map((l, i) => ({
       group_id: g.id,
       member_id: memberId,
       round: l.round,
@@ -68,8 +74,13 @@ export async function POST(req: Request) {
       transaction_id: transactionId,
       reference: `${transactionId}-${i + 1}`, // permet de retrouver la transaction au retour
       created_by: user.id,
-    }))
-  );
+      ...(i === 0 && fraisService ? { frais_service: fraisService } : {}),
+    }));
+  let { error } = await sb.from("payments").insert(lignesPaiement);
+  // Mise à jour SQL n°23 pas encore faite : on enregistre sans la colonne des frais
+  if (error && /frais_service/.test(error.message)) {
+    ({ error } = await sb.from("payments").insert(lignesPaiement.map(({ frais_service: _f, ...l }) => l))); // eslint-disable-line @typescript-eslint/no-unused-vars
+  }
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   const origin = new URL(req.url).origin;
@@ -79,7 +90,7 @@ export async function POST(req: Request) {
       const { paymentUrl, reference } = await initierGeniuspay({
         transactionId,
         groupId: g.id,
-        amount: total,
+        amount: aPayer,
         description: `Cotiz ${g.name}`,
         successUrl: `${origin}/api/paiements/retour?ref=${transactionId}&g=${g.id}`,
         errorUrl: `${origin}/api/paiements/retour?ref=${transactionId}&g=${g.id}&erreur=1`,
@@ -100,7 +111,7 @@ export async function POST(req: Request) {
   if (fournisseur === "wave") {
     try {
       const session = await creerSessionWave({
-        amount: total,
+        amount: aPayer,
         clientReference: transactionId,
         successUrl: `${origin}/api/paiements/retour?ref=${transactionId}&g=${g.id}`,
         errorUrl: `${origin}/api/paiements/retour?ref=${transactionId}&g=${g.id}&erreur=1`,
@@ -117,7 +128,7 @@ export async function POST(req: Request) {
   try {
     const { paymentUrl } = await initierCinetpay({
       transactionId,
-      amount: total,
+      amount: aPayer,
       description: `Cotiz ${g.name}`,
       notifyUrl: `${origin}/api/paiements/notification`,
       returnUrl: `${origin}/api/paiements/retour?tx=${transactionId}&g=${g.id}`,

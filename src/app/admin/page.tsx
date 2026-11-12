@@ -3,9 +3,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { DateNaissance } from "@/components/DateNaissance";
 import {
-  Ban, BarChart3, BadgeCheck, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronLeft, Contact, Download, ExternalLink, FolderOpen, Headset, IdCard, MessageSquareText, Phone, ScrollText, Send, ShieldX, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
+  Ban, BarChart3, BadgeCheck, Coins, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronLeft, Contact, Download, ExternalLink, FolderOpen, Headset, IdCard, MessageSquareText, Phone, ScrollText, Send, ShieldX, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
 } from "lucide-react";
 import { supabaseAdmin as db } from "@/lib/supabaseAdmin";
+import { TRANCHES_DEFAUT, fraisPour, lireTranches, type Tranche } from "@/lib/fraisService";
 import { dateCourte, fcfa, telAffiche } from "@/lib/format";
 
 type Stats = {
@@ -129,9 +130,10 @@ const ONGLETS = [
   { id: "planning", label: "Planning", icon: CalendarDays, ton: "teal" },
   { id: "equipe", label: "Équipe", icon: UserCog, ton: "sky" },
   { id: "salaires", label: "Salaires", icon: Wallet, ton: "emerald" },
+  { id: "revenus", label: "Mes revenus", icon: Coins, ton: "amber" },
 ] as const;
 type Onglet = (typeof ONGLETS)[number]["id"];
-const RESERVE_FONDATEUR: Onglet[] = ["annonces", "journal", "equipe", "salaires"];
+const RESERVE_FONDATEUR: Onglet[] = ["annonces", "journal", "equipe", "salaires", "revenus"];
 type Ton = (typeof ONGLETS)[number]["ton"] | "red";
 
 /** Couleurs par rubrique (pastille d'icône, carte chiffrée) */
@@ -492,6 +494,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
           {onglet === "requetes" && <Requetes liste={requetes} moi={email} recharger={charger} ouvrirUtilisateur={(id) => setFiche({ type: "utilisateur", id })} />}
           {onglet === "planning" && <Planning fondateur={fondateur} equipe={equipe} moi={email} />}
           {onglet === "salaires" && fondateur && <Salaires />}
+          {onglet === "revenus" && fondateur && <Revenus />}
           {onglet === "codes" && <Codes liste={demandes} recharger={charger} />}
           {onglet === "annonces" && fondateur && <Annonces liste={annonces} recharger={charger} />}
         </main>
@@ -2028,6 +2031,124 @@ function Salaires() {
             ))}
           </Liste>
         )}
+      </Bloc>
+    </>
+  );
+}
+
+type Revenus = { total: number; nb: number; volume: number; depuis_debut: number; par_jour: { jour: string; montant: number; nb: number }[]; par_groupe: { groupe: string; montant: number; nb: number }[] };
+
+function Revenus() {
+  const [periode, setPeriode] = useState<"mois" | "30j" | "annee">("mois");
+  const [r, setR] = useState<Revenus | null | undefined>(undefined);
+  const [tranches, setTranches] = useState<Tranche[]>(TRANCHES_DEFAUT);
+  const [actif, setActif] = useState(true);
+  const [msg, setMsg] = useState("");
+  const [occupe, setOccupe] = useState(false);
+  const bornes = () => {
+    const a = new Date(); const d = new Date();
+    if (periode === "mois") d.setDate(1); else if (periode === "30j") d.setDate(d.getDate() - 29); else { d.setMonth(0); d.setDate(1); }
+    return { du: iso(d), au: iso(a) };
+  };
+  const charger = useCallback(async () => {
+    const { data, error } = await db.rpc("admin_revenus", bornes());
+    setR(error ? null : (data as Revenus));
+    const p = await db.from("parametres_app").select("cle, valeur").like("cle", "frais_service_%");
+    const v = Object.fromEntries((p.data ?? []).map((x: { cle: string; valeur: string | null }) => [x.cle, x.valeur]));
+    setTranches(lireTranches(v.frais_service_tranches));
+    setActif(v.frais_service_actif !== "non");
+  }, [periode]); // eslint-disable-line react-hooks/exhaustive-deps
+  useEffect(() => { charger(); }, [charger]);
+
+  if (r === undefined) return <p className="text-sm text-stone-500">Chargement…</p>;
+  if (r === null) return <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Pour voir tes revenus et régler les frais, fais d’abord la <b>mise à jour SQL n°23</b> dans Supabase (fichier <code>migration-23-frais-service.sql</code>).</p>;
+
+  const enregistrer = async (nouvelActif = actif) => {
+    const propres = tranches.map((t) => ({ max: t.max, frais: Math.max(0, Math.round(t.frais || 0)) }));
+    const plafonds = propres.filter((t) => t.max !== null).map((t) => t.max!);
+    if (plafonds.some((m, k) => k > 0 && m <= plafonds[k - 1])) return setMsg("Erreur : les plafonds doivent aller en augmentant.");
+    if (propres[propres.length - 1].max !== null) return setMsg("Erreur : la dernière tranche doit être « au-delà ».");
+    setOccupe(true); setMsg("");
+    const a = await db.rpc("admin_parametre", { c: "frais_service_tranches", v: JSON.stringify(propres) });
+    const b = await db.rpc("admin_parametre", { c: "frais_service_actif", v: nouvelActif ? "oui" : "non" });
+    setOccupe(false);
+    const e = a.error ?? b.error;
+    setMsg(e ? "Erreur : " + e.message : nouvelActif ? "Frais enregistrés : ils s’appliquent dès maintenant aux paiements en ligne." : "Frais de service désactivés : les paiements en ligne sont sans frais Cotiz.");
+    if (!e) setActif(nouvelActif);
+  };
+  const maj = (k: number, champ: "max" | "frais", v: string) => setTranches(tranches.map((t, j) => (j === k ? { ...t, [champ]: v === "" ? (champ === "max" ? null : 0) : Number(v.replace(/\D/g, "")) } : t)));
+  const exemples = [1000, 5000, 10000, 25000, 50000, 100000];
+  const pct = r.volume ? ((r.total / r.volume) * 100).toFixed(1).replace(".", ",") : "0";
+  const max = Math.max(1, ...r.par_jour.map((j) => j.montant));
+
+  return (
+    <>
+      <div className="flex flex-wrap gap-1.5">
+        {([["mois", "Ce mois-ci"], ["30j", "30 derniers jours"], ["annee", "Cette année"]] as const).map(([id, l]) => (
+          <button key={id} onClick={() => setPeriode(id)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${periode === id ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white text-stone-600"}`}>{l}</button>
+        ))}
+      </div>
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Chiffre label="Mes revenus" valeur={fcfa(r.total)} detail={`${r.nb} paiement${r.nb > 1 ? "s" : ""} en ligne`} icone={Coins} ton="amber" />
+        <Chiffre label="Argent passé en ligne" valeur={fcfa(r.volume)} detail={`soit ${pct} % pour Cotiz`} icone={Wallet} ton="emerald" />
+        <Chiffre label="Moyenne par paiement" valeur={fcfa(r.nb ? Math.round(r.total / r.nb) : 0)} detail="frais de service" icone={BarChart3} ton="sky" />
+        <Chiffre label="Depuis le début" valeur={fcfa(r.depuis_debut)} detail="total gagné" icone={BadgeCheck} ton="violet" />
+      </div>
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Bloc titre="Revenus jour par jour" sous="Frais de service des paiements en ligne confirmés">
+          {r.par_jour.length === 0 ? <p className="text-sm text-stone-500">Aucun revenu sur cette période. Les frais s’appliquent seulement aux paiements en ligne (GeniusPay / Wave).</p> : (
+            <div className="flex h-40 items-end gap-1 border-b border-stone-200">
+              {r.par_jour.map((j) => (
+                <div key={j.jour} title={`${dateCourte(j.jour)} : ${fcfa(j.montant)} (${j.nb})`} className="flex h-full flex-1 items-end">
+                  <span className="block w-full rounded-t-[4px] bg-amber-500" style={{ height: `${Math.max(4, (j.montant / max) * 100)}%` }} />
+                </div>
+              ))}
+            </div>
+          )}
+        </Bloc>
+        <Bloc titre="Groupes qui te rapportent le plus">
+          {r.par_groupe.length === 0 ? <p className="text-sm text-stone-500">Rien pour l’instant.</p> : (
+            <Barres lignes={r.par_groupe.map((g) => ({ label: `${g.groupe} (${g.nb})`, n: g.montant, couleur: "#d97706" }))} format={fcfa} />
+          )}
+        </Bloc>
+      </div>
+      <Bloc titre="Frais de service Cotiz" sous="Payés par le membre en plus de sa cotisation, seulement pour un paiement en ligne. Le paiement manuel au trésorier reste gratuit."
+        action={<button onClick={() => enregistrer(!actif)} disabled={occupe} className={`rounded-full px-3 py-1.5 text-xs font-bold ${actif ? "bg-emerald-100 text-emerald-800" : "bg-stone-100 text-stone-600"}`}>{actif ? "● Activés" : "○ Désactivés"}</button>}>
+        <div className="grid gap-5 lg:grid-cols-2">
+          <div className="space-y-2">
+            {tranches.map((t, k) => (
+              <div key={k} className="flex items-center gap-2 text-sm">
+                <span className="w-24 shrink-0 text-stone-500">{k === 0 ? "De 0 F" : `De ${fcfa(tranches[k - 1].max ?? 0)}`}</span>
+                <span className="shrink-0 text-stone-500">à</span>
+                {t.max === null ? <span className="w-28 shrink-0 rounded-xl bg-stone-50 px-3 py-2.5 text-right text-stone-500">au-delà</span> : (
+                  <input value={t.max} onChange={(e) => maj(k, "max", e.target.value)} inputMode="numeric" className={`${champ} !w-28 shrink-0 text-right`} aria-label="Plafond de la tranche" />
+                )}
+                <span className="shrink-0 text-stone-500">→</span>
+                <input value={t.frais} onChange={(e) => maj(k, "frais", e.target.value)} inputMode="numeric" className={`${champ} !w-20 shrink-0 text-right font-bold text-amber-700`} aria-label="Frais en F" />
+                <span className="shrink-0 font-semibold">F</span>
+                {tranches.length > 1 && t.max !== null && <button onClick={() => setTranches(tranches.filter((_, j) => j !== k))} className="grid h-8 w-8 place-items-center rounded-lg text-stone-400 hover:bg-red-50 hover:text-red-600" aria-label="Supprimer la tranche"><Trash2 size={15} /></button>}
+              </div>
+            ))}
+            <button onClick={() => { const der = tranches[tranches.length - 1]; const avant = tranches.slice(0, -1); const plafond = (avant[avant.length - 1]?.max ?? 0) + 10000; setTranches([...avant, { max: plafond, frais: der.frais }, der]); }} className="inline-flex items-center gap-1 text-xs font-bold text-amber-700"><Plus size={14} /> Ajouter une tranche</button>
+            <div className="flex gap-2 pt-2">
+              <button disabled={occupe} onClick={() => enregistrer()} className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-bold text-white disabled:opacity-50">{occupe ? "…" : "Enregistrer les frais"}</button>
+              <button onClick={() => setTranches(TRANCHES_DEFAUT)} className="rounded-xl border border-stone-200 px-3 py-2.5 text-sm font-bold text-stone-700">Par défaut</button>
+            </div>
+            {msg && <p className={`text-sm font-medium ${msg.startsWith("Erreur") ? "text-red-600" : "text-emerald-800"}`}>{msg}</p>}
+          </div>
+          <div>
+            <p className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-500">Ce que paie le membre</p>
+            <table className="w-full text-sm">
+              <thead className="text-left text-xs text-stone-500"><tr><th className="py-1">Cotisation</th><th className="text-right">Frais Cotiz</th><th className="text-right">Soit</th></tr></thead>
+              <tbody className="divide-y divide-stone-100">
+                {exemples.map((m) => { const f = actif ? fraisPour(m, tranches) : 0; return (
+                  <tr key={m}><td className="py-1.5">{fcfa(m)}</td><td className="text-right font-bold text-amber-700">{fcfa(f)}</td><td className="text-right text-stone-500">{((f / m) * 100).toFixed(1).replace(".", ",")} %</td></tr>
+                ); })}
+              </tbody>
+            </table>
+            <p className="mt-2 text-xs text-stone-500">À cela s’ajoutent les frais de l’opérateur (GeniusPay ≈ 1 % + 100 F), pris sur la caisse du groupe.</p>
+          </div>
+        </div>
       </Bloc>
     </>
   );
