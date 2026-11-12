@@ -6,7 +6,7 @@ import {
   Ban, BarChart3, BadgeCheck, Coins, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronLeft, Contact, Download, ExternalLink, FolderOpen, Headset, IdCard, MessageSquareText, Phone, ScrollText, Send, ShieldX, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
 } from "lucide-react";
 import { supabaseAdmin as db } from "@/lib/supabaseAdmin";
-import { TRANCHES_DEFAUT, fraisPour, lirePourcent, lireTranches, type Tranche } from "@/lib/fraisService";
+import { TRANCHES_DEFAUT, fraisPour, lirePourcent, lireTranches, lireTranchesPenalite, partCotizPenalite, type Tranche, type TranchePenalite } from "@/lib/fraisService";
 import { dateCourte, fcfa, telAffiche } from "@/lib/format";
 
 type Stats = {
@@ -2071,7 +2071,7 @@ function Revenus() {
   const [tranches, setTranches] = useState<Tranche[]>(TRANCHES_DEFAUT);
   const [actif, setActif] = useState(true);
   const [pourcent, setPourcent] = useState("0");
-  const [partPen, setPartPen] = useState("50");
+  const [tranchesPen, setTranchesPen] = useState<TranchePenalite[]>([{ max: null, part: 50 }]);
   const [msg, setMsg] = useState("");
   const [occupe, setOccupe] = useState(false);
   const bornes = () => {
@@ -2087,7 +2087,7 @@ function Revenus() {
     setTranches(lireTranches(v.frais_service_tranches));
     setActif(v.frais_service_actif !== "non");
     setPourcent(String(lirePourcent(v.frais_service_pourcent)).replace(".", ","));
-    setPartPen(v.frais_service_part_penalite ?? "50");
+    setTranchesPen(lireTranchesPenalite(v.frais_service_penalite_tranches, v.frais_service_part_penalite));
   }, [periode]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { charger(); }, [charger]);
 
@@ -2105,9 +2105,12 @@ function Revenus() {
     const pc = Number(pourcent.replace(",", ".")) || 0;
     const c = pc >= 0 && pc <= 10 ? await db.rpc("admin_parametre", { c: "frais_service_pourcent", v: String(pc) }) : { error: { message: "le pourcentage doit être entre 0 et 10 %" } };
     setOccupe(false);
-    const pp = Math.round(Number(partPen) || 0);
-    const d = pp >= 0 && pp <= 100 ? await db.rpc("admin_parametre", { c: "frais_service_part_penalite", v: String(pp) }) : { error: { message: "la part des pénalités doit être entre 0 et 100 %" } };
-    if (d.error && !c.error) { setOccupe(false); setMsg("Erreur : " + (d.error.message.includes("inconnu") ? "fais la mise à jour SQL n°27 pour la part des pénalités" : d.error.message)); return; }
+    const tp = tranchesPen.map((t) => ({ max: t.max, part: Math.min(100, Math.max(0, Math.round(t.part || 0))) }));
+    const plafP = tp.filter((t) => t.max !== null).map((t) => t.max!);
+    if (plafP.some((m, k) => k > 0 && m <= plafP[k - 1]) || tp[tp.length - 1].max !== null) { setOccupe(false); setMsg("Erreur : tranches de pénalités mal rangées (plafonds croissants, la dernière « au-delà »)."); return; }
+    const d = await db.rpc("admin_parametre", { c: "frais_service_penalite_tranches", v: JSON.stringify(tp) });
+    if (!d.error) await db.rpc("admin_parametre", { c: "frais_service_part_penalite", v: String(tp[tp.length - 1].part) });
+    if (d.error && !c.error) { setOccupe(false); setMsg("Erreur : " + (d.error.message.includes("inconnu") ? "fais la mise à jour SQL n°28 pour les tranches de pénalités" : d.error.message)); return; }
     const e = a.error ?? b.error ?? (c.error ? { message: c.error.message.includes("inconnu") ? "fais la mise à jour SQL n°24 pour le pourcentage" : c.error.message } : null);
     setMsg(e ? "Erreur : " + e.message : nouvelActif ? "Frais enregistrés : ils s’appliquent dès maintenant aux paiements en ligne." : "Frais de service désactivés : les paiements en ligne sont sans frais Cotiz.");
     if (!e) setActif(nouvelActif);
@@ -2165,6 +2168,7 @@ function Revenus() {
                 {tranches.length > 1 && t.max !== null && <button onClick={() => setTranches(tranches.filter((_, j) => j !== k))} className="grid h-8 w-8 place-items-center rounded-lg text-stone-400 hover:bg-red-50 hover:text-red-600" aria-label="Supprimer la tranche"><Trash2 size={15} /></button>}
               </div>
             ))}
+            <button onClick={() => { const der = tranches[tranches.length - 1]; const avant = tranches.slice(0, -1); const plafond = (avant[avant.length - 1]?.max ?? 0) + 10000; setTranches([...avant, { max: plafond, frais: der.frais }, der]); }} className="inline-flex items-center gap-1 text-xs font-bold text-amber-700"><Plus size={14} /> Ajouter une tranche de frais</button>
             <div className="flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50/60 p-3 text-sm">
               <span className="flex-1 font-semibold text-amber-900">En plus : un pourcentage du montant</span>
               <input value={pourcent} onChange={(e) => setPourcent(e.target.value.replace(/[^\d,.]/g, "").slice(0, 4))} inputMode="decimal" className={`${champ} !w-20 text-right font-bold text-amber-700`} aria-label="Pourcentage en plus" />
@@ -2176,17 +2180,26 @@ function Revenus() {
               ))}
               <span className="self-center text-xs text-stone-500">0 % = seulement les montants fixes · 10 % maximum</span>
             </div>
-            <div className="flex items-center gap-2 rounded-2xl border border-red-200 bg-red-50/50 p-3 text-sm">
-              <span className="flex-1"><span className="block font-semibold text-red-900">Part de Cotiz sur les pénalités</span><span className="text-xs text-stone-600">Le reste va à la caisse du groupe · paiements en ligne seulement</span></span>
-              <input value={partPen} onChange={(e) => setPartPen(e.target.value.replace(/\D/g, "").slice(0, 3))} inputMode="numeric" className={`${champ} !w-20 text-right font-bold text-red-700`} aria-label="Part de Cotiz sur les pénalités" />
-              <span className="font-semibold">%</span>
-            </div>
-            <div className="flex flex-wrap gap-1.5">
-              {["0", "40", "50", "60", "70", "80"].map((x) => (
-                <button key={x} onClick={() => setPartPen(x)} className={`rounded-full border px-2.5 py-1 text-xs font-bold ${partPen === x ? "border-red-600 bg-red-600 text-white" : "border-stone-200 bg-white text-stone-600"}`}>{x} % Cotiz · {100 - Number(x)} % groupe</button>
+            <div className="space-y-2 rounded-2xl border border-red-200 bg-red-50/50 p-3 text-sm">
+              <p><span className="block font-semibold text-red-900">Part de Cotiz sur les pénalités</span><span className="text-xs text-stone-600">Selon le montant de la pénalité. Le reste va à la caisse du groupe · paiements en ligne seulement</span></p>
+              {tranchesPen.map((t, k) => (
+                <div key={k} className="flex items-center gap-2">
+                  <span className="w-24 shrink-0 text-stone-500">{k === 0 ? "De 0 F" : `De ${fcfa(tranchesPen[k - 1].max ?? 0)}`}</span>
+                  <span className="shrink-0 text-stone-500">à</span>
+                  {t.max === null ? <span className="w-28 shrink-0 rounded-xl bg-white px-3 py-2.5 text-right text-stone-500">au-delà</span> : (
+                    <input value={t.max} onChange={(e) => setTranchesPen(tranchesPen.map((x, j) => (j === k ? { ...x, max: Number(e.target.value.replace(/\D/g, "")) || 0 } : x)))} inputMode="numeric" className={`${champ} !w-28 shrink-0 text-right`} aria-label="Plafond de la tranche de pénalité" />
+                  )}
+                  <span className="shrink-0 text-stone-500">→</span>
+                  <select value={t.part} onChange={(e) => setTranchesPen(tranchesPen.map((x, j) => (j === k ? { ...x, part: Number(e.target.value) } : x)))} className={`${champ} !w-24 shrink-0 font-bold text-red-700`} aria-label="Part de Cotiz">
+                    {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((n) => <option key={n} value={n}>{n} %</option>)}
+                  </select>
+                  {tranchesPen.length > 1 && t.max !== null && <button onClick={() => setTranchesPen(tranchesPen.filter((_, j) => j !== k))} className="grid h-8 w-8 place-items-center rounded-lg text-stone-400 hover:bg-red-100 hover:text-red-600" aria-label="Supprimer la tranche"><Trash2 size={15} /></button>}
+                </div>
               ))}
+              <button onClick={() => { const der = tranchesPen[tranchesPen.length - 1]; const avant = tranchesPen.slice(0, -1); const plafond = (avant[avant.length - 1]?.max ?? 0) + 1000; setTranchesPen([...avant, { max: plafond, part: der.part }, der]); }} className="inline-flex items-center gap-1 text-xs font-bold text-red-700"><Plus size={14} /> Ajouter une tranche de pénalité</button>
+              <p className="text-xs text-stone-600">Exemple : pénalité de 2 000 F → Cotiz {fcfa(partCotizPenalite(2000, tranchesPen))}, groupe {fcfa(2000 - partCotizPenalite(2000, tranchesPen))}.</p>
             </div>
-            <button onClick={() => { const der = tranches[tranches.length - 1]; const avant = tranches.slice(0, -1); const plafond = (avant[avant.length - 1]?.max ?? 0) + 10000; setTranches([...avant, { max: plafond, frais: der.frais }, der]); }} className="inline-flex items-center gap-1 text-xs font-bold text-amber-700"><Plus size={14} /> Ajouter une tranche</button>
+
             <div className="flex gap-2 pt-2">
               <button disabled={occupe} onClick={() => enregistrer()} className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-bold text-white disabled:opacity-50">{occupe ? "…" : "Enregistrer les frais"}</button>
               <button onClick={() => setTranches(TRANCHES_DEFAUT)} className="rounded-xl border border-stone-200 px-3 py-2.5 text-sm font-bold text-stone-700">Par défaut</button>

@@ -44,3 +44,23 @@ export function lirePartPenalite(valeur?: string | null): number {
   const n = Number(valeur ?? "0");
   return Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n))) : 0;
 }
+
+/** Part de Cotiz sur les pénalités, par tranche de montant de pénalité */
+export type TranchePenalite = { max: number | null; part: number };
+
+export function lireTranchesPenalite(valeur?: string | null, partUnique?: string | null): TranchePenalite[] {
+  try {
+    const t = JSON.parse(valeur ?? "");
+    if (Array.isArray(t) && t.length && t.every((x) => typeof x?.part === "number" && (x.max === null || typeof x.max === "number"))) {
+      return [...t].sort((a, b) => (a.max ?? Infinity) - (b.max ?? Infinity));
+    }
+  } catch {}
+  return [{ max: null, part: lirePartPenalite(partUnique ?? "50") }];
+}
+
+/** Montant revenant à Cotiz sur une pénalité */
+export function partCotizPenalite(penalite: number, tranches: TranchePenalite[]): number {
+  if (penalite <= 0) return 0;
+  const t = tranches.find((x) => x.max === null || penalite < x.max) ?? tranches[tranches.length - 1];
+  return Math.round((penalite * Math.min(100, Math.max(0, t?.part ?? 0))) / 100);
+}

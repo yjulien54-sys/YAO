@@ -6,7 +6,7 @@ import { creerSessionWave } from "@/lib/server/wave";
 import { geniuspayConfigure, initierGeniuspay } from "@/lib/server/geniuspay";
 import { waveConfigured } from "@/lib/server/wave";
 import type { PayMethod } from "@/lib/types";
-import { fraisOperateurPour, fraisPour, lirePartPenalite, lirePourcent, lireTranches } from "@/lib/fraisService";
+import { fraisOperateurPour, fraisPour, lirePourcent, lireTranches, lireTranchesPenalite, partCotizPenalite } from "@/lib/fraisService";
 
 export const runtime = "nodejs";
 
@@ -58,7 +58,7 @@ export async function POST(req: Request) {
   const aPayer = total + fraisService + fraisOperateur;
   // Part de Cotiz sur les pénalités payées en ligne (réglée dans /admin → Mes revenus)
   const penalites = lignes.reduce((t, l) => t + l.penalty, 0);
-  const penaliteCotiz = Math.round((penalites * lirePartPenalite(r.frais_service_part_penalite)) / 100);
+  const penaliteCotiz = partCotizPenalite(penalites, lireTranchesPenalite(r.frais_service_penalite_tranches, r.frais_service_part_penalite));
 
   const transactionId = `CTZ${Date.now()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
   const lignesPaiement = lignes.map((l, i) => ({
