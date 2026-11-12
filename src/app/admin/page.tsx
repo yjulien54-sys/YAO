@@ -2155,6 +2155,7 @@ function Revenus() {
         action={<button onClick={() => enregistrer(!actif)} disabled={occupe} className={`rounded-full px-3 py-1.5 text-xs font-bold ${actif ? "bg-emerald-100 text-emerald-800" : "bg-stone-100 text-stone-600"}`}>{actif ? "● Activés" : "○ Désactivés"}</button>}>
         <div className="grid gap-5 lg:grid-cols-2">
           <div className="space-y-2">
+            <Pliable titre="Frais par paiement" resume={`${tranches.map((t) => t.frais).join(" / ")} F${Number(pourcent.replace(",", ".")) ? ` + ${pourcent} %` : ""}`} ton="ambre">
             {tranches.map((t, k) => (
               <div key={k} className="flex items-center gap-2 text-sm">
                 <span className="w-24 shrink-0 text-stone-500">{k === 0 ? "De 0 F" : `De ${fcfa(tranches[k - 1].max ?? 0)}`}</span>
@@ -2180,8 +2181,9 @@ function Revenus() {
               ))}
               <span className="self-center text-xs text-stone-500">0 % = seulement les montants fixes · 10 % maximum</span>
             </div>
-            <div className="space-y-2 rounded-2xl border border-red-200 bg-red-50/50 p-3 text-sm">
-              <p><span className="block font-semibold text-red-900">Part de Cotiz sur les pénalités</span><span className="text-xs text-stone-600">Un seul réglage pour toute l’application. Le reste va à la caisse du groupe · paiements en ligne seulement</span></p>
+            </Pliable>
+            <Pliable titre="Part de Cotiz sur les pénalités" resume={`${tranchesPen[tranchesPen.length - 1]?.part ?? 0} % Cotiz · ${100 - (tranchesPen[tranchesPen.length - 1]?.part ?? 0)} % groupe`} ton="rouge">
+              <p className="text-xs text-stone-600">Un seul réglage pour toute l’application. Le reste va à la caisse du groupe · paiements en ligne seulement.</p>
               <div className="flex flex-wrap gap-1.5">
                 {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((n) => {
                   const actuel = tranchesPen[tranchesPen.length - 1]?.part ?? 0;
@@ -2194,9 +2196,11 @@ function Revenus() {
                 })}
               </div>
               <p className="text-xs text-stone-600">Choisi : <b className="text-red-700">{tranchesPen[tranchesPen.length - 1]?.part ?? 0} % pour Cotiz</b>, {100 - (tranchesPen[tranchesPen.length - 1]?.part ?? 0)} % pour le groupe. Exemple : pénalité de 1 000 F → Cotiz {fcfa(partCotizPenalite(1000, [{ max: null, part: tranchesPen[tranchesPen.length - 1]?.part ?? 0 }]))}, groupe {fcfa(1000 - partCotizPenalite(1000, [{ max: null, part: tranchesPen[tranchesPen.length - 1]?.part ?? 0 }]))}.</p>
-            </div>
+            </Pliable>
 
-            <OffrePenalite partHabituelle={tranchesPen[tranchesPen.length - 1]?.part ?? 50} />
+            <Pliable titre="Offre spéciale sur une période" resume="1 à 3 mois, avec annonce automatique" ton="orange">
+              <OffrePenalite partHabituelle={tranchesPen[tranchesPen.length - 1]?.part ?? 50} />
+            </Pliable>
 
             <div className="flex gap-2 pt-2">
               <button disabled={occupe} onClick={() => enregistrer()} className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-bold text-white disabled:opacity-50">{occupe ? "…" : "Enregistrer les frais"}</button>
@@ -2219,6 +2223,23 @@ function Revenus() {
         </div>
       </Bloc>
     </>
+  );
+}
+
+/** Bloc pliable : on voit le titre et un résumé, on touche pour ouvrir */
+function Pliable({ titre, resume, ton, children }: { titre: string; resume?: string; ton: "ambre" | "rouge" | "orange"; children: React.ReactNode }) {
+  const c = { ambre: "border-amber-200 bg-amber-50/50 text-amber-900", rouge: "border-red-200 bg-red-50/50 text-red-900", orange: "border-orange-200 bg-orange-50/60 text-orange-900" }[ton];
+  return (
+    <details className={`group rounded-2xl border ${c} [&_summary::-webkit-details-marker]:hidden`}>
+      <summary className="flex cursor-pointer list-none items-center gap-3 p-3">
+        <span className="min-w-0 flex-1">
+          <span className="block font-semibold">{titre}</span>
+          {resume && <span className="block truncate text-xs text-stone-600">{resume}</span>}
+        </span>
+        <ChevronDown size={18} className="shrink-0 transition group-open:rotate-180" />
+      </summary>
+      <div className="space-y-2 border-t border-black/5 p-3 text-sm text-stone-900">{children}</div>
+    </details>
   );
 }
 
@@ -2256,8 +2277,8 @@ function OffrePenalite({ partHabituelle }: { partHabituelle: number }) {
     charger();
   };
   return (
-    <div className="space-y-2.5 rounded-2xl border border-orange-200 bg-orange-50/60 p-3 text-sm">
-      <p><span className="block font-semibold text-orange-900">Offre spéciale sur une période</span><span className="text-xs text-stone-600">Pendant la période, cette part remplace la part habituelle ({partHabituelle} % pour Cotiz). Elle revient toute seule à la fin.</span></p>
+    <div className="space-y-2.5">
+      <p><span className="text-xs text-stone-600">Pendant la période, cette part remplace la part habituelle ({partHabituelle} % pour Cotiz). Elle revient toute seule à la fin.</span></p>
       {offre?.fin && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white p-2.5 ring-1 ring-orange-200">
           <span className="flex-1"><b className="text-orange-800">Offre en cours :</b> {offre.part} % Cotiz · {100 - offre.part} % groupe, jusqu’au <b>{new Date(offre.fin).toLocaleDateString("fr-FR")}</b></span>
