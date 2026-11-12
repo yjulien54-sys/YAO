@@ -177,17 +177,17 @@ export default function Groupes() {
 
         {/* Actions rapides */}
         <div className="grid grid-cols-4 gap-1">
-          <ActionRapide label="Créer" href="/groupes/nouveau" interne>
-            <Plus size={22} strokeWidth={1.9} />
+          <ActionRapide label="Créer" href="/groupes/nouveau" interne ton="vert">
+            <Plus size={26} strokeWidth={2.4} />
           </ActionRapide>
-          <ActionRapide label="Rejoindre" onClick={ouvrirRejoindre}>
-            <Link2 size={20} strokeWidth={1.9} />
+          <ActionRapide label="Rejoindre" onClick={ouvrirRejoindre} ton="bleu">
+            <Link2 size={24} strokeWidth={2.2} />
           </ActionRapide>
-          <ActionRapide label="À payer" badge={aPayer.length || undefined} onClick={() => document.getElementById("a-payer")?.scrollIntoView({ behavior: "smooth" })}>
-            <Wallet size={20} strokeWidth={1.9} />
+          <ActionRapide label="À payer" badge={aPayer.length || undefined} onClick={() => document.getElementById("a-payer")?.scrollIntoView({ behavior: "smooth" })} ton="ambre">
+            <Wallet size={24} strokeWidth={2.2} />
           </ActionRapide>
-          <ActionRapide label="Contact" href="/aide" interne>
-            <Headset size={20} strokeWidth={1.9} />
+          <ActionRapide label="Contact" href="/aide" interne ton="violet">
+            <Headset size={24} strokeWidth={2.2} />
           </ActionRapide>
         </div>
 
