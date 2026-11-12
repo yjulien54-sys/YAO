@@ -6,7 +6,7 @@ import {
   Ban, BarChart3, BadgeCheck, Coins, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronLeft, Contact, Download, ExternalLink, FolderOpen, Headset, IdCard, MessageSquareText, Phone, ScrollText, Send, ShieldX, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
 } from "lucide-react";
 import { supabaseAdmin as db } from "@/lib/supabaseAdmin";
-import { TRANCHES_DEFAUT, fraisPour, lireTranches, type Tranche } from "@/lib/fraisService";
+import { TRANCHES_DEFAUT, fraisPour, lirePourcent, lireTranches, type Tranche } from "@/lib/fraisService";
 import { dateCourte, fcfa, telAffiche } from "@/lib/format";
 
 type Stats = {
@@ -2043,6 +2043,7 @@ function Revenus() {
   const [r, setR] = useState<Revenus | null | undefined>(undefined);
   const [tranches, setTranches] = useState<Tranche[]>(TRANCHES_DEFAUT);
   const [actif, setActif] = useState(true);
+  const [pourcent, setPourcent] = useState("0");
   const [msg, setMsg] = useState("");
   const [occupe, setOccupe] = useState(false);
   const bornes = () => {
@@ -2057,6 +2058,7 @@ function Revenus() {
     const v = Object.fromEntries((p.data ?? []).map((x: { cle: string; valeur: string | null }) => [x.cle, x.valeur]));
     setTranches(lireTranches(v.frais_service_tranches));
     setActif(v.frais_service_actif !== "non");
+    setPourcent(String(lirePourcent(v.frais_service_pourcent)).replace(".", ","));
   }, [periode]); // eslint-disable-line react-hooks/exhaustive-deps
   useEffect(() => { charger(); }, [charger]);
 
@@ -2071,8 +2073,10 @@ function Revenus() {
     setOccupe(true); setMsg("");
     const a = await db.rpc("admin_parametre", { c: "frais_service_tranches", v: JSON.stringify(propres) });
     const b = await db.rpc("admin_parametre", { c: "frais_service_actif", v: nouvelActif ? "oui" : "non" });
+    const pc = Number(pourcent.replace(",", ".")) || 0;
+    const c = pc >= 0 && pc <= 10 ? await db.rpc("admin_parametre", { c: "frais_service_pourcent", v: String(pc) }) : { error: { message: "le pourcentage doit être entre 0 et 10 %" } };
     setOccupe(false);
-    const e = a.error ?? b.error;
+    const e = a.error ?? b.error ?? (c.error ? { message: c.error.message.includes("inconnu") ? "fais la mise à jour SQL n°24 pour le pourcentage" : c.error.message } : null);
     setMsg(e ? "Erreur : " + e.message : nouvelActif ? "Frais enregistrés : ils s’appliquent dès maintenant aux paiements en ligne." : "Frais de service désactivés : les paiements en ligne sont sans frais Cotiz.");
     if (!e) setActif(nouvelActif);
   };
@@ -2129,6 +2133,17 @@ function Revenus() {
                 {tranches.length > 1 && t.max !== null && <button onClick={() => setTranches(tranches.filter((_, j) => j !== k))} className="grid h-8 w-8 place-items-center rounded-lg text-stone-400 hover:bg-red-50 hover:text-red-600" aria-label="Supprimer la tranche"><Trash2 size={15} /></button>}
               </div>
             ))}
+            <div className="flex items-center gap-2 rounded-2xl border border-amber-200 bg-amber-50/60 p-3 text-sm">
+              <span className="flex-1 font-semibold text-amber-900">En plus : un pourcentage du montant</span>
+              <input value={pourcent} onChange={(e) => setPourcent(e.target.value.replace(/[^\d,.]/g, "").slice(0, 4))} inputMode="decimal" className={`${champ} !w-20 text-right font-bold text-amber-700`} aria-label="Pourcentage en plus" />
+              <span className="font-semibold">%</span>
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {["0", "0,5", "1", "1,5", "2"].map((x) => (
+                <button key={x} onClick={() => setPourcent(x)} className={`rounded-full border px-2.5 py-1 text-xs font-bold ${pourcent === x ? "border-amber-600 bg-amber-600 text-white" : "border-stone-200 bg-white text-stone-600"}`}>{x} %</button>
+              ))}
+              <span className="self-center text-xs text-stone-500">0 % = seulement les montants fixes · 10 % maximum</span>
+            </div>
             <button onClick={() => { const der = tranches[tranches.length - 1]; const avant = tranches.slice(0, -1); const plafond = (avant[avant.length - 1]?.max ?? 0) + 10000; setTranches([...avant, { max: plafond, frais: der.frais }, der]); }} className="inline-flex items-center gap-1 text-xs font-bold text-amber-700"><Plus size={14} /> Ajouter une tranche</button>
             <div className="flex gap-2 pt-2">
               <button disabled={occupe} onClick={() => enregistrer()} className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-bold text-white disabled:opacity-50">{occupe ? "…" : "Enregistrer les frais"}</button>
@@ -2141,7 +2156,7 @@ function Revenus() {
             <table className="w-full text-sm">
               <thead className="text-left text-xs text-stone-500"><tr><th className="py-1">Cotisation</th><th className="text-right">Frais Cotiz</th><th className="text-right">Soit</th></tr></thead>
               <tbody className="divide-y divide-stone-100">
-                {exemples.map((m) => { const f = actif ? fraisPour(m, tranches) : 0; return (
+                {exemples.map((m) => { const f = actif ? fraisPour(m, tranches, Number(pourcent.replace(",", ".")) || 0) : 0; return (
                   <tr key={m}><td className="py-1.5">{fcfa(m)}</td><td className="text-right font-bold text-amber-700">{fcfa(f)}</td><td className="text-right text-stone-500">{((f / m) * 100).toFixed(1).replace(".", ",")} %</td></tr>
                 ); })}
               </tbody>

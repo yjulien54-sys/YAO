@@ -19,8 +19,14 @@ export function lireTranches(valeur?: string | null): Tranche[] {
   return TRANCHES_DEFAUT;
 }
 
-/** Frais pour un montant donné (la première tranche dont le plafond n'est pas dépassé) */
-export function fraisPour(montant: number, tranches: Tranche[]): number {
-  for (const t of tranches) if (t.max === null || montant < t.max) return Math.max(0, Math.round(t.frais));
-  return Math.max(0, Math.round(tranches[tranches.length - 1]?.frais ?? 0));
+/** Pourcentage en plus (0 à 10 %), lu depuis le réglage */
+export function lirePourcent(valeur?: string | null): number {
+  const n = Number(String(valeur ?? "0").replace(",", "."));
+  return Number.isFinite(n) ? Math.min(10, Math.max(0, n)) : 0;
+}
+
+/** Frais = montant fixe de la tranche + pourcentage du montant (arrondi au franc) */
+export function fraisPour(montant: number, tranches: Tranche[], pourcent = 0): number {
+  const t = tranches.find((x) => x.max === null || montant < x.max) ?? tranches[tranches.length - 1];
+  return Math.max(0, Math.round(t?.frais ?? 0)) + Math.round((montant * lirePourcent(String(pourcent))) / 100);
 }

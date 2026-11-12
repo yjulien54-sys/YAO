@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "./supabase";
-import { fraisPour, lireTranches, type Tranche } from "./fraisService";
+import { fraisPour, lirePourcent, lireTranches, type Tranche } from "./fraisService";
 
 /** Réglage « Caisse Cotiz » (mise à jour SQL n°19) : les membres paient par Wave sur le compte marchand de Cotiz */
 export type CaisseCotiz = { actif: boolean; lien: string | null; nom: string };
@@ -25,17 +25,17 @@ export function useCaisseCotiz() {
 
 /** Ajoute le montant quand le lien Wave le permet (pay.wave.com) */
 /** Frais de service Cotiz (mise à jour SQL n°23) : affichés au membre avant un paiement en ligne */
-let cacheFrais: { actif: boolean; tranches: Tranche[] } | null = null;
+let cacheFrais: { actif: boolean; tranches: Tranche[]; pourcent: number } | null = null;
 export function useFraisService() {
   const [f, setF] = useState(cacheFrais);
   useEffect(() => {
     if (cacheFrais) return;
     supabase.from("parametres_app").select("cle, valeur").like("cle", "frais_service_%").then(({ data, error }) => {
       const v = Object.fromEntries(((error ? [] : data) ?? []).map((r: { cle: string; valeur: string | null }) => [r.cle, r.valeur]));
-      setF((cacheFrais = { actif: !error && (data?.length ?? 0) > 0 && v.frais_service_actif !== "non", tranches: lireTranches(v.frais_service_tranches) }));
+      setF((cacheFrais = { actif: !error && (data?.length ?? 0) > 0 && v.frais_service_actif !== "non", tranches: lireTranches(v.frais_service_tranches), pourcent: lirePourcent(v.frais_service_pourcent) }));
     });
   }, []);
-  return { actif: !!f?.actif, frais: (montant: number) => (f?.actif ? fraisPour(montant, f.tranches) : 0) };
+  return { actif: !!f?.actif, frais: (montant: number) => (f?.actif ? fraisPour(montant, f.tranches, f.pourcent) : 0) };
 }
 
 export function lienCaisse(lien: string, montant: number) {

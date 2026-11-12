@@ -7,7 +7,7 @@ import { creerSessionWave } from "@/lib/server/wave";
 import { geniuspayConfigure, initierGeniuspay } from "@/lib/server/geniuspay";
 import { waveConfigured } from "@/lib/server/wave";
 import type { PayMethod } from "@/lib/types";
-import { fraisPour, lireTranches } from "@/lib/fraisService";
+import { fraisPour, lirePourcent, lireTranches } from "@/lib/fraisService";
 
 export const runtime = "nodejs";
 
@@ -53,7 +53,7 @@ export async function POST(req: Request) {
   // Frais de service Cotiz (réglés dans /admin → Revenus), calculés ici, jamais par le navigateur
   const { data: reglages } = await sb.from("parametres_app").select("cle, valeur").like("cle", "frais_service_%");
   const r = Object.fromEntries((reglages ?? []).map((x: { cle: string; valeur: string | null }) => [x.cle, x.valeur]));
-  const fraisService = reglages?.length && r.frais_service_actif !== "non" ? fraisPour(total, lireTranches(r.frais_service_tranches)) : 0;
+  const fraisService = reglages?.length && r.frais_service_actif !== "non" ? fraisPour(total, lireTranches(r.frais_service_tranches), lirePourcent(r.frais_service_pourcent)) : 0;
   const aPayer = total + fraisService;
 
   const transactionId = `CTZ${Date.now()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
