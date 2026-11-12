@@ -58,7 +58,11 @@ export async function POST(req: Request) {
   const aPayer = total + fraisService + fraisOperateur;
   // Part de Cotiz sur les pénalités payées en ligne (réglée dans /admin → Mes revenus)
   const penalites = lignes.reduce((t, l) => t + l.penalty, 0);
-  const penaliteCotiz = partCotizPenalite(penalites, lireTranchesPenalite(r.frais_service_penalite_tranches, r.frais_service_part_penalite));
+  // Offre spéciale en cours (période choisie par le fondateur) : elle remplace la part habituelle
+  const offreActive = !!r.frais_service_promo_fin && new Date(r.frais_service_promo_fin).getTime() > Date.now() && r.frais_service_promo_part != null;
+  const penaliteCotiz = offreActive
+    ? partCotizPenalite(penalites, [{ max: null, part: Number(r.frais_service_promo_part) || 0 }])
+    : partCotizPenalite(penalites, lireTranchesPenalite(r.frais_service_penalite_tranches, r.frais_service_part_penalite));
 
   const transactionId = `CTZ${Date.now()}${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
   const lignesPaiement = lignes.map((l, i) => ({

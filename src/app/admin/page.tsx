@@ -2196,6 +2196,8 @@ function Revenus() {
               <p className="text-xs text-stone-600">Choisi : <b className="text-red-700">{tranchesPen[tranchesPen.length - 1]?.part ?? 0} % pour Cotiz</b>, {100 - (tranchesPen[tranchesPen.length - 1]?.part ?? 0)} % pour le groupe. Exemple : pénalité de 1 000 F → Cotiz {fcfa(partCotizPenalite(1000, [{ max: null, part: tranchesPen[tranchesPen.length - 1]?.part ?? 0 }]))}, groupe {fcfa(1000 - partCotizPenalite(1000, [{ max: null, part: tranchesPen[tranchesPen.length - 1]?.part ?? 0 }]))}.</p>
             </div>
 
+            <OffrePenalite partHabituelle={tranchesPen[tranchesPen.length - 1]?.part ?? 50} />
+
             <div className="flex gap-2 pt-2">
               <button disabled={occupe} onClick={() => enregistrer()} className="flex-1 rounded-xl bg-amber-600 py-2.5 text-sm font-bold text-white disabled:opacity-50">{occupe ? "…" : "Enregistrer les frais"}</button>
               <button onClick={() => setTranches(TRANCHES_DEFAUT)} className="rounded-xl border border-stone-200 px-3 py-2.5 text-sm font-bold text-stone-700">Par défaut</button>
@@ -2217,6 +2219,75 @@ function Revenus() {
         </div>
       </Bloc>
     </>
+  );
+}
+
+/** Offre spéciale : une autre part des pénalités pendant 1, 2 ou 3 mois, avec annonce automatique */
+function OffrePenalite({ partHabituelle }: { partHabituelle: number }) {
+  const [offre, setOffre] = useState<{ part: number; fin: string | null } | null>(null);
+  const [part, setPart] = useState(40);
+  const [mois, setMois] = useState(1);
+  const [publier, setPublier] = useState(true);
+  const [notifier, setNotifier] = useState(false);
+  const [msg, setMsg] = useState("");
+  const [occupe, setOccupe] = useState(false);
+  const charger = useCallback(async () => {
+    const { data } = await db.from("parametres_app").select("cle, valeur").like("cle", "frais_service_promo_%");
+    const v = Object.fromEntries((data ?? []).map((x: { cle: string; valeur: string | null }) => [x.cle, x.valeur]));
+    const fin = v.frais_service_promo_fin && new Date(v.frais_service_promo_fin).getTime() > Date.now() ? v.frais_service_promo_fin : null;
+    setOffre({ part: Number(v.frais_service_promo_part ?? 40), fin });
+  }, []);
+  useEffect(() => { charger(); }, [charger]);
+  const lancer = async () => {
+    const dateFin = new Date(); dateFin.setMonth(dateFin.getMonth() + mois);
+    if (!confirm(`Lancer l’offre : ${part} % pour Cotiz et ${100 - part} % pour le groupe, jusqu’au ${dateFin.toLocaleDateString("fr-FR")} ?${publier ? "\n\nUne annonce sera publiée sur l’accueil de tout le monde." : ""}${notifier ? "\nTous les inscrits recevront une notification." : ""}`)) return;
+    setOccupe(true); setMsg("");
+    const { data, error } = await db.rpc("admin_offre_penalite", { part, mois, publier, notifier });
+    setOccupe(false);
+    if (error) return setMsg("Erreur : " + (/admin_offre_penalite|schema cache/i.test(error.message) ? "fais d’abord la mise à jour SQL n°29." : error.message));
+    const r = data as { notifications: number };
+    setMsg(`Offre lancée.${publier ? " L’annonce est sur l’accueil." : ""}${r.notifications ? ` ${r.notifications} notification(s) envoyée(s).` : ""}`);
+    charger();
+  };
+  const arreter = async () => {
+    if (!confirm("Arrêter l’offre maintenant ? La part habituelle reviendra et l’annonce disparaîtra.")) return;
+    const { error } = await db.rpc("admin_offre_penalite_arreter");
+    setMsg(error ? "Erreur : " + error.message : "Offre arrêtée.");
+    charger();
+  };
+  return (
+    <div className="space-y-2.5 rounded-2xl border border-orange-200 bg-orange-50/60 p-3 text-sm">
+      <p><span className="block font-semibold text-orange-900">Offre spéciale sur une période</span><span className="text-xs text-stone-600">Pendant la période, cette part remplace la part habituelle ({partHabituelle} % pour Cotiz). Elle revient toute seule à la fin.</span></p>
+      {offre?.fin && (
+        <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white p-2.5 ring-1 ring-orange-200">
+          <span className="flex-1"><b className="text-orange-800">Offre en cours :</b> {offre.part} % Cotiz · {100 - offre.part} % groupe, jusqu’au <b>{new Date(offre.fin).toLocaleDateString("fr-FR")}</b></span>
+          <button onClick={arreter} className="rounded-lg border border-stone-200 px-2.5 py-1 text-xs font-bold text-stone-700">Arrêter</button>
+        </div>
+      )}
+      <div>
+        <p className="mb-1 text-xs font-semibold text-stone-600">Part de Cotiz pendant l’offre</p>
+        <div className="flex flex-wrap gap-1.5">
+          {[0, 10, 20, 30, 40, 50, 60].map((n) => (
+            <button key={n} type="button" onClick={() => setPart(n)} className={`rounded-full border px-3 py-1.5 text-xs font-bold ${part === n ? "border-orange-600 bg-orange-600 text-white" : "border-stone-200 bg-white text-stone-700"}`}>{n} %</button>
+          ))}
+        </div>
+      </div>
+      <div>
+        <p className="mb-1 text-xs font-semibold text-stone-600">Durée</p>
+        <div className="flex gap-1.5">
+          {[1, 2, 3].map((n) => (
+            <button key={n} type="button" onClick={() => setMois(n)} className={`rounded-full border px-3 py-1.5 text-xs font-bold ${mois === n ? "border-orange-600 bg-orange-600 text-white" : "border-stone-200 bg-white text-stone-700"}`}>{n} mois</button>
+          ))}
+        </div>
+      </div>
+      <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={publier} onChange={(e) => setPublier(e.target.checked)} className="h-4 w-4 accent-orange-600" /> Publier une annonce sur l’accueil de l’application</label>
+      <label className="flex items-center gap-2 text-xs"><input type="checkbox" checked={notifier} onChange={(e) => setNotifier(e.target.checked)} className="h-4 w-4 accent-orange-600" /> Prévenir aussi tous les inscrits par notification</label>
+      <div className="rounded-xl bg-white p-2.5 text-xs text-stone-700 ring-1 ring-orange-100">
+        <b>Aperçu de l’annonce :</b> « Offre spéciale : {100 - part} % des pénalités pour votre groupe. Jusqu’au {(() => { const d = new Date(); d.setMonth(d.getMonth() + mois); return d.toLocaleDateString("fr-FR"); })()}, {100 - part} % des pénalités payées en ligne restent dans la caisse de votre groupe. »
+      </div>
+      <button disabled={occupe} onClick={lancer} className="w-full rounded-xl bg-orange-600 py-2.5 text-sm font-bold text-white disabled:opacity-50">{occupe ? "…" : offre?.fin ? "Remplacer l’offre en cours" : "Lancer l’offre"}</button>
+      {msg && <p className={`text-xs font-medium ${msg.startsWith("Erreur") ? "text-red-600" : "text-emerald-800"}`}>{msg}</p>}
+    </div>
   );
 }
 
