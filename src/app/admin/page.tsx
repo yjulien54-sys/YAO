@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
+import { Jauge, Montre, Anneau, Pyramide, Courbe, Colonnes, VERT, ORANGE, VIOLET } from "@/components/admin/Graphiques";
 import { DateNaissance } from "@/components/DateNaissance";
 import {
   Ban, BarChart3, BadgeCheck, Coins, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronLeft, Contact, Download, ExternalLink, FolderOpen, Headset, IdCard, MessageSquareText, Phone, ScrollText, Send, ShieldX, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
@@ -138,11 +139,11 @@ type Ton = (typeof ONGLETS)[number]["ton"] | "red";
 
 /** Couleurs par rubrique (pastille d'icône, carte chiffrée) */
 const TON: Record<Ton, { pastille: string; carte: string; texte: string; barre: string }> = {
-  emerald: { pastille: "bg-emerald-100 text-emerald-700", carte: "from-emerald-50 to-white border-emerald-100", texte: "text-emerald-700", barre: "bg-emerald-500" },
+  emerald: { pastille: "bg-emerald-600 text-white", carte: "from-emerald-50 to-white border-emerald-100", texte: "text-emerald-700", barre: "bg-emerald-500" },
   teal: { pastille: "bg-teal-100 text-teal-700", carte: "from-teal-50 to-white border-teal-100", texte: "text-teal-700", barre: "bg-teal-500" },
-  sky: { pastille: "bg-sky-100 text-sky-700", carte: "from-sky-50 to-white border-sky-100", texte: "text-sky-700", barre: "bg-sky-500" },
-  violet: { pastille: "bg-violet-100 text-violet-700", carte: "from-violet-50 to-white border-violet-100", texte: "text-violet-700", barre: "bg-violet-500" },
-  amber: { pastille: "bg-amber-100 text-amber-700", carte: "from-amber-50 to-white border-amber-100", texte: "text-amber-700", barre: "bg-amber-500" },
+  sky: { pastille: "bg-emerald-800 text-white", carte: "from-emerald-50 to-white border-emerald-100", texte: "text-emerald-800", barre: "bg-emerald-800" },
+  violet: { pastille: "bg-orange-500 text-white", carte: "from-orange-50 to-white border-orange-100", texte: "text-orange-700", barre: "bg-orange-500" },
+  amber: { pastille: "bg-orange-100 text-orange-700", carte: "from-orange-50 to-white border-orange-100", texte: "text-orange-700", barre: "bg-amber-500" },
   rose: { pastille: "bg-rose-100 text-rose-700", carte: "from-rose-50 to-white border-rose-100", texte: "text-rose-700", barre: "bg-rose-500" },
   orange: { pastille: "bg-orange-100 text-orange-700", carte: "from-orange-50 to-white border-orange-100", texte: "text-orange-700", barre: "bg-orange-500" },
   red: { pastille: "bg-red-100 text-red-700", carte: "from-red-50 to-white border-red-100", texte: "text-red-700", barre: "bg-red-500" },
@@ -162,7 +163,7 @@ const STATUT_MEMBRE: Record<MembreA["statut"], [string, string]> = {
 };
 const TYPE: Record<string, string> = { tontine: "Tontine", association: "Association", collecte: "Collecte" };
 /** Couleur fixe par type de groupe (palette vérifiée daltonisme) */
-const TYPE_COULEUR: Record<string, string> = { tontine: "#059669", association: "#ea580c", collecte: "#7c3aed" };
+const TYPE_COULEUR: Record<string, string> = { tontine: VERT, association: ORANGE, collecte: VIOLET };
 const champ = "w-full rounded-xl border border-stone-300/80 bg-white px-3 py-2.5 text-sm outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100";
 
 export default function Admin() {
@@ -513,6 +514,7 @@ function Chiffre({ label, valeur, detail, icone: I, ton = "emerald", onClick }: 
   const t = TON[ton];
   return (
     <button onClick={onClick} disabled={!onClick} className={`group relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 text-left shadow-sm transition enabled:hover:-translate-y-0.5 enabled:hover:shadow-md ${t.carte}`}>
+      <span className="absolute inset-x-0 top-0 flex h-1"><span className="flex-1 bg-orange-500" /><span className="flex-1 bg-white" /><span className="flex-1 bg-emerald-600" /></span>
       <div className="flex items-start justify-between gap-2">
         <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${t.pastille}`}><I size={20} /></span>
         {onClick && <ChevronRight size={16} className="text-stone-300 transition group-hover:translate-x-0.5 group-hover:text-stone-500" />}
@@ -551,34 +553,11 @@ function CourbeInscriptions({ inscrits }: { inscrits: Inscrit[] }) {
       return { d, n: parJour.get(jour(d)) ?? 0 };
     });
   }, [inscrits]);
-  const max = Math.max(1, ...jours.map((j) => j.n));
   const total = jours.reduce((s, j) => s + j.n, 0);
-  const [survol, setSurvol] = useState<number | null>(null);
-  const sel = survol !== null ? jours[survol] : null;
   return (
     <div>
-      <div className="mb-2 flex items-baseline justify-between text-xs text-stone-500">
-        <span><b className="text-lg font-extrabold text-stone-900">{total}</b> inscriptions en 30 jours</span>
-        <span className="font-medium text-stone-700">{sel ? `${sel.d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })} : ${sel.n} inscrit${sel.n > 1 ? "s" : ""}` : "Touche une barre pour le détail"}</span>
-      </div>
-      <div className="relative h-36">
-        <div className="absolute inset-x-0 top-0 border-t border-dashed border-stone-200" />
-        <div className="absolute inset-x-0 top-1/2 border-t border-dashed border-stone-200" />
-        <span className="absolute -top-2 right-0 bg-white pl-1 text-[0.65rem] text-stone-400">{max}</span>
-        <div className="absolute inset-0 flex items-end gap-[2px] border-b border-stone-300" onMouseLeave={() => setSurvol(null)}>
-          {jours.map((j, k) => (
-            <button key={k} type="button" aria-label={`${j.d.toLocaleDateString("fr-FR")} : ${j.n}`}
-              onMouseEnter={() => setSurvol(k)} onFocus={() => setSurvol(k)} onClick={() => setSurvol(k)}
-              className="flex h-full flex-1 items-end">
-              <span className={`block w-full rounded-t-[4px] transition-colors ${survol === k ? "bg-emerald-800" : "bg-emerald-500"}`} style={{ height: j.n ? `${Math.max(4, (j.n / max) * 100)}%` : "2px", opacity: j.n ? 1 : 0.25 }} />
-            </button>
-          ))}
-        </div>
-      </div>
-      <div className="mt-1.5 flex justify-between text-[0.65rem] text-stone-400">
-        <span>{jours[0].d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</span>
-        <span>Aujourd’hui</span>
-      </div>
+      <p className="mb-1 text-xs text-stone-500"><b className="text-2xl font-extrabold text-stone-900">{total}</b> inscriptions en 30 jours</p>
+      <Courbe points={jours.map((j) => ({ label: j.d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }), n: j.n }))} couleur={VERT} format={(n) => `${n} inscrit${n > 1 ? "s" : ""}`} />
     </div>
   );
 }
@@ -594,8 +573,8 @@ function Barres({ lignes, format = (n: number) => String(n) }: { lignes: { label
             <span className="truncate font-semibold text-stone-700">{l.label}</span>
             <span className="shrink-0 font-bold text-stone-900">{format(l.n)}</span>
           </div>
-          <div className="h-2.5 rounded-full bg-stone-100">
-            <div className="h-full rounded-full" style={{ width: `${Math.max(2, (l.n / max) * 100)}%`, background: l.couleur }} />
+          <div className="h-3 rounded-full bg-stone-100">
+            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.max(2, (l.n / max) * 100)}%`, background: `linear-gradient(90deg, ${l.couleur}aa, ${l.couleur})` }} />
           </div>
         </button>
       ))}
@@ -647,6 +626,18 @@ function Apercu({ stats, inscrits, groupes, attente, demandes, aller, ouvrir, no
         </Bloc>
       </div>
 
+      <div className="grid gap-4 md:grid-cols-3">
+        <Bloc titre="Paiements confirmés" sous="Part des paiements déjà confirmés">
+          <Jauge valeur={stats.paiements_confirmes + stats.paiements_attente ? Math.round((stats.paiements_confirmes / (stats.paiements_confirmes + stats.paiements_attente)) * 100) : 0} label="de taux de confirmation" sous={`${stats.paiements_confirmes} confirmés · ${stats.paiements_attente} en attente`} />
+        </Bloc>
+        <Bloc titre="Groupes par type">
+          <Anneau parts={["tontine", "association", "collecte"].map((t) => ({ label: TYPE[t], n: groupes.filter((g) => g.type === t).length, couleur: TYPE_COULEUR[t] }))} sousCentre="groupes" />
+        </Bloc>
+        <Bloc titre="Parcours des inscrits" sous="Du compte créé jusqu’au groupe">
+          <Pyramide etages={[{ label: "Inscrits", n: stats.inscrits }, { label: "Code secret créé", n: stats.codes_definis }, { label: "Dans un groupe", n: inscrits.filter((i) => i.nb_groupes > 0).length }]} />
+        </Bloc>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2">
         <Bloc titre="Derniers inscrits" action={<button onClick={() => aller("inscrits")} className="text-xs font-bold text-sky-700">Tout voir</button>}>
           {derniers.length === 0 ? <p className="text-sm text-stone-500">Personne pour l’instant.</p> : (
@@ -687,24 +678,24 @@ function Statistiques({ stats, inscrits, groupes, ouvrir }: { stats: Stats | nul
   ];
   return (
     <>
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Chiffre label="Inscrits dans un groupe" valeur={`${pct(avecGroupe, inscrits.length)} %`} detail={`${avecGroupe} sur ${inscrits.length}`} icone={Users} ton="sky" />
-        <Chiffre label="Code secret créé" valeur={`${pct(stats.codes_definis, stats.inscrits)} %`} detail={`${stats.codes_definis} sur ${stats.inscrits}`} icone={KeyRound} ton="rose" />
-        <Chiffre label="Membres par groupe" valeur={String(moyenne)} detail="en moyenne" icone={UsersRound} ton="violet" />
-        <Chiffre label="Paiement moyen" valeur={fcfa(stats.paiements_confirmes ? Math.round(stats.montant_confirme / stats.paiements_confirmes) : 0)} detail={`${stats.paiements_confirmes} paiements confirmés`} icone={Wallet} ton="emerald" />
+      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <Bloc titre="Dans un groupe"><Jauge valeur={pct(avecGroupe, inscrits.length)} label="des inscrits" sous={`${avecGroupe} sur ${inscrits.length}`} /></Bloc>
+        <Bloc titre="Code secret"><Montre pourcent={pct(stats.codes_definis, stats.inscrits)} label="ont créé leur code" sous={`${stats.codes_definis} sur ${stats.inscrits}`} /></Bloc>
+        <Bloc titre="Taille moyenne"><Jauge valeur={moyenne} max={Math.max(20, moyenne)} unite="membres" label="par groupe" format={(n) => `${n}`} /></Bloc>
+        <Bloc titre="Paiement moyen"><Jauge valeur={stats.paiements_confirmes ? Math.round(stats.montant_confirme / stats.paiements_confirmes) : 0} max={Math.max(50000, stats.paiements_confirmes ? Math.round(stats.montant_confirme / stats.paiements_confirmes) : 0)} label={`${stats.paiements_confirmes} paiements confirmés`} format={fcfa} /></Bloc>
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <Bloc titre="Groupes par type" sous="Nombre de groupes">
-          <Barres lignes={parType.map((p) => ({ label: TYPE[p.t], n: p.n, couleur: TYPE_COULEUR[p.t] }))} />
+          <Anneau parts={parType.map((p) => ({ label: TYPE[p.t], n: p.n, couleur: TYPE_COULEUR[p.t] }))} sousCentre="groupes" />
         </Bloc>
         <Bloc titre="Argent confirmé par type" sous="Total des cotisations confirmées">
-          <Barres lignes={parType.map((p) => ({ label: TYPE[p.t], n: p.argent, couleur: TYPE_COULEUR[p.t] }))} format={fcfa} />
+          <Anneau parts={parType.map((p) => ({ label: TYPE[p.t], n: p.argent, couleur: TYPE_COULEUR[p.t] }))} format={fcfa} sousCentre="confirmés" />
         </Bloc>
         <Bloc titre="Groupes qui cotisent le plus" sous="Touche un groupe pour ouvrir sa fiche">
           {top.length === 0 ? <p className="text-sm text-stone-500">Aucun groupe.</p> : <Barres lignes={top.map((g) => ({ label: g.nom, n: g.collecte, couleur: TYPE_COULEUR[g.type] ?? "#059669", onClick: () => ouvrir(g.id) }))} format={fcfa} />}
         </Bloc>
         <Bloc titre="Taille des groupes" sous="Nombre de groupes par nombre de membres">
-          <Barres lignes={tailles.map((t) => ({ ...t, couleur: "#0d9488" }))} />
+          <Colonnes lignes={tailles} couleur={VERT} />
         </Bloc>
       </div>
     </>
@@ -2035,6 +2026,16 @@ function Salaires() {
         <b>Payer tout le monde d’un coup :</b> télécharge le fichier ci-dessus et dépose-le sur <b>Wave Business → Paiements en masse</b>. Le paiement direct depuis Cotiz arrivera quand Cotiz aura l’accès API Wave (compte entreprise). En attendant, paie chaque agent par Wave puis touche <b>« Marquer payé »</b>.
       </div>
       {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}>{msg}</p>}
+      {liste.some((a) => a.salaire) && (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Bloc titre="Masse salariale du mois">
+            <Anneau parts={[{ label: "Déjà payé", n: liste.filter((a) => a.paye).reduce((t, a) => t + (a.salaire ?? 0), 0), couleur: VERT }, { label: "Reste à payer", n: total, couleur: ORANGE }]} format={fcfa} sousCentre="au total" />
+          </Bloc>
+          <Bloc titre="Agents payés">
+            <Montre pourcent={Math.round((liste.filter((a) => a.paye).length / Math.max(1, liste.filter((a) => a.salaire).length)) * 100)} label="de l’équipe est payée" sous={`${liste.filter((a) => a.paye).length} sur ${liste.filter((a) => a.salaire).length} agents`} />
+          </Bloc>
+        </div>
+      )}
       <Bloc titre={`Salaires de ${nomMois}`}>
         {liste.length === 0 ? <p className="text-sm text-stone-500">Aucun agent.</p> : (
           <Liste>
@@ -2118,7 +2119,6 @@ function Revenus() {
   const maj = (k: number, champ: "max" | "frais", v: string) => setTranches(tranches.map((t, j) => (j === k ? { ...t, [champ]: v === "" ? (champ === "max" ? null : 0) : Number(v.replace(/\D/g, "")) } : t)));
   const exemples = [1000, 5000, 10000, 25000, 50000, 100000];
   const pct = r.volume ? ((r.total / r.volume) * 100).toFixed(1).replace(".", ",") : "0";
-  const max = Math.max(1, ...r.par_jour.map((j) => j.montant));
 
   return (
     <>
@@ -2127,6 +2127,18 @@ function Revenus() {
           <button key={id} onClick={() => setPeriode(id)} className={`rounded-full border px-3 py-1.5 text-xs font-semibold ${periode === id ? "border-stone-900 bg-stone-900 text-white" : "border-stone-200 bg-white text-stone-600"}`}>{l}</button>
         ))}
       </div>
+      <div className="degrade-vert relative overflow-hidden rounded-3xl p-5 text-white shadow-lg">
+        <div className="motif pointer-events-none absolute inset-0 opacity-25" />
+        <div className="relative flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-emerald-50/90">Ce que Cotiz a gagné · {periode === "mois" ? "ce mois-ci" : periode === "30j" ? "30 derniers jours" : "cette année"}</p>
+            <p className="mt-1 text-4xl font-extrabold tracking-tight">{fcfa(r.total)}</p>
+            <p className="mt-1 text-sm text-emerald-50/90">{r.nb} paiement{r.nb > 1 ? "s" : ""} en ligne · {fcfa(r.depuis_debut)} depuis le début</p>
+          </div>
+          <span className="rounded-2xl bg-orange-500 px-4 py-2 text-sm font-extrabold shadow">{pct} % du volume</span>
+        </div>
+        <div className="bande-kente pointer-events-none absolute inset-x-0 bottom-0" />
+      </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Chiffre label="Mes revenus" valeur={fcfa(r.total)} detail={r.penalites ? `frais ${fcfa(r.frais ?? 0)} + pénalités ${fcfa(r.penalites)}` : `${r.nb} paiement${r.nb > 1 ? "s" : ""} en ligne`} icone={Coins} ton="amber" />
         <Chiffre label="Argent passé en ligne" valeur={fcfa(r.volume)} detail={`soit ${pct} % pour Cotiz`} icone={Wallet} ton="emerald" />
@@ -2134,20 +2146,22 @@ function Revenus() {
         <Chiffre label="Depuis le début" valeur={fcfa(r.depuis_debut)} detail="total gagné" icone={BadgeCheck} ton="violet" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <Bloc titre="Revenus jour par jour" sous="Frais de service des paiements en ligne confirmés">
+        <Bloc titre="Revenus jour par jour" sous="Frais de service des paiements en ligne confirmés" className="lg:col-span-2">
           {r.par_jour.length === 0 ? <p className="text-sm text-stone-500">Aucun revenu sur cette période. Les frais s’appliquent seulement aux paiements en ligne (GeniusPay / Wave).</p> : (
-            <div className="flex h-40 items-end gap-1 border-b border-stone-200">
-              {r.par_jour.map((j) => (
-                <div key={j.jour} title={`${dateCourte(j.jour)} : ${fcfa(j.montant)} (${j.nb})`} className="flex h-full flex-1 items-end">
-                  <span className="block w-full rounded-t-[4px] bg-amber-500" style={{ height: `${Math.max(4, (j.montant / max) * 100)}%` }} />
-                </div>
-              ))}
-            </div>
+            <Courbe points={r.par_jour.map((j) => ({ label: dateCourte(j.jour), n: j.montant }))} couleur={ORANGE} format={fcfa} />
           )}
+        </Bloc>
+      </div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Bloc titre="D’où vient l’argent" sous="Frais de service ou part des pénalités">
+          <Anneau parts={[{ label: "Frais de service", n: r.frais ?? r.total - (r.penalites ?? 0), couleur: VERT }, { label: "Part des pénalités", n: r.penalites ?? 0, couleur: ORANGE }]} format={fcfa} sousCentre="gagnés" />
+        </Bloc>
+        <Bloc titre="Ta part sur l’argent passé" sous={`${fcfa(r.total)} sur ${fcfa(r.volume)}`}>
+          <Jauge valeur={Number(pct.replace(",", "."))} max={5} unite="%" label="pour Cotiz" format={(n) => `${String(n).replace(".", ",")} %`} />
         </Bloc>
         <Bloc titre="Groupes qui te rapportent le plus">
           {r.par_groupe.length === 0 ? <p className="text-sm text-stone-500">Rien pour l’instant.</p> : (
-            <Barres lignes={r.par_groupe.map((g) => ({ label: `${g.groupe} (${g.nb})`, n: g.montant, couleur: "#d97706" }))} format={fcfa} />
+            <Barres lignes={r.par_groupe.map((g) => ({ label: `${g.groupe} (${g.nb})`, n: g.montant, couleur: ORANGE }))} format={fcfa} />
           )}
         </Bloc>
       </div>
