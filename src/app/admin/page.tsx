@@ -2338,9 +2338,16 @@ function FicheUtilisateur({ id, fermer, ouvrirGroupe, recharger }: { id: string;
                 onClick={async () => {
                   const saisie = prompt(`Supprimer DÉFINITIVEMENT le compte de ${p.name} (${telAffiche(p.phone)}) ? Rien ne pourra être récupéré.\n\nPour confirmer, écris : SUPPRIMER`);
                   if (saisie === null) return;
-                  if (saisie.trim().toUpperCase() !== "SUPPRIMER") return setMsg("Confirmation incorrecte : rien n’a été supprimé.");
+                  if (saisie.trim().toUpperCase() !== "SUPPRIMER") { alert("Confirmation incorrecte (il faut écrire SUPPRIMER) : rien n’a été supprimé."); return; }
                   const { data, error } = await db.rpc("admin_supprimer_compte", { p: id });
-                  if (error) return setMsg("Erreur : " + (error.message.includes("admin_supprimer_compte") ? "fais d’abord la mise à jour SQL n°26." : error.message));
+                  if (error) {
+                    const texte = /admin_supprimer_compte|schema cache|Could not find the function/i.test(error.message)
+                      ? "La suppression n’est pas encore installée : lance d’abord la mise à jour SQL n°26 dans Supabase."
+                      : "La suppression a échoué : " + error.message;
+                    setMsg("Erreur : " + texte);
+                    alert(texte);
+                    return;
+                  }
                   const r = data as { groupes_supprimes: number; groupes_confies: number; places_gardees: number };
                   alert(`Compte supprimé.\n${r.groupes_supprimes} groupe(s) effacé(s), ${r.groupes_confies} groupe(s) confié(s) au trésorier, ${r.places_gardees} place(s) gardée(s) pour l’historique des paiements.`);
                   recharger();
