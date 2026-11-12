@@ -8,7 +8,8 @@
  *   GENIUSPAY_WEBHOOK_SECRET  secret du webhook (idem, si GeniusPay en fournit un)
  *   NEXT_PUBLIC_PAIEMENT_MODE=geniuspay   active les vrais paiements dans l'app
  *
- * Points d'entrée repris du kit officiel GeniusPay pour Laravel (base /api/v1/merchant,
+ * Adresse de l’API confirmée dans l’« API Tester » GeniusPay : https://pay.genius.ci/api/v1/merchant.
+ * Points d’entrée repris du kit officiel GeniusPay pour Laravel (base /api/v1/merchant,
  * en-têtes X-API-Key / X-API-Secret, POST /payments, GET /payments/{reference},
  * webhook signé X-GeniusPay-Signature = HMAC-SHA256 du corps brut).
  * ⚠️ À confirmer avec la documentation du Dashboard au moment de l'activation.
@@ -16,7 +17,7 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { PayMethod } from "../types";
 
-const API = (process.env.GENIUSPAY_API_URL || "https://geniuspay.ci/api/v1/merchant").replace(/\/$/, "");
+const API = (process.env.GENIUSPAY_API_URL || "https://pay.genius.ci/api/v1/merchant").replace(/\/$/, "");
 
 export const geniuspayConfigure = () =>
   Boolean(process.env.GENIUSPAY_PUBLIC_KEY && process.env.GENIUSPAY_SECRET_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY);
