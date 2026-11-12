@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { Jauge, Montre, Anneau, Pyramide, Courbe, Colonnes, VERT, ORANGE, VIOLET } from "@/components/admin/Graphiques";
+import { Jauge, Montre, Anneau, Pyramide, Courbe, Colonnes, TexteAnime, VERT, ORANGE, VIOLET } from "@/components/admin/Graphiques";
 import { DateNaissance } from "@/components/DateNaissance";
 import {
   Ban, BarChart3, BadgeCheck, Coins, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronLeft, Contact, Download, ExternalLink, FolderOpen, Headset, IdCard, MessageSquareText, Phone, ScrollText, Send, ShieldX, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
@@ -483,6 +483,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
           </div>
 
           {msg && <p className="rounded-xl bg-red-50 p-3 text-sm font-medium text-red-700">{msg}</p>}
+          <div key={onglet} className="cascade space-y-5">
           {onglet === "apercu" && <Apercu stats={stats} inscrits={inscrits} groupes={groupes} attente={attente} demandes={demandes} aller={setOnglet} ouvrir={(type, id) => setFiche({ type, id })} nonDeclares={equipe.filter((a) => a.role === "agent" && !a.cnps_declare).length} nouvelles={nouvelles} />}
           {onglet === "stats" && <Statistiques stats={stats} inscrits={inscrits} groupes={groupes} ouvrir={(id) => setFiche({ type: "groupe", id })} />}
           {onglet === "inscrits" && <Inscrits liste={inscrits} ouvrir={(id) => setFiche({ type: "utilisateur", id })} />}
@@ -498,6 +499,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
           {onglet === "revenus" && fondateur && <Revenus />}
           {onglet === "codes" && <Codes liste={demandes} recharger={charger} />}
           {onglet === "annonces" && fondateur && <Annonces liste={annonces} recharger={charger} />}
+          </div>
         </main>
       </div>
       {fiche?.type === "utilisateur" && <FicheUtilisateur id={fiche.id} fermer={() => setFiche(null)} ouvrirGroupe={(id) => setFiche({ type: "groupe", id })} recharger={charger} />}
@@ -513,14 +515,14 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
 function Chiffre({ label, valeur, detail, icone: I, ton = "emerald", onClick }: { label: string; valeur: string; detail?: string; icone: typeof Users; ton?: Ton; onClick?: () => void }) {
   const t = TON[ton];
   return (
-    <button onClick={onClick} disabled={!onClick} className={`group relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 text-left shadow-sm transition enabled:hover:-translate-y-0.5 enabled:hover:shadow-md ${t.carte}`}>
+    <button onClick={onClick} disabled={!onClick} className={`carte-vivante group relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 text-left shadow-sm ${t.carte}`}>
       <span className="absolute inset-x-0 top-0 flex h-1"><span className="flex-1 bg-orange-500" /><span className="flex-1 bg-white" /><span className="flex-1 bg-emerald-600" /></span>
       <div className="flex items-start justify-between gap-2">
-        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${t.pastille}`}><I size={20} /></span>
+        <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl shadow-sm transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110 ${t.pastille}`}><I size={20} /></span>
         {onClick && <ChevronRight size={16} className="text-stone-300 transition group-hover:translate-x-0.5 group-hover:text-stone-500" />}
       </div>
       <p className="mt-3 text-xs font-semibold text-stone-500">{label}</p>
-      <p className="mt-0.5 truncate text-[1.45rem] font-extrabold leading-tight tracking-tight">{valeur}</p>
+      <p className="mt-0.5 truncate text-[1.45rem] font-extrabold tabular-nums leading-tight tracking-tight"><TexteAnime texte={valeur} /></p>
       {detail && <p className={`mt-0.5 text-xs font-medium ${t.texte}`}>{detail}</p>}
     </button>
   );
@@ -528,7 +530,7 @@ function Chiffre({ label, valeur, detail, icone: I, ton = "emerald", onClick }: 
 
 function Bloc({ titre, sous, action, children, className = "" }: { titre: string; sous?: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
   return (
-    <section className={`rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm lg:p-5 ${className}`}>
+    <section className={`rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm transition-shadow duration-300 hover:shadow-[0_14px_32px_-16px_rgba(0,82,52,0.25)] lg:p-5 ${className}`}>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <p className="font-bold">{titre}</p>
@@ -571,10 +573,10 @@ function Barres({ lignes, format = (n: number) => String(n) }: { lignes: { label
         <button key={i} type="button" onClick={l.onClick} disabled={!l.onClick} title={`${l.label} : ${format(l.n)}`} className="block w-full text-left enabled:hover:opacity-80">
           <div className="mb-1 flex justify-between gap-2 text-xs">
             <span className="truncate font-semibold text-stone-700">{l.label}</span>
-            <span className="shrink-0 font-bold text-stone-900">{format(l.n)}</span>
+            <span className="shrink-0 font-bold tabular-nums text-stone-900"><TexteAnime texte={format(l.n)} /></span>
           </div>
           <div className="h-3 rounded-full bg-stone-100">
-            <div className="h-full rounded-full transition-all duration-700" style={{ width: `${Math.max(2, (l.n / max) * 100)}%`, background: `linear-gradient(90deg, ${l.couleur}aa, ${l.couleur})` }} />
+            <div className="etire h-full rounded-full" style={{ width: `${Math.max(2, (l.n / max) * 100)}%`, background: `linear-gradient(90deg, ${l.couleur}aa, ${l.couleur})`, animationDelay: `${i * 0.08}s` }} />
           </div>
         </button>
       ))}
@@ -2129,13 +2131,15 @@ function Revenus() {
       </div>
       <div className="degrade-vert relative overflow-hidden rounded-3xl p-5 text-white shadow-lg">
         <div className="motif pointer-events-none absolute inset-0 opacity-25" />
+        <div className="balaie pointer-events-none absolute inset-y-0 left-0" />
+        <div className="halo pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-orange-400/25 blur-2xl" />
         <div className="relative flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-emerald-50/90">Ce que Cotiz a gagné · {periode === "mois" ? "ce mois-ci" : periode === "30j" ? "30 derniers jours" : "cette année"}</p>
-            <p className="mt-1 text-4xl font-extrabold tracking-tight">{fcfa(r.total)}</p>
+            <p className="mt-1 text-4xl font-extrabold tabular-nums tracking-tight lg:text-5xl"><TexteAnime texte={fcfa(r.total)} /></p>
             <p className="mt-1 text-sm text-emerald-50/90">{r.nb} paiement{r.nb > 1 ? "s" : ""} en ligne · {fcfa(r.depuis_debut)} depuis le début</p>
           </div>
-          <span className="rounded-2xl bg-orange-500 px-4 py-2 text-sm font-extrabold shadow">{pct} % du volume</span>
+          <span className="flotte rounded-2xl bg-orange-500 px-4 py-2 text-sm font-extrabold shadow-lg shadow-orange-900/30">{pct} % du volume</span>
         </div>
         <div className="bande-kente pointer-events-none absolute inset-x-0 bottom-0" />
       </div>

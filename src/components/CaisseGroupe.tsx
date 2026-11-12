@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { TexteAnime } from "@/components/Anime";
 import { Eye, EyeOff, Landmark } from "lucide-react";
 import { IconBadge } from "./icons";
 import { fcfa } from "@/lib/format";
@@ -35,7 +36,7 @@ export function CaisseGroupe({ g, userId }: { g: Group; userId: string | null })
         <IconBadge icon={Landmark} taille="sm" />
         <div className="min-w-0 flex-1">
           <p className="text-[0.8rem] font-medium text-stone-500">Somme de la caisse</p>
-          <p className="truncate text-2xl font-extrabold tracking-tight text-stone-900">{m(cs.brut)}</p>
+          <p className="truncate text-2xl font-extrabold tabular-nums tracking-tight text-stone-900">{cache ? m(cs.brut) : <TexteAnime texte={m(cs.brut)} />}</p>
         </div>
         <button
           type="button"

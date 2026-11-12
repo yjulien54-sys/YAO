@@ -162,3 +162,38 @@ body:not(:has(.zone-admin)) .text-stone-500 { color: #6b645e; }
 body:not(:has(.zone-admin)) .text-stone-600 { color: #4a4440; }
 body:not(:has(.zone-admin)) input::placeholder,
 body:not(:has(.zone-admin)) textarea::placeholder { color: #8a837c; font-weight: 500; }
+
+/* ===== Mouvements (admin + application) ===== */
+@keyframes trace { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
+.trace { stroke-dasharray: 1; stroke-dashoffset: 1; animation: trace 1.3s cubic-bezier(0.65, 0, 0.35, 1) forwards; }
+@keyframes fondu { from { opacity: 0; } to { opacity: 1; } }
+.fondu { animation: fondu 900ms ease both; }
+@keyframes pousse { from { transform: scaleY(0); } to { transform: scaleY(1); } }
+.pousse { transform-origin: bottom; animation: pousse 900ms cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+@keyframes etire { from { transform: scaleX(0); } to { transform: scaleX(1); } }
+.etire { transform-origin: left; animation: etire 1s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes monte { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: none; } }
+.cascade > * { animation: monte 600ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.cascade > *:nth-child(2) { animation-delay: 70ms; }
+.cascade > *:nth-child(3) { animation-delay: 140ms; }
+.cascade > *:nth-child(4) { animation-delay: 210ms; }
+.cascade > *:nth-child(5) { animation-delay: 280ms; }
+.cascade > *:nth-child(n+6) { animation-delay: 340ms; }
+.carte-vivante { transition: transform 250ms ease, box-shadow 250ms ease; }
+.carte-vivante:hover { transform: translateY(-3px); box-shadow: 0 14px 30px -14px rgba(0, 82, 52, 0.28); }
+@keyframes page-entre { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.page-entre { animation: page-entre 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+@keyframes balaie { 0%, 60% { transform: translateX(-120%) skewX(-20deg); } 100% { transform: translateX(260%) skewX(-20deg); } }
+.balaie { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent); width: 40%; animation: balaie 4.5s ease-in-out 0.8s infinite; }
+@keyframes pulse-doux { 0%, 100% { opacity: 0.55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.35); } }
+.pulse-doux { animation: pulse-doux 2s ease-in-out infinite; transform-origin: center; transform-box: fill-box; }
+button:not(:disabled), a { -webkit-tap-highlight-color: transparent; }
+button:not(:disabled):active { transform: scale(0.97); }
+button { transition-property: transform, background-color, border-color, color, opacity, box-shadow; transition-duration: 150ms; }
+@media (prefers-reduced-motion: reduce) {
+  .trace, .fondu, .pousse, .etire, .cascade > *, .page-entre, .balaie, .pulse-doux { animation: none !important; stroke-dashoffset: 0 !important; }
+  .carte-vivante:hover { transform: none; }
+}
+@keyframes tourne { to { transform: rotate(360deg); } }
+.aiguille-trotteuse { animation: tourne 60s linear infinite; }
+@media (prefers-reduced-motion: reduce) { .aiguille-trotteuse { animation: none !important; } }

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { TexteAnime } from "@/components/Anime";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { Button, Card, Header, Loading, Page, Progress, inputClass, useRequireUser } from "@/components/ui";
@@ -118,7 +119,7 @@ export default function Groupes() {
           <div className="relative px-5 pb-5 pt-5">
             <p className="text-sm text-emerald-50/80">Bonjour {prenom(user!.name)}</p>
             <p className="mt-4 text-[0.8rem] text-emerald-50/75">Mes cotisations payées</p>
-            <p className="mt-0.5 text-[2rem] font-extrabold leading-none tracking-tight">{fcfa(mesPaiements)}</p>
+            <p className="mt-0.5 text-[2rem] font-extrabold tabular-nums leading-none tracking-tight"><TexteAnime texte={fcfa(mesPaiements)} /></p>
           </div>
           <div className="relative grid grid-cols-3 divide-x divide-white/15 border-t border-white/15 bg-black/10 text-center">
             {chiffres.map(([l, v, alerte, cible]) => (
