@@ -29,7 +29,7 @@ Les **valeurs** ne doivent jamais être écrites dans le code ni envoyées dans 
 | `SUPABASE_SERVICE_ROLE_KEY` | Clé serveur secrète (connexion sur un nouveau téléphone, admin, paiements) |
 | `NEXT_PUBLIC_PAIEMENT_MODE` | `manuel` (défaut), `wave`, `geniuspay`, `mixte`, `cinetpay`, `simulation` |
 | `WAVE_API_KEY` | API Wave Business (mode `wave` ou `mixte`) |
-| `GENIUSPAY_PUBLIC_KEY`, `GENIUSPAY_SECRET_KEY`, `GENIUSPAY_WEBHOOK_SECRET` | GeniusPay (mode `geniuspay` ou `mixte`) |
+| `GENIUSPAY_API_KEY` (clé « GPAY-… »), `GENIUSPAY_SECRET_KEY` (facultative), `GENIUSPAY_WEBHOOK_SECRET` | GeniusPay (mode `geniuspay` ou `mixte`) |
 
 ## Développement
 

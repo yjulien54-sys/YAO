@@ -3,12 +3,14 @@
  *
  * Variables d'environnement à mettre dans Vercel (Settings > Environment Variables),
  * JAMAIS dans le code ni dans une conversation :
- *   GENIUSPAY_PUBLIC_KEY      clé publique  (Dashboard GeniusPay > Paramètres > Credentials)
- *   GENIUSPAY_SECRET_KEY      clé secrète   (idem)
+ *   GENIUSPAY_API_KEY         clé API « GPAY-… » (envoyée comme Bearer Token) — Dashboard GeniusPay > Paramètres > API
+ *   GENIUSPAY_SECRET_KEY      clé secrète « priv_… » (ancien système, facultative si la clé API suffit)
+ *   GENIUSPAY_API_URL         facultatif : https://geniuspay.ci/api/v1/merchant (nouvelle version, par défaut)
+ *                             ou https://pay.genius.ci/api/v1/merchant (ancienne version)
  *   GENIUSPAY_WEBHOOK_SECRET  secret du webhook (idem, si GeniusPay en fournit un)
  *   NEXT_PUBLIC_PAIEMENT_MODE=geniuspay   active les vrais paiements dans l'app
  *
- * Adresse de l’API confirmée dans l’« API Tester » GeniusPay : https://pay.genius.ci/api/v1/merchant.
+ * L'« API Tester » GeniusPay (labpay.genius.ci) montre 2 versions : nouvelle (geniuspay.ci) et ancienne (pay.genius.ci).
  * Points d’entrée repris du kit officiel GeniusPay pour Laravel (base /api/v1/merchant,
  * en-têtes X-API-Key / X-API-Secret, POST /payments, GET /payments/{reference},
  * webhook signé X-GeniusPay-Signature = HMAC-SHA256 du corps brut).
@@ -17,14 +19,17 @@
 import { createHmac, timingSafeEqual } from "node:crypto";
 import type { PayMethod } from "../types";
 
-const API = (process.env.GENIUSPAY_API_URL || "https://pay.genius.ci/api/v1/merchant").replace(/\/$/, "");
+// Nouvelle version de GeniusPay (comptes créés sur geniuspay.ci) ; l'ancienne est pay.genius.ci
+const API = (process.env.GENIUSPAY_API_URL || "https://geniuspay.ci/api/v1/merchant").replace(/\/$/, "");
+const CLE_API = () => process.env.GENIUSPAY_API_KEY || process.env.GENIUSPAY_PUBLIC_KEY || "";
 
-export const geniuspayConfigure = () =>
-  Boolean(process.env.GENIUSPAY_PUBLIC_KEY && process.env.GENIUSPAY_SECRET_KEY && process.env.SUPABASE_SERVICE_ROLE_KEY);
+export const geniuspayConfigure = () => Boolean(CLE_API() && process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-const entetes = () => ({
-  "X-API-Key": process.env.GENIUSPAY_PUBLIC_KEY ?? "",
-  "X-API-Secret": process.env.GENIUSPAY_SECRET_KEY ?? "",
+// Nouvelle version : « Authorization: Bearer GPAY-… » ; ancienne : X-API-Key + X-API-Secret (envoyés aussi, au cas où)
+const entetes = (): Record<string, string> => ({
+  Authorization: `Bearer ${CLE_API()}`,
+  "X-API-Key": CLE_API(),
+  ...(process.env.GENIUSPAY_SECRET_KEY ? { "X-API-Secret": process.env.GENIUSPAY_SECRET_KEY } : {}),
   Accept: "application/json",
   "Content-Type": "application/json",
 });
@@ -32,7 +37,7 @@ const entetes = () => ({
 async function appel(chemin: string, init?: RequestInit) {
   const res = await fetch(`${API}${chemin}`, { ...init, headers: entetes(), signal: AbortSignal.timeout(30000) });
   const json = await res.json().catch(() => ({}));
-  if (res.status === 401) throw new Error("GeniusPay : clés API refusées (vérifie GENIUSPAY_PUBLIC_KEY et GENIUSPAY_SECRET_KEY dans Vercel)");
+  if (res.status === 401) throw new Error("GeniusPay : clé API refusée (vérifie GENIUSPAY_API_KEY dans Vercel, et l’adresse GENIUSPAY_API_URL)");
   if (!res.ok) throw new Error(`GeniusPay : ${json?.message ?? `erreur ${res.status}`}`);
   return (json?.data ?? json) as Record<string, unknown>;
 }
