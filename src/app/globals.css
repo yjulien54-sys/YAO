@@ -136,13 +136,18 @@ body { font-variant-numeric: tabular-nums; }
    LISIBILITÉ RENFORCÉE (application mobile) : textes plus gras, petits
    textes agrandis, gris plus foncés. L'administration n'est pas concernée.
    ===================================================================== */
-body:not(:has(.zone-admin)) { font-weight: 600; }
+body:not(:has(.zone-admin)) { font-weight: 400; }
 /* L’administration garde sa taille d’origine */
 html:has(.zone-admin) { font-size: 100%; }
+/* Hiérarchie : texte courant léger, noms et titres appuyés, boutons et montants les plus forts */
 body:not(:has(.zone-admin)) .font-normal,
-body:not(:has(.zone-admin)) .font-medium { font-weight: 600; }
-body:not(:has(.zone-admin)) .font-semibold { font-weight: 700; }
-body:not(:has(.zone-admin)) .font-bold { font-weight: 800; }
+body:not(:has(.zone-admin)) .font-medium { font-weight: 450; }
+body:not(:has(.zone-admin)) .font-semibold { font-weight: 700; color: #1c1917; }
+body:not(:has(.zone-admin)) .font-bold,
+body:not(:has(.zone-admin)) button.font-semibold,
+body:not(:has(.zone-admin)) a.font-semibold { font-weight: 800; }
+body:not(:has(.zone-admin)) .font-semibold.text-white,
+body:not(:has(.zone-admin)) .text-white .font-semibold { color: #fff; }
 
 body:not(:has(.zone-admin)) .text-sm { font-size: 0.95rem; line-height: 1.4rem; }
 body:not(:has(.zone-admin)) .text-xs { font-size: 0.85rem; line-height: 1.2rem; }
@@ -153,7 +158,7 @@ body:not(:has(.zone-admin)) .text-\[0\.68rem\],
 body:not(:has(.zone-admin)) .text-\[0\.65rem\] { font-size: 0.78rem; }
 
 body:not(:has(.zone-admin)) .text-stone-400 { color: #78716c; }
-body:not(:has(.zone-admin)) .text-stone-500 { color: #57534e; }
-body:not(:has(.zone-admin)) .text-stone-600 { color: #44403c; }
+body:not(:has(.zone-admin)) .text-stone-500 { color: #6b645e; }
+body:not(:has(.zone-admin)) .text-stone-600 { color: #4a4440; }
 body:not(:has(.zone-admin)) input::placeholder,
 body:not(:has(.zone-admin)) textarea::placeholder { color: #8a837c; font-weight: 500; }
