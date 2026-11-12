@@ -222,7 +222,7 @@ function Attente_({ texte }: { texte: string }) {
 /** Fond vert Cotiz avec motif et bande kente */
 function FondVert({ children }: { children: React.ReactNode }) {
   return (
-    <div className="degrade-vert relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-12">
+    <div className="zone-admin degrade-vert relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-12">
       <div className="motif pointer-events-none absolute inset-0 opacity-40" />
       <div className="pointer-events-none absolute -left-24 -top-24 h-80 w-80 rounded-full bg-emerald-300/20 blur-3xl" />
       <div className="pointer-events-none absolute -bottom-32 -right-16 h-96 w-96 rounded-full bg-orange-400/20 blur-3xl" />
@@ -391,7 +391,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
 
   return (
     <AdminCtx.Provider value={{ fondateur, demander: (d) => setFormDossier(d) }}>
-    <div className="min-h-dvh bg-[#f4f2ec] text-stone-900 lg:flex">
+    <div className="zone-admin min-h-dvh bg-[#f4f2ec] text-stone-900 lg:flex">
       {/* Barre latérale (ordinateur) */}
       <aside className="degrade-vert relative hidden w-[260px] shrink-0 overflow-hidden text-white lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col">
         <div className="motif pointer-events-none absolute inset-0 opacity-30" />
