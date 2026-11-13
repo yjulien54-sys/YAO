@@ -25,7 +25,8 @@ type LigneJournal = { id: number; le: string; admin_email: string | null; action
 type Dossier = { id: string; numero: number; cree_le: string; cree_par: string; motif: string; priorite: "normale" | "urgente"; client_profile_id: string | null; client_nom: string | null; client_tel: string | null; groupe_id: string | null; groupe_nom: string | null; montant: number | null; reference: string | null; description: string; donnees: Record<string, string>; statut: "ouvert" | "valide" | "refuse"; reponse: string | null; traite_par: string | null; traite_le: string | null };
 type DossierInit = { motif?: string; client_profile_id?: string | null; client_nom?: string | null; client_tel?: string | null; groupe_id?: string | null; groupe_nom?: string | null; montant?: number | null; reference?: string | null; donnees?: Record<string, string>; resume?: string };
 type Membre_Equipe = { email: string; nom: string | null; role: "fondateur" | "agent"; ajoute_le: string; numero: number | null; fonctions?: string[]; telephone: string | null; photo_path: string | null; cni_numero: string | null; cni_path: string | null; salaire: number | null; cnps_declare: boolean; cnps_numero: string | null; cnps_le: string | null; embauche_le: string | null; contrat: string | null; contact_urgence: string | null; note: string | null };
-type Requete = { id: string; numero: number; cree_le: string; profile_id: string; nom: string | null; telephone: string | null; motif: string; message: string; statut: "nouvelle" | "en_cours" | "resolue"; agent_email: string | null; reponse: string | null; maj_le: string };
+type Requete = { id: string; numero: number; cree_le: string; profile_id: string; nom: string | null; telephone: string | null; motif: string; message: string; statut: "nouvelle" | "en_cours" | "resolue"; agent_email: string | null; reponse: string | null; maj_le: string; dernier_auteur?: string | null; nb_messages?: number };
+type MsgRequete = { id: string; requete_id: string; cree_le: string; auteur: "client" | "agent"; agent_email: string | null; texte: string };
 type Creneau = { id: string; email: string; nom: string | null; numero: number | null; fonctions?: string[]; jour: string; debut: string; fin: string; note: string | null };
 type Salaire = { email: string; nom: string | null; numero: number | null; telephone: string | null; salaire: number | null; cnps_declare: boolean; paye: boolean; montant_paye: number | null; paye_le: string | null; reference: string | null };
 /** Fonctions (postes) qu'on trouve dans l'entreprise, à cocher pour chaque membre de l'équipe */
@@ -421,7 +422,8 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
 
   const aValider = attente.length + versements.length;
   const ouverts = (dossiers ?? []).filter((d) => d.statut === "ouvert").length;
-  const nouvelles = (requetes ?? []).filter((r) => r.statut === "nouvelle").length;
+  // Requêtes qui attendent l'agent : nouvelles, ou conversations où le client a écrit en dernier
+  const nouvelles = (requetes ?? []).filter((r) => r.statut === "nouvelle" || (r.statut === "en_cours" && (r.dernier_auteur ?? "agent") === "client")).length;
   const compteurs: Partial<Record<Onglet, number>> = { inscrits: inscrits.length, groupes: groupes.length, membres: membres?.length, paiements: aValider, codes: demandes.length, annonces: annonces.length, dossiers: dossiers ? ouverts : undefined, equipe: equipe.length || undefined, requetes: requetes ? nouvelles : undefined };
   const alerte: Partial<Record<Onglet, boolean>> = { paiements: aValider > 0, dossiers: fondateur && ouverts > 0, requetes: nouvelles > 0 };
   const onglets = ONGLETS.filter((o) => fondateur || !RESERVE_FONDATEUR.includes(o.id));
@@ -1629,11 +1631,8 @@ const STATUT_REQ: Record<Requete["statut"], [string, string]> = {
 };
 
 function Requetes({ liste, moi, recharger, ouvrirUtilisateur }: { liste: Requete[] | null; moi: string; recharger: () => void; ouvrirUtilisateur: (id: string) => void }) {
-  const { demander } = useContext(AdminCtx);
   const [filtre, setFiltre] = useState<"a_traiter" | "miennes" | "resolue" | "toutes">("a_traiter");
-  const [reponses, setReponses] = useState<Record<string, string>>({});
   const [msg, setMsg] = useState("");
-  const [occupe, setOccupe] = useState<string | null>(null);
   if (!liste) return <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Pour voir les requêtes des clients, fais d’abord la <b>mise à jour SQL n°18</b> dans Supabase.</p>;
   const tests = {
     a_traiter: (r: Requete) => r.statut !== "resolue",
@@ -1642,63 +1641,98 @@ function Requetes({ liste, moi, recharger, ouvrirUtilisateur }: { liste: Requete
     toutes: () => true,
   };
   const vus = liste.filter(tests[filtre]);
-  const agir = async (id: string, fn: () => PromiseLike<{ error: { message: string } | null }>, ok: string) => {
-    setOccupe(id); setMsg("");
-    const { error } = await fn();
-    setOccupe(null);
-    setMsg(error ? "Erreur : " + error.message : ok);
-    if (!error) setReponses((x) => ({ ...x, [id]: "" }));
-    recharger();
-  };
   return (
     <>
       <div className="rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-white p-4 text-sm text-sky-900">
-        Les clients écrivent depuis l’application (page <b>Aide</b>). Touche <b>« Je m’en occupe »</b>, appelle le client si besoin, puis réponds : il reçoit ta réponse en notification. S’il faut une action que tu ne peux pas faire, envoie un dossier au fondateur.
+        Les clients écrivent depuis l’application (page <b>Aide</b>). Touche <b>« Je m’en occupe »</b>, puis écris-lui : <b>chaque requête est une conversation</b>, le client te répond dans le même fil tant que tu ne l’as pas fermée. Les conversations où le client a répondu remontent en haut, encadrées en bleu. S’il faut une action que tu ne peux pas faire, envoie un dossier au fondateur.
       </div>
       <Puces options={[
         { id: "a_traiter" as const, label: "À traiter", n: liste.filter(tests.a_traiter).length },
         { id: "miennes" as const, label: "Les miennes", n: liste.filter(tests.miennes).length },
-        { id: "resolue" as const, label: "Répondues", n: liste.filter(tests.resolue).length },
+        { id: "resolue" as const, label: "Fermées", n: liste.filter(tests.resolue).length },
         { id: "toutes" as const, label: "Toutes", n: liste.length },
       ]} valeur={filtre} onChange={setFiltre} />
       {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}>{msg}</p>}
       {vus.length === 0 && <p className="rounded-2xl border border-dashed border-stone-300 p-8 text-center text-sm text-stone-500">{filtre === "a_traiter" ? "Aucune requête en attente. 🎉" : "Rien ici."}</p>}
       <div className="grid gap-3 lg:grid-cols-2">
-        {vus.map((r) => {
-          const [l, c] = STATUT_REQ[r.statut];
-          const aMoi = (r.agent_email ?? "").toLowerCase() === moi.toLowerCase();
-          return (
-            <article key={r.id} className={`flex flex-col rounded-2xl border bg-white p-4 shadow-sm ${r.statut === "nouvelle" ? "border-sky-200" : "border-stone-200/80"}`}>
-              <div className="flex items-start gap-3">
-                <Pastille nom={r.nom ?? "?"} />
-                <div className="min-w-0 flex-1">
-                  <button onClick={() => ouvrirUtilisateur(r.profile_id)} className="truncate text-left font-bold hover:underline">{r.nom ?? "Client"}</button>
-                  <p className="text-xs text-stone-500">{r.telephone && <a href={`tel:${r.telephone}`} className="font-semibold text-emerald-700 underline">{telAffiche(r.telephone)}</a>} · n°{r.numero} · {new Date(r.cree_le).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>
-                </div>
-                <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.7rem] font-bold ${c}`}>{l}</span>
-              </div>
-              <p className="mt-3 text-xs font-bold uppercase tracking-wide text-sky-700">{r.motif}</p>
-              <p className="mt-1 whitespace-pre-line text-sm text-stone-800">{r.message}</p>
-              {r.agent_email && <p className="mt-2 text-xs text-stone-500">Pris en charge par {aMoi ? "toi" : r.agent_email.replace("@tontine-et-cotise.vercel.app", "").replace("agent", "n°")}</p>}
-              {r.reponse && <p className="mt-2 rounded-xl bg-emerald-50 p-2.5 text-sm text-emerald-900"><b>Réponse :</b> {r.reponse}</p>}
-              {r.statut !== "resolue" && (
-                <div className="mt-3 space-y-2 border-t border-stone-100 pt-3">
-                  {r.statut === "nouvelle" && (
-                    <button disabled={!!occupe} onClick={() => agir(r.id, () => db.rpc("admin_requete_prendre", { r: r.id }), "Requête prise en charge.")} className="w-full rounded-xl bg-sky-600 py-2.5 text-sm font-bold text-white disabled:opacity-50">Je m’en occupe</button>
-                  )}
-                  <textarea value={reponses[r.id] ?? ""} onChange={(e) => setReponses({ ...reponses, [r.id]: e.target.value })} rows={2} placeholder="Ta réponse au client…" className={`${champ} resize-y`} />
-                  <div className="flex flex-wrap gap-2">
-                    <button disabled={!!occupe || !(reponses[r.id] ?? "").trim()} onClick={() => agir(r.id, () => db.rpc("admin_requete_repondre", { r: r.id, texte: reponses[r.id], resoudre: true }), "Réponse envoyée au client.")} className="flex-1 rounded-xl bg-emerald-700 py-2.5 text-sm font-bold text-white disabled:opacity-40">Répondre et clore</button>
-                    <button disabled={!!occupe || !(reponses[r.id] ?? "").trim()} onClick={() => agir(r.id, () => db.rpc("admin_requete_repondre", { r: r.id, texte: reponses[r.id], resoudre: false }), "Réponse envoyée, requête gardée ouverte.")} className="rounded-xl border border-stone-200 px-3 py-2.5 text-sm font-bold text-stone-700 disabled:opacity-40">Répondre</button>
-                    <button onClick={() => demander({ motif: r.motif.includes("paiement") ? "Confirmer un paiement" : "Réclamation d’un client", client_profile_id: r.profile_id, client_nom: r.nom, client_tel: r.telephone })} className="inline-flex items-center gap-1 rounded-xl bg-violet-50 px-3 py-2.5 text-sm font-bold text-violet-700"><Send size={14} /> Dossier</button>
-                  </div>
-                </div>
-              )}
-            </article>
-          );
-        })}
+        {vus.map((r) => <CarteRequete key={r.id + r.maj_le} r={r} moi={moi} recharger={recharger} ouvrirUtilisateur={ouvrirUtilisateur} setMsg={setMsg} />)}
       </div>
     </>
+  );
+}
+
+/** Une requête client = une conversation : le fil des messages et la réponse dans le même fil */
+function CarteRequete({ r, moi, recharger, ouvrirUtilisateur, setMsg }: { r: Requete; moi: string; recharger: () => void; ouvrirUtilisateur: (id: string) => void; setMsg: (m: string) => void }) {
+  const { demander } = useContext(AdminCtx);
+  const [fil, setFil] = useState<MsgRequete[] | null>(null); // null : SQL n°33 pas encore faite
+  const [texte, setTexte] = useState("");
+  const [occupe, setOccupe] = useState(false);
+  useEffect(() => { db.rpc("admin_requete_messages", { r: r.id }).then(({ data, error }) => setFil(error ? null : ((data as MsgRequete[]) ?? []))); }, [r.id, r.maj_le]);
+  const [l, c] = STATUT_REQ[r.statut];
+  const aMoi = (r.agent_email ?? "").toLowerCase() === moi.toLowerCase();
+  const attendReponse = r.statut !== "resolue" && (r.dernier_auteur ?? "client") === "client";
+  const messages: MsgRequete[] = fil ?? [
+    { id: "c", requete_id: r.id, cree_le: r.cree_le, auteur: "client", agent_email: null, texte: r.message },
+    ...(r.reponse ? [{ id: "a", requete_id: r.id, cree_le: r.maj_le, auteur: "agent" as const, agent_email: r.agent_email, texte: r.reponse }] : []),
+  ];
+  const agir = async (fn: () => PromiseLike<{ error: { message: string } | null }>, ok: string, vider = false) => {
+    setOccupe(true); setMsg("");
+    const { error } = await fn();
+    setOccupe(false);
+    setMsg(error ? "Erreur : " + error.message : ok);
+    if (!error && vider) setTexte("");
+    recharger();
+  };
+  const envoyer = (fermer: boolean) => agir(() => db.rpc("admin_requete_repondre", { r: r.id, texte, resoudre: fermer }), fermer ? "Réponse envoyée, conversation fermée." : "Message envoyé au client.", true);
+  const nomAgent = (e: string | null) => !e ? "Agent" : e.toLowerCase() === moi.toLowerCase() ? "Toi" : e.replace("@tontine-et-cotise.vercel.app", "").replace("agent", "Agent n°");
+  return (
+    <article className={`flex flex-col rounded-2xl border bg-white p-4 shadow-sm ${attendReponse ? "border-sky-300 ring-2 ring-sky-100" : "border-stone-200/80"}`}>
+      <div className="flex items-start gap-3">
+        <Pastille nom={r.nom ?? "?"} />
+        <div className="min-w-0 flex-1">
+          <button onClick={() => ouvrirUtilisateur(r.profile_id)} className="truncate text-left font-bold hover:underline">{r.nom ?? "Client"}</button>
+          <p className="text-xs text-stone-500">{r.telephone && <a href={`tel:${r.telephone}`} className="font-semibold text-emerald-700 underline">{telAffiche(r.telephone)}</a>} · n°{r.numero} · {new Date(r.cree_le).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>
+        </div>
+        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.7rem] font-bold ${c}`}>{l}</span>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-2">
+        <p className="text-xs font-bold uppercase tracking-wide text-sky-700">{r.motif}</p>
+        {attendReponse && r.statut === "en_cours" && <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[0.65rem] font-bold text-white">Le client a répondu</span>}
+        {r.agent_email && <span className="text-xs text-stone-500">· suivi par {aMoi ? "toi" : nomAgent(r.agent_email)}</span>}
+      </div>
+      <div className="mt-2 max-h-80 space-y-2 overflow-y-auto rounded-xl bg-stone-50 p-2.5">
+        {messages.map((m) => (
+          <div key={m.id} className={`flex ${m.auteur === "agent" ? "justify-end" : "justify-start"}`}>
+            <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${m.auteur === "agent" ? "rounded-br-md bg-emerald-700 text-white" : "rounded-bl-md bg-white text-stone-800 ring-1 ring-stone-200"}`}>
+              <p className={`text-[0.65rem] font-bold ${m.auteur === "agent" ? "text-emerald-100" : "text-sky-700"}`}>{m.auteur === "agent" ? nomAgent(m.agent_email) : r.nom ?? "Client"}</p>
+              <p className="whitespace-pre-line">{m.texte}</p>
+              <p className={`mt-0.5 text-right text-[0.6rem] ${m.auteur === "agent" ? "text-emerald-100" : "text-stone-400"}`}>{new Date(m.cree_le).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+            </div>
+          </div>
+        ))}
+      </div>
+      {r.statut !== "resolue" ? (
+        <div className="mt-3 space-y-2">
+          {r.statut === "nouvelle" && (
+            <button disabled={occupe} onClick={() => agir(() => db.rpc("admin_requete_prendre", { r: r.id }), "Requête prise en charge.")} className="w-full rounded-xl bg-sky-600 py-2.5 text-sm font-bold text-white disabled:opacity-50">Je m’en occupe</button>
+          )}
+          <textarea value={texte} onChange={(e) => setTexte(e.target.value)} rows={2} placeholder="Écrire au client (il peut te répondre dans ce même fil)…" className={`${champ} resize-y`}
+            onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && texte.trim()) envoyer(false); }} />
+          <div className="flex flex-wrap gap-2">
+            <button disabled={occupe || !texte.trim()} onClick={() => envoyer(false)} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-700 py-2.5 text-sm font-bold text-white disabled:opacity-40"><Send size={14} /> Envoyer</button>
+            <button disabled={occupe || !texte.trim()} onClick={() => envoyer(true)} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm font-bold text-emerald-800 disabled:opacity-40">Envoyer et fermer</button>
+            <button disabled={occupe || fil === null} onClick={() => { if (confirm("Fermer cette conversation ? Le client ne pourra plus y écrire.")) agir(() => db.rpc("admin_requete_fermer", { r: r.id, fermer: true }), "Conversation fermée."); }} className="rounded-xl border border-stone-200 px-3 py-2.5 text-sm font-bold text-stone-600 disabled:opacity-40">Fermer</button>
+            <button onClick={() => demander({ motif: r.motif.includes("paiement") ? "Confirmer un paiement" : "Réclamation d’un client", client_profile_id: r.profile_id, client_nom: r.nom, client_tel: r.telephone })} className="inline-flex items-center gap-1 rounded-xl bg-violet-50 px-3 py-2.5 text-sm font-bold text-violet-700"><Send size={14} /> Dossier</button>
+          </div>
+          {fil === null && <p className="text-xs text-amber-700">Pour que le client puisse répondre dans le même fil, fais la mise à jour SQL n°33.</p>}
+        </div>
+      ) : (
+        <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-stone-50 p-2.5 text-xs text-stone-500">
+          <span className="inline-flex items-center gap-1"><Lock size={12} /> Conversation fermée</span>
+          {fil !== null && <button disabled={occupe} onClick={() => agir(() => db.rpc("admin_requete_fermer", { r: r.id, fermer: false }), "Conversation rouverte : le client peut de nouveau écrire.")} className="font-bold text-emerald-700 underline">Rouvrir</button>}
+        </div>
+      )}
+    </article>
   );
 }
 

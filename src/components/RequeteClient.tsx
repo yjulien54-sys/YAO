@@ -1,18 +1,18 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, Clock, MessageSquareText, Send } from "lucide-react";
+import { CheckCircle2, ChevronDown, Clock, Lock, MessageSquareText, Send } from "lucide-react";
 import { IconBadge } from "./icons";
 import { supabase } from "@/lib/supabase";
 import { useStore } from "@/lib/store";
-import { dateCourte } from "@/lib/format";
 
 const MOTIFS = ["Un paiement", "Mon compte / mon code", "Un groupe", "Un versement", "Une arnaque / un problème grave", "Une suggestion", "Autre"];
-type Requete = { id: string; numero: number; cree_le: string; motif: string; message: string; statut: "nouvelle" | "en_cours" | "resolue"; reponse: string | null };
+type Requete = { id: string; numero: number; cree_le: string; motif: string; message: string; statut: "nouvelle" | "en_cours" | "resolue"; reponse: string | null; dernier_auteur?: string | null };
+type Msg = { id: string; requete_id: string; cree_le: string; auteur: "client" | "agent"; texte: string };
 const STATUT: Record<Requete["statut"], [string, string]> = {
   nouvelle: ["Envoyée", "bg-amber-50 text-amber-800"],
   en_cours: ["En cours", "bg-sky-50 text-sky-700"],
-  resolue: ["Répondu", "bg-emerald-50 text-emerald-700"],
+  resolue: ["Fermée", "bg-stone-100 text-stone-600"],
 };
 
 /** Écrire au service client depuis l'application, et suivre ses demandes */
@@ -24,14 +24,32 @@ export function RequeteClient() {
   const [message, setMessage] = useState("");
   const [etat, setEtat] = useState<"" | "envoi" | "ok">("");
   const [erreur, setErreur] = useState("");
+  const [msgs, setMsgs] = useState<Msg[] | null>(null); // null : mise à jour SQL n°33 pas encore faite
+  const [ouverte, setOuverte] = useState<string | null>(null);
 
   const charger = useCallback(async () => {
     if (!userId) return;
-    const { data, error } = await supabase.from("requetes_clients").select("id, numero, cree_le, motif, message, statut, reponse").order("cree_le", { ascending: false }).limit(20);
+    const lire = (cols: string) => supabase.from("requetes_clients").select(cols).order("cree_le", { ascending: false }).limit(20);
+    let { data, error } = await lire("id, numero, cree_le, motif, message, statut, reponse, dernier_auteur");
+    if (error) ({ data, error } = await lire("id, numero, cree_le, motif, message, statut, reponse"));
     if (error) return setDispo(false); // mise à jour SQL n°18 pas encore faite
-    setListe((data as Requete[]) ?? []);
+    const l = (data as unknown as Requete[]) ?? [];
+    setListe(l);
+    if (l.length) {
+      const m = await supabase.from("requetes_messages").select("id, requete_id, cree_le, auteur, texte").in("requete_id", l.map((r) => r.id)).order("cree_le");
+      setMsgs(m.error ? null : ((m.data as Msg[]) ?? []));
+    }
+    setOuverte((o) => o ?? l.find((r) => r.statut !== "resolue")?.id ?? null);
   }, [userId]);
   useEffect(() => { charger(); }, [charger]);
+  // Nouvelles réponses : on regarde toutes les 20 secondes tant qu'une conversation est ouverte
+  useEffect(() => {
+    if (!liste?.some((r) => r.statut !== "resolue")) return;
+    const t = setInterval(charger, 20000);
+    const f = () => charger();
+    window.addEventListener("focus", f);
+    return () => { clearInterval(t); window.removeEventListener("focus", f); };
+  }, [liste, charger]);
 
   if (!userId || !dispo) return null;
 
@@ -74,26 +92,78 @@ export function RequeteClient() {
       )}
       {liste && liste.length > 0 && (
         <div className="space-y-2 border-t border-stone-100 pt-3">
-          <p className="text-xs font-bold uppercase tracking-wide text-stone-500">Mes messages</p>
+          <p className="text-xs font-bold uppercase tracking-wide text-stone-500">Mes conversations</p>
           {liste.map((r) => {
             const [l, c] = STATUT[r.statut];
-            return (
-              <div key={r.id} className="rounded-2xl bg-stone-50 p-3 text-sm">
-                <div className="flex items-center gap-2">
-                  <span className="min-w-0 flex-1 truncate font-semibold">{r.motif}</span>
-                  <span className={`rounded-full px-2 py-0.5 text-[0.7rem] font-bold ${c}`}>{l}</span>
-                </div>
-                <p className="mt-1 line-clamp-2 text-stone-600">{r.message}</p>
-                {r.reponse ? (
-                  <p className="mt-2 rounded-xl bg-white p-2.5 text-stone-800 ring-1 ring-emerald-100"><b className="text-emerald-700">Service client :</b> {r.reponse}</p>
-                ) : (
-                  <p className="mt-1 flex items-center gap-1 text-xs text-stone-400"><Clock size={12} /> Envoyé le {dateCourte(r.cree_le)} · en attente de réponse</p>
-                )}
-              </div>
-            );
+            const fil: Msg[] = msgs ? msgs.filter((m) => m.requete_id === r.id) : [
+              { id: r.id + "c", requete_id: r.id, cree_le: r.cree_le, auteur: "client", texte: r.message },
+              ...(r.reponse ? [{ id: r.id + "a", requete_id: r.id, cree_le: r.cree_le, auteur: "agent" as const, texte: r.reponse }] : []),
+            ];
+            const nouveau = r.statut !== "resolue" && r.dernier_auteur === "agent";
+            return <Conversation key={r.id} r={r} fil={fil} statut={[l, c]} nouveau={nouveau} ouverte={ouverte === r.id} basculer={() => setOuverte(ouverte === r.id ? null : r.id)} peutEcrire={msgs !== null && r.statut !== "resolue"} envoye={charger} />;
           })}
         </div>
       )}
     </section>
+  );
+}
+
+/** Une conversation avec le service client, en bulles, avec réponse dans le même fil */
+function Conversation({ r, fil, statut: [l, c], nouveau, ouverte, basculer, peutEcrire, envoye }: { r: Requete; fil: Msg[]; statut: [string, string]; nouveau: boolean; ouverte: boolean; basculer: () => void; peutEcrire: boolean; envoye: () => void }) {
+  const [texte, setTexte] = useState("");
+  const [envoi, setEnvoi] = useState(false);
+  const [err, setErr] = useState("");
+  const ecrire = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!texte.trim()) return;
+    setEnvoi(true); setErr("");
+    const { error } = await supabase.rpc("requete_ecrire", { r: r.id, texte: texte.trim() });
+    setEnvoi(false);
+    if (error) return setErr(error.message.includes("fermée") || error.message.includes("beaucoup") ? error.message : "Envoi impossible. Réessaie dans un instant.");
+    setTexte("");
+    envoye();
+  };
+  const heure = (d: string) => new Date(d).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
+  return (
+    <div className={`overflow-hidden rounded-2xl text-sm ring-1 ${nouveau ? "bg-emerald-50/60 ring-emerald-300" : "bg-stone-50 ring-stone-200/70"}`}>
+      <button type="button" onClick={basculer} className="flex w-full items-center gap-2 p-3 text-left">
+        <span className="min-w-0 flex-1">
+          <span className="flex items-center gap-2">
+            <span className="truncate font-semibold">{r.motif}</span>
+            {nouveau && <span className="shrink-0 rounded-full bg-emerald-600 px-2 py-0.5 text-[0.65rem] font-bold text-white">Nouveau message</span>}
+          </span>
+          <span className="block truncate text-xs text-stone-500">{fil[fil.length - 1]?.auteur === "agent" ? "Service client : " : "Toi : "}{fil[fil.length - 1]?.texte}</span>
+        </span>
+        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.7rem] font-bold ${c}`}>{l}</span>
+        <ChevronDown size={16} className={`shrink-0 text-stone-400 transition ${ouverte ? "rotate-180" : ""}`} />
+      </button>
+      {ouverte && (
+        <div className="space-y-2 border-t border-stone-200/70 bg-white/70 p-3">
+          {fil.map((m) => (
+            <div key={m.id} className={`flex ${m.auteur === "client" ? "justify-end" : "justify-start"}`}>
+              <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${m.auteur === "client" ? "rounded-br-md bg-emerald-700 text-white" : "rounded-bl-md bg-white text-stone-800 ring-1 ring-stone-200"}`}>
+                {m.auteur === "agent" && <p className="text-[0.7rem] font-bold text-emerald-700">Service client</p>}
+                <p className="whitespace-pre-line">{m.texte}</p>
+                <p className={`mt-0.5 text-right text-[0.65rem] ${m.auteur === "client" ? "text-emerald-100" : "text-stone-400"}`}>{heure(m.cree_le)}</p>
+              </div>
+            </div>
+          ))}
+          {r.statut !== "resolue" && fil[fil.length - 1]?.auteur === "client" && (
+            <p className="flex items-center justify-center gap-1 text-xs text-stone-400"><Clock size={12} /> Un agent va te répondre ici</p>
+          )}
+          {peutEcrire ? (
+            <form onSubmit={ecrire} className="flex items-end gap-2 pt-1">
+              <textarea value={texte} onChange={(e) => setTexte(e.target.value)} rows={1} maxLength={2000} placeholder="Écrire dans cette conversation…"
+                onKeyDown={(e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); (e.currentTarget.form as HTMLFormElement).requestSubmit(); } }}
+                className="min-h-[44px] flex-1 resize-none rounded-2xl border border-stone-300/80 bg-white px-3 py-2.5 text-base outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" />
+              <button disabled={envoi || !texte.trim()} aria-label="Envoyer" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-emerald-700 text-white disabled:opacity-40"><Send size={17} /></button>
+            </form>
+          ) : r.statut === "resolue" ? (
+            <p className="flex items-center justify-center gap-1.5 rounded-xl bg-stone-100 p-2 text-xs text-stone-500"><Lock size={12} /> Conversation fermée par le service client. Pour autre chose, écris un nouveau message ci-dessus.</p>
+          ) : null}
+          {err && <p className="text-sm font-medium text-red-600">{err}</p>}
+        </div>
+      )}
+    </div>
   );
 }
