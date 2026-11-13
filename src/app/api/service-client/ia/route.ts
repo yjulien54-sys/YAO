@@ -7,13 +7,16 @@
  *   - transmet à un agent humain (avec la raison) dès que la demande touche aux données
  *     ou à l'argent, ou qu'elle n'est pas sûre.
  *
- * Variables Vercel nécessaires : ANTHROPIC_API_KEY et SUPABASE_SERVICE_ROLE_KEY.
- * Sans elles, rien ne se passe : la requête reste « nouvelle » pour les agents humains.
+ * Variables Vercel :
+ *   SUPABASE_SERVICE_ROLE_KEY  obligatoire (gratuite, déjà utilisée pour les paiements)
+ *   ANTHROPIC_API_KEY          facultative et payante : avec elle, Cotiz IA « intelligente » (Claude) ;
+ *                              sans elle, mode GRATUIT (réponses automatiques par mots-clés, 0 F).
  */
 import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { FAQ } from "@/lib/faq";
+import { repondreGratuit } from "@/lib/server/iaGratuite";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -69,7 +72,7 @@ export async function POST(req: Request) {
   const token = req.headers.get("authorization")?.replace(/^Bearer /, "");
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   if (!token) return NextResponse.json({ ok: false, raison: "non connecté" }, { status: 401 });
-  if (!process.env.ANTHROPIC_API_KEY || !process.env.SUPABASE_SERVICE_ROLE_KEY) return NextResponse.json({ ok: false, raison: "Cotiz IA non configurée" });
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return NextResponse.json({ ok: false, raison: "Cotiz IA non configurée" });
 
   const r = (await req.json().catch(() => null))?.requete;
   if (typeof r !== "string" || !/^[0-9a-f-]{36}$/i.test(r)) return NextResponse.json({ ok: false, raison: "requête invalide" }, { status: 400 });
@@ -92,6 +95,14 @@ export async function POST(req: Request) {
   if ((q.ia_messages ?? 0) >= MAX_REPONSES_IA) {
     await service.rpc("ia_requete_ecrire", { r, texte: "Je transmets ta demande à un conseiller du service client : il va te répondre ici très bientôt.", transmettre: true, raison: "Conversation longue : à reprendre par un agent", resoudre: false });
     return NextResponse.json({ ok: true, transmis: true });
+  }
+
+  // Mode gratuit : pas de clé payante → réponses automatiques par mots-clés
+  if (!process.env.ANTHROPIC_API_KEY) {
+    const d = repondreGratuit(q.motif, messages);
+    const { error } = await service.rpc("ia_requete_ecrire", { r, texte: d.reponse, transmettre: d.transmettre, raison: d.transmettre ? d.raison : null, resoudre: d.resoudre });
+    if (error) console.error("Cotiz IA (gratuit) : écriture impossible", error.message);
+    return NextResponse.json({ ok: !error, transmis: d.transmettre, mode: "gratuit" });
   }
 
   const conversation = messages

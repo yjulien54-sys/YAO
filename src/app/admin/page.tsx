@@ -1747,6 +1747,7 @@ function EspaceIA({ liste, toutes, moi, recharger, ouvrirUtilisateur }: { liste:
           <div className="min-w-0 flex-1">
             <p className="text-2xl font-extrabold">Cotiz IA</p>
             <p className="text-sm text-white/90">Lit chaque nouvelle requête, répond aux questions d’utilisation et transmet au personnel tout ce qui touche aux données ou à l’argent.</p>
+            <p className="mt-1 text-xs text-white/80">Mode <b>gratuit</b> par défaut : réponses automatiques tirées des questions fréquentes (0 F). Mode <b>intelligent</b> seulement si une clé Anthropic (payante) est ajoutée dans Vercel.</p>
           </div>
           {fondateur && actif !== null && (
             <button onClick={basculer} className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-extrabold shadow ${actif ? "bg-white text-violet-700" : "bg-white/20 text-white ring-1 ring-white/40"}`}>
@@ -1755,7 +1756,7 @@ function EspaceIA({ liste, toutes, moi, recharger, ouvrirUtilisateur }: { liste:
           )}
         </div>
       </div>
-      {actif === null && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Pour activer Cotiz IA, fais la <b>mise à jour SQL n°35</b> dans Supabase, puis ajoute <code>ANTHROPIC_API_KEY</code> et <code>SUPABASE_SERVICE_ROLE_KEY</code> dans Vercel.</p>}
+      {actif === null && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Pour activer Cotiz IA, fais la <b>mise à jour SQL n°35</b> dans Supabase (et vérifie que <code>SUPABASE_SERVICE_ROLE_KEY</code> est dans Vercel). Aucune clé payante n’est nécessaire.</p>}
       {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") ? "bg-red-50 text-red-700" : "bg-violet-50 text-violet-800"}`}>{msg}</p>}
       <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
