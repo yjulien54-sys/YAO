@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { Jauge, Montre, Anneau, Pyramide, Courbe, Colonnes, TexteAnime, Anneaux, Calendrier, Vague, Horloge24, Radar, Gaufre, VERT, ORANGE, VIOLET } from "@/components/admin/Graphiques";
 import { DateNaissance } from "@/components/DateNaissance";
 import {
-  Activity, Ban, BarChart3, BadgeCheck, Coins, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronLeft, Contact, Download, ExternalLink, FolderOpen, Headset, IdCard, MessageSquareText, Phone, ScrollText, Send, ShieldX, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
+  Activity, Ban, BarChart3, UserX, Lightbulb, BadgeCheck, Coins, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronLeft, Contact, Download, ExternalLink, FolderOpen, Headset, IdCard, MessageSquareText, Phone, ScrollText, Send, ShieldX, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
 } from "lucide-react";
 import { supabaseAdmin as db } from "@/lib/supabaseAdmin";
 import { TRANCHES_DEFAUT, fraisPour, lirePourcent, lireTranches, lireTranchesPenalite, partCotizPenalite, type Tranche, type TranchePenalite } from "@/lib/fraisService";
@@ -98,7 +98,11 @@ function ChoixFonctions({ valeur, onChange }: { valeur: string[]; onChange: (v: 
 /** Identifiant de connexion d'un agent : son numéro (27xx) */
 const emailAgent = (n: string | number) => `agent${n}@tontine-et-cotise.vercel.app`;
 /** Rôle de la personne connectée + ouverture du formulaire « dossier » */
-const AdminCtx = createContext<{ fondateur: boolean; demander: (d: DossierInit) => void }>({ fondateur: true, demander: () => {} });
+/** Une personne (ou un groupe) derrière un chiffre : pour la rappeler ou ouvrir sa fiche */
+type Personne = { id?: string; type?: "utilisateur" | "groupe"; nom: string; telephone?: string | null; detail?: string; badge?: string };
+type ListeP = { titre: string; sous?: string; personnes: Personne[] };
+type FicheOuverte = { type: "utilisateur" | "groupe"; id: string };
+const AdminCtx = createContext<{ fondateur: boolean; demander: (d: DossierInit) => void; voirListe: (l: ListeP) => void; ouvrir: (f: FicheOuverte) => void }>({ fondateur: true, demander: () => {}, voirListe: () => {}, ouvrir: () => {} });
 const MOTIFS = [
   "Confirmer un paiement", "Refuser un paiement", "Valider un versement", "Refuser un versement",
   "Modifier nom / numéro / date de naissance", "Bloquer un compte", "Débloquer un compte",
@@ -133,9 +137,10 @@ const ONGLETS = [
   { id: "salaires", label: "Salaires", icon: Wallet, ton: "emerald" },
   { id: "revenus", label: "Mes revenus", icon: Coins, ton: "amber" },
   { id: "sante", label: "Santé de l’appli", icon: Activity, ton: "emerald" },
+  { id: "idees", label: "Idées & projets", icon: Lightbulb, ton: "amber" },
 ] as const;
 type Onglet = (typeof ONGLETS)[number]["id"];
-const RESERVE_FONDATEUR: Onglet[] = ["annonces", "journal", "equipe", "salaires", "revenus", "sante"];
+const RESERVE_FONDATEUR: Onglet[] = ["annonces", "journal", "equipe", "salaires", "revenus", "sante", "idees"];
 type Ton = (typeof ONGLETS)[number]["ton"] | "red";
 
 /** Couleurs par rubrique (pastille d'icône, carte chiffrée) */
@@ -345,7 +350,37 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
   const [charge, setCharge] = useState(false);
   const [maj, setMaj] = useState<Date | null>(null);
   const [msg, setMsg] = useState("");
-  const [fiche, setFiche] = useState<{ type: "utilisateur" | "groupe"; id: string } | null>(null);
+  const [fiche, setFiche] = useState<FicheOuverte | null>(null);
+  const [liste, setListe] = useState<ListeP | null>(null);
+
+  // ---- Navigation avec retour : chaque déplacement est mémorisé (bouton « Retour » et retour du téléphone)
+  type Vue = { onglet: Onglet; fiche: FicheOuverte | null; liste: ListeP | null };
+  const pile = useRef<Vue[]>([]);
+  const vue = useRef<Vue>({ onglet, fiche, liste });
+  vue.current = { onglet, fiche, liste };
+  const [nbRetour, setNbRetour] = useState(0);
+  const naviguer = useCallback((patch: Partial<Vue>) => {
+    pile.current.push(vue.current);
+    setNbRetour(pile.current.length);
+    if (patch.onglet !== undefined) setOnglet(patch.onglet);
+    if (patch.fiche !== undefined) setFiche(patch.fiche);
+    if (patch.liste !== undefined) setListe(patch.liste);
+    try { window.history.pushState({ cotizAdmin: pile.current.length }, ""); } catch {}
+  }, []);
+  useEffect(() => {
+    const surRetour = () => {
+      const v = pile.current.pop();
+      setNbRetour(pile.current.length);
+      if (!v) return;
+      setOnglet(v.onglet); setFiche(v.fiche); setListe(v.liste);
+    };
+    window.addEventListener("popstate", surRetour);
+    return () => window.removeEventListener("popstate", surRetour);
+  }, []);
+  const retour = useCallback(() => { if (pile.current.length) window.history.back(); else { setFiche(null); setListe(null); } }, []);
+  const allerOnglet = useCallback((o: Onglet) => naviguer({ onglet: o, fiche: null, liste: null }), [naviguer]);
+  const ouvrirFiche = useCallback((f: FicheOuverte) => naviguer({ fiche: f }), [naviguer]);
+  const voirListe = useCallback((l: ListeP) => naviguer({ liste: l, fiche: null }), [naviguer]);
 
   const charger = useCallback(async () => {
     setCharge(true);
@@ -390,13 +425,13 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
   const compteurs: Partial<Record<Onglet, number>> = { inscrits: inscrits.length, groupes: groupes.length, membres: membres?.length, paiements: aValider, codes: demandes.length, annonces: annonces.length, dossiers: dossiers ? ouverts : undefined, equipe: equipe.length || undefined, requetes: requetes ? nouvelles : undefined };
   const alerte: Partial<Record<Onglet, boolean>> = { paiements: aValider > 0, dossiers: fondateur && ouverts > 0, requetes: nouvelles > 0 };
   const onglets = ONGLETS.filter((o) => fondateur || !RESERVE_FONDATEUR.includes(o.id));
-  const voirMembres = (t: string) => { setTypeMembres(t); setOnglet("membres"); };
+  const voirMembres = (t: string) => { setTypeMembres(t); allerOnglet("membres"); };
   const courant = onglets.find((o) => o.id === onglet) ?? onglets[0];
   const heure = new Date().getHours();
   const salut = heure < 12 ? "Bonjour" : heure < 18 ? "Bon après-midi" : "Bonsoir";
 
   return (
-    <AdminCtx.Provider value={{ fondateur, demander: (d) => setFormDossier(d) }}>
+    <AdminCtx.Provider value={{ fondateur, demander: (d) => setFormDossier(d), voirListe, ouvrir: ouvrirFiche }}>
     <div className={`zone-admin min-h-dvh bg-[#f4f2ec] bg-[radial-gradient(ellipse_at_top_right,#e3f4ec_0%,transparent_55%),radial-gradient(ellipse_at_bottom_left,#e6f1fb_0%,transparent_50%)] text-stone-900 lg:flex ${discret ? "discret" : ""}`}>
       {/* Barre latérale (ordinateur) */}
       <aside className="degrade-vert relative hidden w-[260px] shrink-0 overflow-hidden text-white lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col">
@@ -413,7 +448,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
           {onglets.map(({ id, label, icon: I }) => {
             const actif = onglet === id;
             return (
-              <button key={id} onClick={() => setOnglet(id)}
+              <button key={id} onClick={() => allerOnglet(id)}
                 className={`flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-semibold transition ${actif ? "bg-white text-emerald-900 shadow-lg shadow-emerald-950/20" : "text-emerald-50/90 hover:bg-white/10"}`}>
                 <I size={18} strokeWidth={2} className={actif ? "text-emerald-700" : ""} />
                 <span className="flex-1">{label}</span>
@@ -460,7 +495,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
           </div>
           <nav className="relative flex gap-1.5 overflow-x-auto px-3 pb-3" data-pas-glisser>
             {onglets.map(({ id, label, icon: I }) => (
-              <button key={id} onClick={() => setOnglet(id)}
+              <button key={id} onClick={() => allerOnglet(id)}
                 className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-3 py-2 text-[0.8rem] font-semibold transition ${onglet === id ? "bg-white text-emerald-900" : "bg-white/10 text-emerald-50"}`}>
                 <I size={15} /> {label}
                 {compteurs[id] !== undefined && <span className={`rounded-full px-1.5 text-[0.7rem] font-bold ${alerte[id] ? "bg-orange-500 text-white" : onglet === id ? "bg-emerald-100" : "bg-white/15"}`}>{compteurs[id]}</span>}
@@ -474,6 +509,11 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
           {/* Titre de la rubrique */}
           <div className="flex flex-wrap items-end justify-between gap-3">
             <div className="flex items-center gap-3">
+              {nbRetour > 0 && (
+                <button onClick={retour} className="inline-flex items-center gap-1 rounded-xl border border-stone-200 bg-white px-2.5 py-2 text-sm font-bold text-stone-700 shadow-sm hover:bg-stone-50" aria-label="Retour">
+                  <ChevronLeft size={18} /> <span className="hidden sm:inline">Retour</span>
+                </button>
+              )}
               <span className={`grid h-11 w-11 place-items-center rounded-2xl ${TON[courant.ton].pastille}`}><courant.icon size={22} /></span>
               <div>
                 <p className="text-xs font-semibold text-stone-500">{onglet === "apercu" ? `${salut} 👋` : "Administration"}</p>
@@ -493,29 +533,31 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
 
           {msg && <p className="rounded-xl bg-red-50 p-3 text-sm font-medium text-red-700">{msg}</p>}
           <div key={onglet} className="cascade space-y-5">
-          {onglet === "apercu" && <Apercu stats={stats} inscrits={inscrits} groupes={groupes} attente={attente} demandes={demandes} aller={setOnglet} ouvrir={(type, id) => setFiche({ type, id })} nonDeclares={equipe.filter((a) => a.role === "agent" && !a.cnps_declare).length} nouvelles={nouvelles} />}
-          {onglet === "stats" && <Statistiques stats={stats} inscrits={inscrits} groupes={groupes} ouvrir={(id) => setFiche({ type: "groupe", id })} />}
-          {onglet === "inscrits" && <Inscrits liste={inscrits} ouvrir={(id) => setFiche({ type: "utilisateur", id })} />}
-          {onglet === "groupes" && <Groupes liste={groupes} recharger={charger} ouvrir={(id) => setFiche({ type: "groupe", id })} voirMembres={voirMembres} />}
-          {onglet === "membres" && <Membres liste={membres} typeInitial={typeMembres} ouvrirGroupe={(id) => setFiche({ type: "groupe", id })} ouvrirUtilisateur={(id) => setFiche({ type: "utilisateur", id })} />}
-          {onglet === "paiements" && <Paiements liste={attente} versements={versements} recharger={charger} ouvrirGroupe={(id) => setFiche({ type: "groupe", id })} />}
+          {onglet === "apercu" && <Apercu stats={stats} inscrits={inscrits} groupes={groupes} attente={attente} demandes={demandes} aller={allerOnglet} ouvrir={(type, id) => ouvrirFiche({ type, id })} nonDeclares={equipe.filter((a) => a.role === "agent" && !a.cnps_declare).length} nouvelles={nouvelles} />}
+          {onglet === "stats" && <Statistiques stats={stats} inscrits={inscrits} groupes={groupes} ouvrir={(id) => ouvrirFiche({ type: "groupe", id })} />}
+          {onglet === "inscrits" && <Inscrits liste={inscrits} ouvrir={(id) => ouvrirFiche({ type: "utilisateur", id })} />}
+          {onglet === "groupes" && <Groupes liste={groupes} recharger={charger} ouvrir={(id) => ouvrirFiche({ type: "groupe", id })} voirMembres={voirMembres} />}
+          {onglet === "membres" && <Membres liste={membres} typeInitial={typeMembres} ouvrirGroupe={(id) => ouvrirFiche({ type: "groupe", id })} ouvrirUtilisateur={(id) => ouvrirFiche({ type: "utilisateur", id })} />}
+          {onglet === "paiements" && <Paiements liste={attente} versements={versements} recharger={charger} ouvrirGroupe={(id) => ouvrirFiche({ type: "groupe", id })} />}
           {onglet === "journal" && fondateur && <Journal liste={journal} />}
-          {onglet === "dossiers" && <Dossiers liste={dossiers} fondateur={fondateur} recharger={charger} nouveau={() => setFormDossier({})} ouvrirUtilisateur={(id) => setFiche({ type: "utilisateur", id })} ouvrirGroupe={(id) => setFiche({ type: "groupe", id })} />}
+          {onglet === "dossiers" && <Dossiers liste={dossiers} fondateur={fondateur} recharger={charger} nouveau={() => setFormDossier({})} ouvrirUtilisateur={(id) => ouvrirFiche({ type: "utilisateur", id })} ouvrirGroupe={(id) => ouvrirFiche({ type: "groupe", id })} />}
           {onglet === "equipe" && fondateur && <Equipe liste={equipe} moi={email} recharger={charger} />}
-          {onglet === "requetes" && <Requetes liste={requetes} moi={email} recharger={charger} ouvrirUtilisateur={(id) => setFiche({ type: "utilisateur", id })} />}
+          {onglet === "requetes" && <Requetes liste={requetes} moi={email} recharger={charger} ouvrirUtilisateur={(id) => ouvrirFiche({ type: "utilisateur", id })} />}
           {onglet === "planning" && <Planning fondateur={fondateur} equipe={equipe} moi={email} />}
           {onglet === "salaires" && fondateur && <Salaires />}
           {onglet === "revenus" && fondateur && <Revenus />}
           {onglet === "sante" && fondateur && <Sante />}
+          {onglet === "idees" && fondateur && <Idees />}
           {onglet === "codes" && <Codes liste={demandes} recharger={charger} />}
           {onglet === "annonces" && fondateur && <Annonces liste={annonces} recharger={charger} />}
           </div>
         </main>
       </div>
-      {fiche?.type === "utilisateur" && <FicheUtilisateur id={fiche.id} fermer={() => setFiche(null)} ouvrirGroupe={(id) => setFiche({ type: "groupe", id })} recharger={charger} />}
-      {fiche?.type === "groupe" && <FicheGroupe id={fiche.id} fermer={() => setFiche(null)} ouvrirUtilisateur={(id) => setFiche({ type: "utilisateur", id })} recharger={charger} />}
+      {fiche?.type === "utilisateur" && <FicheUtilisateur id={fiche.id} fermer={retour} ouvrirGroupe={(id) => ouvrirFiche({ type: "groupe", id })} recharger={charger} />}
+      {fiche?.type === "groupe" && <FicheGroupe id={fiche.id} fermer={retour} ouvrirUtilisateur={(id) => ouvrirFiche({ type: "utilisateur", id })} recharger={charger} />}
       {motDePasse && <ChangerMotDePasse fermer={() => setMotDePasse(false)} />}
-      {formDossier && <FormDossier init={formDossier} fermer={() => setFormDossier(null)} envoye={() => { setFormDossier(null); charger(); setOnglet("dossiers"); }} />}
+      {liste && !fiche && <ListePersonnes l={liste} fermer={retour} ouvrir={ouvrirFiche} />}
+      {formDossier && <FormDossier init={formDossier} fermer={() => setFormDossier(null)} envoye={() => { setFormDossier(null); charger(); allerOnglet("dossiers"); }} />}
     </div>
     </AdminCtx.Provider>
   );
@@ -594,7 +636,54 @@ function Barres({ lignes, format = (n: number) => String(n) }: { lignes: { label
   );
 }
 
+/** Conversions vers la liste des personnes */
+const pInscrit = (i: Inscrit, detail?: string): Personne => ({ id: i.id, nom: i.nom, telephone: i.telephone, detail: detail ?? `${i.nb_groupes} groupe${i.nb_groupes > 1 ? "s" : ""} · inscrit le ${dateCourte(i.inscrit_le)}` });
+const pGroupe = (g: Groupe): Personne => ({ id: g.id, type: "groupe", nom: g.nom, telephone: g.tresorier_tel, detail: `${TYPE[g.type] ?? g.type} · ${g.nb_membres} membre${g.nb_membres > 1 ? "s" : ""} · trésorier ${g.tresorier ?? "?"}` });
+const ETAPE_INSCRIPTION: Record<string, string> = { formulaire: "A rempli le formulaire", code_envoye: "SMS envoyé, code jamais validé", erreur_envoi: "Le SMS n’a pas pu partir", code_refuse: "Code SMS refusé", erreur: "Erreur à l’inscription", profil_vide: "Code validé, nom jamais enregistré" };
+type Inachevee = { telephone: string; nom: string | null; etape: string; erreur: string | null; nb: number; premier: string; dernier: string };
+
+/** Personnes à relancer : chaque bouton ouvre la liste avec les numéros */
+function Relances({ inscrits, groupes, attente }: { inscrits: Inscrit[]; groupes: Groupe[]; attente: Attente[] }) {
+  const { voirListe } = useContext(AdminCtx);
+  const [inachevees, setInachevees] = useState<Inachevee[] | null>(null);
+  useEffect(() => { db.rpc("admin_inscriptions_inachevees").then(({ data, error }) => setInachevees(error ? null : ((data as Inachevee[]) ?? []))); }, []);
+  const sansGroupe = inscrits.filter((i) => i.nb_groupes === 0);
+  const sansCode = inscrits.filter((i) => !i.code_defini);
+  const bloques = inscrits.filter((i) => i.nom.endsWith("(bloqué)"));
+  const seuls = groupes.filter((g) => g.nb_membres <= 1);
+  const cartes = [
+    { titre: "Inscriptions inachevées", n: inachevees?.length, ico: UserX, ton: "from-orange-500 to-orange-600", indispo: inachevees === null,
+      ouvrir: () => voirListe({ titre: "Inscriptions inachevées", sous: "Numéro saisi, mais l’inscription n’est pas allée au bout : appelle pour aider", personnes: (inachevees ?? []).map((x) => ({ nom: x.nom ?? "Nom inconnu", telephone: x.telephone, badge: x.nb > 1 ? `${x.nb} essais` : undefined, detail: `${ETAPE_INSCRIPTION[x.etape] ?? x.etape}${x.erreur ? ` (« ${x.erreur.slice(0, 60)} »)` : ""} · ${dateCourte(x.dernier)}` })) }) },
+    { titre: "Pas encore de groupe", n: sansGroupe.length, ico: UsersRound, ton: "from-emerald-600 to-emerald-700",
+      ouvrir: () => voirListe({ titre: "Inscrits sans groupe", sous: "Inscrits mais dans aucun groupe : propose-leur de créer ou rejoindre une tontine", personnes: sansGroupe.map((i) => pInscrit(i)) }) },
+    { titre: "Sans code secret", n: sansCode.length, ico: KeyRound, ton: "from-sky-600 to-sky-700",
+      ouvrir: () => voirListe({ titre: "Inscrits sans code secret", sous: "Sans code, ils ne pourront pas récupérer leur compte sur un nouveau téléphone", personnes: sansCode.map((i) => pInscrit(i)) }) },
+    { titre: "Paiements en attente", n: attente.length, ico: Clock, ton: "from-amber-500 to-amber-600",
+      ouvrir: () => voirListe({ titre: "Paiements en attente", sous: "Déclarés par le membre, pas encore confirmés : appelle le trésorier", personnes: attente.map((a) => ({ nom: `${a.membre} · ${a.groupe}`, telephone: a.membre_tel ?? a.tresorier_tel, detail: `${fcfa(a.montant)} · ${a.moyen} · ${dateCourte(a.le)}${a.tresorier_tel ? ` · trésorier ${telAffiche(a.tresorier_tel)}` : ""}` })) }) },
+    { titre: "Groupes sans membres", n: seuls.length, ico: Users, ton: "from-violet-600 to-violet-700",
+      ouvrir: () => voirListe({ titre: "Groupes sans autre membre", sous: "Le créateur est seul : aide-le à inviter ses membres", personnes: seuls.map(pGroupe) }) },
+    { titre: "Comptes bloqués", n: bloques.length, ico: Ban, ton: "from-red-600 to-red-700",
+      ouvrir: () => voirListe({ titre: "Comptes bloqués", personnes: bloques.map((i) => pInscrit(i)) }) },
+  ];
+  return (
+    <Bloc fond="vert" titre="Personnes à relancer" sous="Touche une carte pour voir les noms et les numéros, puis appelle ou écris sur WhatsApp">
+      <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3 lg:grid-cols-6">
+        {cartes.map((c) => (
+          <button key={c.titre} onClick={c.ouvrir} disabled={c.indispo} className={`carte-vivante group relative overflow-hidden rounded-2xl bg-gradient-to-br ${c.ton} p-3 text-left text-white shadow-md disabled:opacity-50`}>
+            <span className="pointer-events-none absolute -right-4 -top-4 h-16 w-16 rounded-full bg-white/10 transition-transform duration-500 group-hover:scale-150" />
+            <c.ico size={20} className="relative opacity-90" />
+            <p className="relative mt-2 text-2xl font-extrabold tabular-nums">{c.indispo ? "—" : <TexteAnime texte={String(c.n ?? 0)} />}</p>
+            <p className="relative text-xs font-semibold leading-tight text-white/90">{c.titre}</p>
+            {c.indispo && <p className="relative mt-1 text-[0.65rem] text-white/80">SQL n°32 à faire</p>}
+          </button>
+        ))}
+      </div>
+    </Bloc>
+  );
+}
+
 function Apercu({ stats, inscrits, groupes, attente, demandes, aller, ouvrir, nonDeclares = 0, nouvelles = 0 }: { stats: Stats | null; inscrits: Inscrit[]; groupes: Groupe[]; attente: Attente[]; demandes: Demande[]; aller: (o: Onglet) => void; ouvrir: (type: "utilisateur" | "groupe", id: string) => void; nonDeclares?: number; nouvelles?: number }) {
+  const { voirListe } = useContext(AdminCtx);
   if (!stats) return <p className="text-sm text-stone-500">Chargement des chiffres…</p>;
   const bloques = inscrits.filter((i) => i.nom.endsWith("(bloqué)")).length;
   const echecs = demandes.filter((d) => d.resultat === "echouee" || d.resultat === "bloquee").length;
@@ -616,6 +705,8 @@ function Apercu({ stats, inscrits, groupes, attente, demandes, aller, ouvrir, no
         <Chiffre secret label="Argent confirmé" valeur={fcfa(stats.montant_confirme)} detail={`${stats.paiements_confirmes} paiements`} icone={Wallet} ton="emerald" onClick={() => aller("stats")} />
         <Chiffre secret label="En attente" valeur={fcfa(stats.montant_attente)} detail={`${stats.paiements_attente} paiements à confirmer`} icone={Clock} ton="amber" onClick={() => aller("paiements")} />
       </div>
+
+      <Relances inscrits={inscrits} groupes={groupes} attente={attente} />
 
       <div className="grid gap-4 lg:grid-cols-3">
         <Bloc fond="vert" titre="Inscriptions" sous="Nouveaux comptes, jour par jour" className="lg:col-span-2">
@@ -643,28 +734,32 @@ function Apercu({ stats, inscrits, groupes, attente, demandes, aller, ouvrir, no
           <Jauge valeur={stats.paiements_confirmes + stats.paiements_attente ? Math.round((stats.paiements_confirmes / (stats.paiements_confirmes + stats.paiements_attente)) * 100) : 0} label="de taux de confirmation" sous={`${stats.paiements_confirmes} confirmés · ${stats.paiements_attente} en attente`} />
         </Bloc>
         <Bloc fond="creme" titre="Groupes par type">
-          <Anneau parts={["tontine", "association", "collecte"].map((t) => ({ label: TYPE[t], n: groupes.filter((g) => g.type === t).length, couleur: TYPE_COULEUR[t] }))} sousCentre="groupes" />
+          <Anneau parts={["tontine", "association", "collecte"].map((t) => ({ label: TYPE[t], n: groupes.filter((g) => g.type === t).length, couleur: TYPE_COULEUR[t], onClick: () => voirListe({ titre: `Groupes : ${TYPE[t]}`, personnes: groupes.filter((g) => g.type === t).map(pGroupe) }) }))} sousCentre="groupes" />
         </Bloc>
         <Bloc fond="vert" titre="Parcours des inscrits" sous="Du compte créé jusqu’au groupe">
-          <Pyramide etages={[{ label: "Inscrits", n: stats.inscrits }, { label: "Code secret créé", n: stats.codes_definis }, { label: "Dans un groupe", n: inscrits.filter((i) => i.nb_groupes > 0).length }]} />
+          <Pyramide etages={[
+            { label: "Inscrits", n: stats.inscrits, onClick: () => voirListe({ titre: "Tous les inscrits", personnes: inscrits.map((i) => pInscrit(i)) }) },
+            { label: "Code secret créé", n: stats.codes_definis, onClick: () => voirListe({ titre: "Inscrits avec code secret", personnes: inscrits.filter((i) => i.code_defini).map((i) => pInscrit(i)) }) },
+            { label: "Dans un groupe", n: inscrits.filter((i) => i.nb_groupes > 0).length, onClick: () => voirListe({ titre: "Inscrits dans un groupe", personnes: inscrits.filter((i) => i.nb_groupes > 0).map((i) => pInscrit(i)) }) },
+          ]} />
         </Bloc>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Bloc fond="bleu" titre="Bulletin de santé de Cotiz" sous="5 notes sur 100 : plus la toile est grande, mieux c’est">
+        <Bloc fond="bleu" titre="Bulletin de santé de Cotiz" sous="5 notes sur 100 : plus la toile est grande, mieux c’est. Touche une note pour voir les personnes à aider.">
           <Radar axes={[
             { label: "Paiements confirmés", pourcent: stats.paiements_confirmes + stats.paiements_attente ? (stats.paiements_confirmes / (stats.paiements_confirmes + stats.paiements_attente)) * 100 : 0 },
-            { label: "Dans un groupe", pourcent: inscrits.length ? (inscrits.filter((i) => i.nb_groupes > 0).length / inscrits.length) * 100 : 0 },
-            { label: "Code secret", pourcent: stats.inscrits ? (stats.codes_definis / stats.inscrits) * 100 : 0 },
-            { label: "Groupes vivants", pourcent: groupes.length ? (groupes.filter((g) => g.nb_membres > 1).length / groupes.length) * 100 : 0 },
-            { label: "Comptes sains", pourcent: inscrits.length ? (inscrits.filter((i) => !i.nom.endsWith("(bloqué)")).length / inscrits.length) * 100 : 0 },
+            { label: "Dans un groupe", pourcent: inscrits.length ? (inscrits.filter((i) => i.nb_groupes > 0).length / inscrits.length) * 100 : 0, onClick: () => voirListe({ titre: "Inscrits sans groupe", personnes: inscrits.filter((i) => i.nb_groupes === 0).map((i) => pInscrit(i)) }) },
+            { label: "Code secret", pourcent: stats.inscrits ? (stats.codes_definis / stats.inscrits) * 100 : 0, onClick: () => voirListe({ titre: "Inscrits sans code secret", personnes: inscrits.filter((i) => !i.code_defini).map((i) => pInscrit(i)) }) },
+            { label: "Groupes vivants", pourcent: groupes.length ? (groupes.filter((g) => g.nb_membres > 1).length / groupes.length) * 100 : 0, onClick: () => voirListe({ titre: "Groupes sans autre membre", personnes: groupes.filter((g) => g.nb_membres <= 1).map(pGroupe) }) },
+            { label: "Comptes sains", pourcent: inscrits.length ? (inscrits.filter((i) => !i.nom.endsWith("(bloqué)")).length / inscrits.length) * 100 : 0, onClick: () => voirListe({ titre: "Comptes bloqués", personnes: inscrits.filter((i) => i.nom.endsWith("(bloqué)")).map((i) => pInscrit(i)) }) },
           ]} />
         </Bloc>
         <Bloc fond="vert" titre="Les inscrits en 100 carrés" sous="Qui fait quoi, sur 100 inscrits">
           <Gaufre parts={[
-            { label: "Dans au moins 2 groupes", pourcent: inscrits.length ? (inscrits.filter((i) => i.nb_groupes >= 2).length / inscrits.length) * 100 : 0, couleur: VERT },
-            { label: "Dans 1 groupe", pourcent: inscrits.length ? (inscrits.filter((i) => i.nb_groupes === 1).length / inscrits.length) * 100 : 0, couleur: "#7fd1a8" },
-            { label: "Pas encore de groupe", pourcent: inscrits.length ? (inscrits.filter((i) => i.nb_groupes === 0).length / inscrits.length) * 100 : 0, couleur: ORANGE },
+            { label: "Dans au moins 2 groupes", pourcent: inscrits.length ? (inscrits.filter((i) => i.nb_groupes >= 2).length / inscrits.length) * 100 : 0, couleur: VERT, onClick: () => voirListe({ titre: "Dans au moins 2 groupes", personnes: inscrits.filter((i) => i.nb_groupes >= 2).map((i) => pInscrit(i)) }) },
+            { label: "Dans 1 groupe", pourcent: inscrits.length ? (inscrits.filter((i) => i.nb_groupes === 1).length / inscrits.length) * 100 : 0, couleur: "#7fd1a8", onClick: () => voirListe({ titre: "Dans 1 seul groupe", personnes: inscrits.filter((i) => i.nb_groupes === 1).map((i) => pInscrit(i)) }) },
+            { label: "Pas encore de groupe", pourcent: inscrits.length ? (inscrits.filter((i) => i.nb_groupes === 0).length / inscrits.length) * 100 : 0, couleur: ORANGE, onClick: () => voirListe({ titre: "Inscrits sans groupe", sous: "À relancer : propose-leur de créer ou rejoindre une tontine", personnes: inscrits.filter((i) => i.nb_groupes === 0).map((i) => pInscrit(i)) }) },
           ]} />
         </Bloc>
       </div>
@@ -694,7 +789,15 @@ function Apercu({ stats, inscrits, groupes, attente, demandes, aller, ouvrir, no
   );
 }
 
+/** Petit bouton « Voir les N … » sous un graphique */
+const BoutonVoir = ({ n, texte, onClick }: { n: number; texte: string; onClick: () => void }) => (
+  <button onClick={onClick} disabled={n === 0} className="mx-auto mt-2 flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-50 disabled:opacity-40">
+    Voir les {n} {texte} <ChevronRight size={13} />
+  </button>
+);
+
 function Statistiques({ stats, inscrits, groupes, ouvrir }: { stats: Stats | null; inscrits: Inscrit[]; groupes: Groupe[]; ouvrir: (id: string) => void }) {
+  const { voirListe } = useContext(AdminCtx);
   if (!stats) return <p className="text-sm text-stone-500">Chargement des chiffres…</p>;
   const parType = ["tontine", "association", "collecte"].map((t) => ({ t, n: groupes.filter((g) => g.type === t).length, argent: groupes.filter((g) => g.type === t).reduce((s, g) => s + g.collecte, 0) }));
   const top = [...groupes].sort((a, b) => b.collecte - a.collecte).slice(0, 6);
@@ -710,23 +813,26 @@ function Statistiques({ stats, inscrits, groupes, ouvrir }: { stats: Stats | nul
   return (
     <>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Bloc fond="vert" titre="Dans un groupe"><Jauge valeur={pct(avecGroupe, inscrits.length)} label="des inscrits" sous={`${avecGroupe} sur ${inscrits.length}`} /></Bloc>
-        <Bloc fond="bleu" titre="Code secret"><Montre pourcent={pct(stats.codes_definis, stats.inscrits)} label="ont créé leur code" sous={`${stats.codes_definis} sur ${stats.inscrits}`} /></Bloc>
+        <Bloc fond="vert" titre="Dans un groupe"><Jauge valeur={pct(avecGroupe, inscrits.length)} label="des inscrits" sous={`${avecGroupe} sur ${inscrits.length}`} /><BoutonVoir n={inscrits.length - avecGroupe} texte="sans groupe" onClick={() => voirListe({ titre: "Inscrits sans groupe", personnes: inscrits.filter((i) => i.nb_groupes === 0).map((i) => pInscrit(i)) })} /></Bloc>
+        <Bloc fond="bleu" titre="Code secret"><Montre pourcent={pct(stats.codes_definis, stats.inscrits)} label="ont créé leur code" sous={`${stats.codes_definis} sur ${stats.inscrits}`} /><BoutonVoir n={inscrits.filter((i) => !i.code_defini).length} texte="sans code" onClick={() => voirListe({ titre: "Inscrits sans code secret", personnes: inscrits.filter((i) => !i.code_defini).map((i) => pInscrit(i)) })} /></Bloc>
         <Bloc fond="creme" titre="Taille moyenne"><Jauge valeur={moyenne} max={Math.max(20, moyenne)} unite="membres" label="par groupe" format={(n) => `${n}`} /></Bloc>
         <Bloc fond="vert" titre="Paiement moyen"><Jauge valeur={stats.paiements_confirmes ? Math.round(stats.montant_confirme / stats.paiements_confirmes) : 0} max={Math.max(50000, stats.paiements_confirmes ? Math.round(stats.montant_confirme / stats.paiements_confirmes) : 0)} label={`${stats.paiements_confirmes} paiements confirmés`} format={fcfa} /></Bloc>
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <Bloc titre="Groupes par type" sous="Nombre de groupes">
-          <Anneau parts={parType.map((p) => ({ label: TYPE[p.t], n: p.n, couleur: TYPE_COULEUR[p.t] }))} sousCentre="groupes" />
+          <Anneau parts={parType.map((p) => ({ label: TYPE[p.t], n: p.n, couleur: TYPE_COULEUR[p.t], onClick: () => voirListe({ titre: `Groupes : ${TYPE[p.t]}`, personnes: groupes.filter((g) => g.type === p.t).map(pGroupe) }) }))} sousCentre="groupes" />
         </Bloc>
         <Bloc fond="bleu" titre="Argent confirmé par type" sous="Total des cotisations confirmées">
-          <Anneau parts={parType.map((p) => ({ label: TYPE[p.t], n: p.argent, couleur: TYPE_COULEUR[p.t] }))} format={fcfa} sousCentre="confirmés" />
+          <Anneau parts={parType.map((p) => ({ label: TYPE[p.t], n: p.argent, couleur: TYPE_COULEUR[p.t], onClick: () => voirListe({ titre: `Argent confirmé : ${TYPE[p.t]}`, personnes: groupes.filter((g) => g.type === p.t).sort((a, b) => b.collecte - a.collecte).map((g) => ({ ...pGroupe(g), detail: `${fcfa(g.collecte)} confirmés · ${g.nb_membres} membres` })) }) }))} format={fcfa} sousCentre="confirmés" />
         </Bloc>
         <Bloc fond="vert" titre="Groupes qui cotisent le plus" sous="Touche un groupe pour ouvrir sa fiche">
           {top.length === 0 ? <p className="text-sm text-stone-500">Aucun groupe.</p> : <Barres lignes={top.map((g) => ({ label: g.nom, n: g.collecte, couleur: TYPE_COULEUR[g.type] ?? "#059669", onClick: () => ouvrir(g.id) }))} format={fcfa} />}
         </Bloc>
         <Bloc fond="bleu" titre="Taille des groupes" sous="Nombre de groupes par nombre de membres">
           <Colonnes lignes={tailles} couleur={VERT} />
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            {tailles.map((t, k) => <button key={t.label} onClick={() => voirListe({ titre: `Groupes de ${t.label}`, personnes: groupes.filter((g) => [g.nb_membres <= 5, g.nb_membres > 5 && g.nb_membres <= 10, g.nb_membres > 10 && g.nb_membres <= 20, g.nb_membres > 20][k]).map(pGroupe) })} className="rounded-full bg-white px-2.5 py-1 text-xs font-semibold text-emerald-800 ring-1 ring-emerald-200 hover:bg-emerald-50">Voir {t.label} ›</button>)}
+          </div>
         </Bloc>
       </div>
     </>
@@ -2296,6 +2402,12 @@ type SanteA = {
 const CAPACITE_TESTEE_PAR_SECONDE = 1250;
 
 function Sante() {
+  const { voirListe } = useContext(AdminCtx);
+  const voirActifs = async (jours: number, titre: string) => {
+    const { data, error } = await db.rpc("admin_actifs", { jours });
+    if (error) return alert(error.message.includes("admin_actifs") ? "Fais d’abord la mise à jour SQL n°32 dans Supabase." : "Erreur : " + error.message);
+    voirListe({ titre, personnes: ((data as { id: string; nom: string; telephone: string; dernier_jour: string; nb_jours: number }[]) ?? []).map((x) => ({ id: x.id, nom: x.nom, telephone: x.telephone, detail: `dernière visite ${dateCourte(x.dernier_jour)} · ${x.nb_jours} jour${x.nb_jours > 1 ? "s" : ""} actif${x.nb_jours > 1 ? "s" : ""}` })) });
+  };
   const [d, setD] = useState<SanteA | null | undefined>(undefined);
   const [reglage, setReglage] = useState(false);
   const [dbMo, setDbMo] = useState("");
@@ -2373,9 +2485,9 @@ function Sante() {
       <div className="grid gap-4 lg:grid-cols-3">
         <Bloc fond="vert" titre="Fidélité" sous="Part des inscrits qui reviennent">
           <Anneaux anneaux={[
-            { label: "Aujourd’hui", pourcent: d.inscrits ? (d.actifs_jour / d.inscrits) * 100 : 0, couleur: ORANGE, detail: `${d.actifs_jour} personnes` },
-            { label: "Sur 7 jours", pourcent: d.inscrits ? (d.actifs_7j / d.inscrits) * 100 : 0, couleur: VERT, detail: `${d.actifs_7j} personnes` },
-            { label: "Sur 30 jours", pourcent: d.inscrits ? (d.actifs_30j / d.inscrits) * 100 : 0, couleur: "#2c7fb8", detail: `${d.actifs_30j} personnes` },
+            { label: "Aujourd’hui", pourcent: d.inscrits ? (d.actifs_jour / d.inscrits) * 100 : 0, couleur: ORANGE, detail: `${d.actifs_jour} personnes`, onClick: () => voirActifs(1, "Actifs aujourd’hui") },
+            { label: "Sur 7 jours", pourcent: d.inscrits ? (d.actifs_7j / d.inscrits) * 100 : 0, couleur: VERT, detail: `${d.actifs_7j} personnes`, onClick: () => voirActifs(7, "Actifs sur 7 jours") },
+            { label: "Sur 30 jours", pourcent: d.inscrits ? (d.actifs_30j / d.inscrits) * 100 : 0, couleur: "#2c7fb8", detail: `${d.actifs_30j} personnes`, onClick: () => voirActifs(30, "Actifs sur 30 jours") },
           ]} centre={`${d.inscrits}`} sousCentre="inscrits" />
         </Bloc>
         <Bloc fond="bleu" titre="Horloge de la journée" sous="Quelles heures sont les plus chargées (48 dernières heures)">
@@ -2396,7 +2508,7 @@ function Sante() {
           ]} sousCentre="ouvertures" />
         </Bloc>
         <Bloc fond="bleu" titre="Parcours d’activité" sous="Des inscrits aux actifs du jour">
-          <Pyramide etages={[{ label: "Inscrits", n: d.inscrits }, { label: "Actifs sur 30 jours", n: d.actifs_30j }, { label: "Actifs sur 7 jours", n: d.actifs_7j }, { label: "Actifs aujourd’hui", n: d.actifs_jour }]} />
+          <Pyramide etages={[{ label: "Inscrits", n: d.inscrits }, { label: "Actifs sur 30 jours", n: d.actifs_30j, onClick: () => voirActifs(30, "Actifs sur 30 jours") }, { label: "Actifs sur 7 jours", n: d.actifs_7j, onClick: () => voirActifs(7, "Actifs sur 7 jours") }, { label: "Actifs aujourd’hui", n: d.actifs_jour, onClick: () => voirActifs(1, "Actifs aujourd’hui") }]} />
         </Bloc>
       </div>
 
@@ -2426,6 +2538,91 @@ function Sante() {
         )}
         {msg && <p className={`mt-2 text-sm ${msg.startsWith("Erreur") ? "text-red-700" : "text-emerald-700"}`}>{msg}</p>}
       </Bloc>
+    </>
+  );
+}
+
+/** Les idées pour attirer plus de monde (proposées le 13/11/2026), avec leur avancement */
+const IDEES: { id: string; titre: string; quoi: string; pourquoi: string; effort: 1 | 2 | 3; impact: 1 | 2 | 3; emoji: string; attention?: string }[] = [
+  { id: "cagnottes", emoji: "🎉", titre: "Cagnottes publiques partageables", quoi: "Mariage, funérailles, baptême, urgence santé : une belle page avec photo, jauge de l’objectif et liste des donateurs, à envoyer sur WhatsApp.", pourquoi: "Chaque cagnotte est vue par des dizaines de personnes qui ne connaissent pas encore Cotiz : c’est le moteur de croissance n°1 des applis de collecte.", effort: 2, impact: 3 },
+  { id: "parrainage", emoji: "🤝", titre: "Parrainage récompensé", quoi: "« Invite 3 amis, ta prochaine cotisation est sans frais ». Lien de parrainage suivi, tableau dans l’admin.", pourquoi: "Les gens font confiance à ce que leurs proches utilisent : le bouche-à-oreille devient mesurable.", effort: 2, impact: 3 },
+  { id: "rappels", emoji: "⏰", titre: "Rappels automatiques sur WhatsApp", quoi: "2 jours avant la date de cotisation et le jour même, avec le lien pour payer.", pourquoi: "Moins de retards, des trésoriers contents… qui en parlent autour d’eux.", effort: 2, impact: 3, attention: "Nécessite un compte WhatsApp Business (API) : petit coût par message." },
+  { id: "confiance", emoji: "⭐", titre: "Score de confiance du membre", quoi: "« A payé 24 fois à l’heure » : un badge visible quand on rejoint un groupe.", pourquoi: "La grande peur dans les tontines, c’est celui qui ne paie plus : ça rassure pour rejoindre des inconnus.", effort: 2, impact: 2 },
+  { id: "modeles", emoji: "🧩", titre: "Modèles de groupes prêts à l’emploi", quoi: "Tontine du marché, mutuelle du village, anciens élèves, cotisation de bureau, église…", pourquoi: "On crée un groupe en 30 secondes : moins d’abandons à la création.", effort: 1, impact: 2 },
+  { id: "epargne", emoji: "🐷", titre: "Épargne personnelle avec objectif", quoi: "« 100 000 F pour la rentrée » : un objectif, une jauge, des petits versements.", pourquoi: "Les gens ouvrent l’appli même sans groupe : plus d’habitude, plus de fidélité.", effort: 3, impact: 2, attention: "Garder de l’argent est encadré par la BCEAO : passer par un partenaire agréé (GeniusPay, Wave) ou une licence. À valider avec un juriste." },
+  { id: "attestation", emoji: "📄", titre: "Attestation PDF et relevé annuel", quoi: "Relevé des cotisations du membre ; export du groupe en un clic pour le trésorier.", pourquoi: "Utile pour prouver sa régularité (banque, bailleur, association) : une vraie raison de s’inscrire.", effort: 1, impact: 2 },
+  { id: "sms", emoji: "📱", titre: "Accès sans smartphone (SMS puis USSD)", quoi: "Rappels et confirmations par SMS ; plus tard un code *xxx# pour consulter son solde.", pourquoi: "Ouvre Cotiz aux mamans du marché et aux villages, là où les tontines sont les plus nombreuses.", effort: 3, impact: 3, attention: "USSD : contrat avec un agrégateur ou les opérateurs." },
+  { id: "vocal", emoji: "🗣️", titre: "Assistant vocal en dioula / baoulé", quoi: "Un bouton qui lit le solde et la date du prochain paiement dans sa langue.", pourquoi: "Une vraie différence locale, pour ceux qui lisent peu le français.", effort: 2, impact: 2 },
+  { id: "verifie", emoji: "✅", titre: "Badge « Groupe vérifié »", quoi: "Pour les associations sérieuses : trésorier identifié, historique propre.", pourquoi: "Rassure les nouveaux membres et donne envie aux associations de venir sur Cotiz.", effort: 1, impact: 2 },
+];
+const ETATS_IDEE = [
+  { id: "idee", label: "Idée", cl: "bg-stone-100 text-stone-700" },
+  { id: "prevu", label: "Prévu", cl: "bg-sky-100 text-sky-800" },
+  { id: "en_cours", label: "En cours", cl: "bg-orange-100 text-orange-800" },
+  { id: "fait", label: "Fait ✓", cl: "bg-emerald-600 text-white" },
+] as const;
+
+function Idees() {
+  const [etats, setEtats] = useState<Record<string, string> | null | undefined>(undefined);
+  const [msg, setMsg] = useState("");
+  const [ouverte, setOuverte] = useState<string | null>(null);
+  useEffect(() => { db.rpc("admin_feuille_route_lire").then(({ data, error }) => setEtats(error ? null : ((data as Record<string, string>) ?? {}))); }, []);
+  const changer = async (id: string, e: string) => {
+    const nouveau = { ...(etats ?? {}), [id]: e };
+    setEtats(nouveau);
+    const { error } = await db.rpc("admin_feuille_route", { v: nouveau });
+    setMsg(error ? "Erreur : " + error.message : "");
+  };
+  const faits = IDEES.filter((x) => etats?.[x.id] === "fait").length;
+  const enCours = IDEES.filter((x) => etats?.[x.id] === "en_cours").length;
+  const points = (n: number, c: string) => <span className="inline-flex gap-0.5">{[1, 2, 3].map((k) => <span key={k} className={`h-1.5 w-3 rounded-full ${k <= n ? c : "bg-stone-200"}`} />)}</span>;
+  return (
+    <>
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-amber-400 via-orange-500 to-emerald-700 p-5 text-white shadow-lg">
+        <div className="motif pointer-events-none absolute inset-0 opacity-20" />
+        <div className="balaie pointer-events-none absolute inset-y-0 left-0" />
+        <div className="relative flex flex-wrap items-end justify-between gap-4">
+          <div>
+            <p className="text-sm font-semibold text-white/90">Idées pour attirer plus de monde sur Cotiz</p>
+            <p className="mt-1 text-3xl font-extrabold">{IDEES.length} idées · {faits} faite{faits > 1 ? "s" : ""}</p>
+            <p className="text-sm text-white/90">{enCours} en cours. Touche une idée pour la détailler et changer son avancement.</p>
+          </div>
+          <div className="w-48"><div className="h-3 overflow-hidden rounded-full bg-white/25"><div className="etire h-full rounded-full bg-white" style={{ width: `${(faits / IDEES.length) * 100}%` }} /></div><p className="mt-1 text-right text-xs font-bold">{Math.round((faits / IDEES.length) * 100)} % réalisé</p></div>
+        </div>
+      </div>
+      {etats === null && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Pour enregistrer l’avancement, fais la <b>mise à jour SQL n°32</b> dans Supabase. Les idées restent lisibles en attendant.</p>}
+      {msg && <p className="rounded-xl bg-red-50 p-3 text-sm text-red-700">{msg}</p>}
+      <div className="grid gap-3 md:grid-cols-2">
+        {IDEES.map((x, k) => {
+          const e = etats?.[x.id] ?? "idee";
+          const ouv = ouverte === x.id;
+          return (
+            <div key={x.id} className={`carte-vivante rounded-2xl border border-stone-200/80 p-4 shadow-sm ${k % 3 === 0 ? "fond-vert" : k % 3 === 1 ? "fond-bleu" : "fond-creme"} bg-white`}>
+              <button onClick={() => setOuverte(ouv ? null : x.id)} className="flex w-full items-start gap-3 text-left">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white text-2xl shadow-sm">{x.emoji}</span>
+                <span className="min-w-0 flex-1">
+                  <span className="flex items-center gap-2"><span className="text-xs font-bold text-stone-400">n°{k + 1}</span><span className={`rounded-full px-2 py-0.5 text-[0.65rem] font-bold ${ETATS_IDEE.find((t) => t.id === e)?.cl}`}>{ETATS_IDEE.find((t) => t.id === e)?.label}</span></span>
+                  <span className="mt-0.5 block font-bold">{x.titre}</span>
+                  <span className="mt-1 flex flex-wrap gap-3 text-[0.7rem] text-stone-500"><span className="inline-flex items-center gap-1">Impact {points(x.impact, "bg-emerald-500")}</span><span className="inline-flex items-center gap-1">Effort {points(x.effort, "bg-orange-400")}</span></span>
+                </span>
+                <ChevronDown size={18} className={`mt-1 shrink-0 text-stone-400 transition ${ouv ? "rotate-180" : ""}`} />
+              </button>
+              {ouv && (
+                <div className="apparait mt-3 space-y-2 border-t border-black/5 pt-3 text-sm">
+                  <p><b>Ce que c’est :</b> {x.quoi}</p>
+                  <p><b>Pourquoi ça attire :</b> {x.pourquoi}</p>
+                  {x.attention && <p className="rounded-xl bg-amber-50 p-2.5 text-amber-900">⚠️ {x.attention}</p>}
+                  <div className="flex flex-wrap gap-1.5 pt-1">
+                    {ETATS_IDEE.map((t) => (
+                      <button key={t.id} disabled={etats === null} onClick={() => changer(x.id, t.id)} className={`rounded-full px-3 py-1.5 text-xs font-bold ring-1 transition ${e === t.id ? `${t.cl} ring-transparent` : "bg-white text-stone-600 ring-stone-200 hover:bg-stone-50"} disabled:opacity-40`}>{t.label}</button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
     </>
   );
 }
@@ -2516,11 +2713,52 @@ function OffrePenalite({ partHabituelle }: { partHabituelle: number }) {
   );
 }
 
+/** Numéro WhatsApp international (225 + 10 chiffres) */
+const waNumero = (t: string) => { const d = t.replace(/\D/g, ""); return d.length === 10 ? "225" + d : d; };
+
+/** Les personnes derrière un chiffre : recherche, appel, WhatsApp, fiche */
+function ListePersonnes({ l, fermer, ouvrir }: { l: ListeP; fermer: () => void; ouvrir: (f: FicheOuverte) => void }) {
+  const [q, setQ] = useState("");
+  const r = q.trim().toLowerCase();
+  const vus = l.personnes.filter((p) => !r || p.nom.toLowerCase().includes(r) || (p.telephone ?? "").replace(/\D/g, "").includes(r.replace(/\D/g, "") || "§"));
+  const avecTel = l.personnes.filter((p) => p.telephone).length;
+  const copier = () => navigator.clipboard?.writeText(l.personnes.filter((p) => p.telephone).map((p) => `${p.nom} : ${telAffiche(p.telephone!)}`).join("\n"));
+  return (
+    <Volet titre={l.titre} sousTitre={l.sous ?? `${l.personnes.length} personne${l.personnes.length > 1 ? "s" : ""}`} fermer={fermer}>
+      <div className="flex flex-wrap items-center gap-2">
+        <div className="min-w-[200px] flex-1"><Recherche valeur={q} onChange={setQ} placeholder="Chercher un nom ou un numéro" /></div>
+        {avecTel > 0 && <button onClick={copier} className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 py-2.5 text-xs font-bold text-stone-700"><Copy size={14} /> Copier les {avecTel} numéros</button>}
+      </div>
+      {vus.length === 0 ? <p className="rounded-xl bg-white p-4 text-sm text-stone-500">Personne ici pour l’instant. 🎉</p> : (
+        <div className="divide-y divide-stone-100 overflow-hidden rounded-2xl border border-stone-200/80 bg-white">
+          {vus.map((p, k) => (
+            <div key={(p.id ?? p.telephone ?? "") + k} className="apparait flex items-center gap-3 p-3 text-sm" style={{ animationDelay: `${Math.min(k, 12) * 30}ms` }}>
+              <Pastille nom={p.nom} />
+              <button type="button" disabled={!p.id} onClick={() => p.id && ouvrir({ type: p.type ?? "utilisateur", id: p.id })} className="min-w-0 flex-1 text-left enabled:hover:opacity-75">
+                <p className="truncate font-semibold">{p.nom}{p.badge && <span className="ml-2 rounded-full bg-orange-100 px-2 py-0.5 text-[0.65rem] font-bold text-orange-800">{p.badge}</span>}</p>
+                <p className="truncate text-xs text-stone-500">{p.telephone ? telAffiche(p.telephone) : ""}{p.telephone && p.detail ? " · " : ""}{p.detail}</p>
+              </button>
+              {p.telephone && (
+                <span className="flex shrink-0 gap-1.5">
+                  <a href={`tel:${p.telephone}`} className="grid h-9 w-9 place-items-center rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100" aria-label={`Appeler ${p.nom}`}><Phone size={16} /></a>
+                  <a href={`https://wa.me/${waNumero(p.telephone)}`} target="_blank" rel="noopener" className="grid h-9 w-9 place-items-center rounded-full bg-[#25d366]/15 text-[#128c4a] hover:bg-[#25d366]/25" aria-label={`WhatsApp ${p.nom}`}><MessageSquareText size={16} /></a>
+                </span>
+              )}
+              {p.id && <ChevronRight size={16} className="shrink-0 text-stone-300" />}
+            </div>
+          ))}
+        </div>
+      )}
+    </Volet>
+  );
+}
+
 function Volet({ titre, sousTitre, fermer, children }: { titre: string; sousTitre?: string; fermer: () => void; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-40 flex justify-end bg-stone-900/40" onClick={fermer}>
       <div className="feuille-droite flex h-full w-full max-w-2xl flex-col bg-[#f7f5f0] shadow-2xl" onClick={(e) => e.stopPropagation()}>
         <div className="flex items-start gap-3 border-b border-stone-200 bg-white px-5 py-4">
+          <button onClick={fermer} className="-ml-1 inline-flex shrink-0 items-center gap-0.5 rounded-full bg-emerald-50 py-2 pl-2 pr-3 text-sm font-bold text-emerald-800 hover:bg-emerald-100" aria-label="Retour"><ChevronLeft size={18} /> Retour</button>
           <div className="min-w-0 flex-1">
             <p className="truncate text-lg font-extrabold">{titre}</p>
             {sousTitre && <p className="truncate text-xs text-stone-500">{sousTitre}</p>}

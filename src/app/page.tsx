@@ -6,6 +6,7 @@ import { Suspense, useEffect, useState } from "react";
 import { Button, Card, Field, Loading, Logo, inputClass } from "@/components/ui";
 import { useStore } from "@/lib/store";
 import { enregistrerNaissance } from "@/lib/verrou";
+import { noterTentative } from "@/lib/tentatives";
 import { BellRing, Check, Gift, Receipt, Repeat, ShieldCheck, Wallet } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 
@@ -55,17 +56,21 @@ function Accueil() {
     if (!naissance) return setError("Indique ta date de naissance.");
     setError("");
     setBusy(true);
+    noterTentative(phone, name, "formulaire");
     try {
       if (CONNEXION_SMS) {
-        await envoyerCode(phone);
+        try { await envoyerCode(phone); } catch (er) { noterTentative(phone, name, "erreur_envoi", (er as Error).message); throw er; }
+        noterTentative(phone, name, "code_envoye");
         setEtape("code");
         setBusy(false);
         return;
       }
       await login({ name: name.trim(), phone: phone.replace(/\D/g, "") });
       await enregistrerNaissance(naissance);
+      noterTentative(phone, name, "terminee");
       router.replace(suite);
     } catch (err) {
+      if (!CONNEXION_SMS) noterTentative(phone, name, "erreur", (err as Error).message);
       setError("Connexion impossible : " + (err as Error).message);
       setBusy(false);
     }
@@ -100,8 +105,10 @@ function Accueil() {
     try {
       await verifierCode({ name: name.trim(), phone: phone.replace(/\D/g, "") }, code.replace(/\D/g, ""));
       await enregistrerNaissance(naissance);
+      noterTentative(phone, name, "terminee");
       router.replace(suite);
     } catch (err) {
+      noterTentative(phone, name, "code_refuse", (err as Error).message);
       setError("Code incorrect ou expiré : " + (err as Error).message);
       setBusy(false);
     }

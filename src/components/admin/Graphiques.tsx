@@ -124,7 +124,7 @@ export function Montre({ pourcent, label, sous }: { pourcent: number; label: str
 }
 
 /** Anneau (donut) avec légende et survol ; les parts se dessinent une à une */
-export function Anneau({ parts, centre, sousCentre, format = (n) => n.toLocaleString("fr-FR") }: { parts: { label: string; n: number; couleur: string }[]; centre?: string; sousCentre?: string; format?: (n: number) => string }) {
+export function Anneau({ parts, centre, sousCentre, format = (n) => n.toLocaleString("fr-FR") }: { parts: { label: string; n: number; couleur: string; onClick?: () => void }[]; centre?: string; sousCentre?: string; format?: (n: number) => string }) {
   const [sel, setSel] = useState<number | null>(null);
   const total = parts.reduce((s, p) => s + p.n, 0);
   let cumul = 0;
@@ -144,7 +144,7 @@ export function Anneau({ parts, centre, sousCentre, format = (n) => n.toLocaleSt
           const a = (cumul / total) * 360;
           const ecart = visibles > 1 ? 1.4 : 0;
           const delai = `${(ordre++) * 0.35}s`;
-          const commun = { fill: "none", stroke: p.couleur, strokeWidth: sel === k ? 27 : 22, pathLength: 1, className: "trace cursor-pointer", onMouseEnter: () => setSel(k), onClick: () => setSel(sel === k ? null : k), style: { animationDelay: delai, transition: "stroke-width .25s, opacity .25s", opacity: sel === null || sel === k ? 1 : 0.4 } };
+          const commun = { fill: "none", stroke: p.couleur, strokeWidth: sel === k ? 27 : 22, pathLength: 1, className: "trace cursor-pointer", onMouseEnter: () => setSel(k), onClick: () => (p.onClick ? p.onClick() : setSel(sel === k ? null : k)), style: { animationDelay: delai, transition: "stroke-width .25s, opacity .25s", opacity: sel === null || sel === k ? 1 : 0.4 } };
           if (visibles === 1) return <path key={k} d={`${arc(80, 80, 60, 0, 180)} ${arc(80, 80, 60, 180, 359.99).replace("M", "L")}`} {...commun} />;
           return <path key={k} d={arc(80, 80, 60, de + ecart, a - ecart)} {...commun} />;
         })}
@@ -153,11 +153,12 @@ export function Anneau({ parts, centre, sousCentre, format = (n) => n.toLocaleSt
       </svg>
       <ul className="min-w-[150px] flex-1 space-y-2 text-sm">
         {parts.map((p, k) => (
-          <li key={k} onMouseEnter={() => setSel(k)} onMouseLeave={() => setSel(null)} className={`apparait flex items-center gap-2 rounded-lg px-2 py-1 transition-colors ${sel === k ? "bg-stone-100" : ""}`} style={{ animationDelay: `${0.2 + k * 0.12}s` }}>
+          <li key={k} onMouseEnter={() => setSel(k)} onMouseLeave={() => setSel(null)} onClick={p.onClick} role={p.onClick ? "button" : undefined} className={`apparait flex items-center gap-2 rounded-lg px-2 py-1 transition-colors ${sel === k ? "bg-stone-100" : ""} ${p.onClick ? " cursor-pointer hover:bg-emerald-50 hover:ring-1 hover:ring-emerald-200" : ""}`} style={{ animationDelay: `${0.2 + k * 0.12}s` }}>
             <span className="h-3 w-3 shrink-0 rounded-full ring-2 ring-white shadow" style={{ background: p.couleur }} />
             <span className="flex-1 text-stone-700">{p.label}</span>
             <b className="tabular-nums text-stone-900"><TexteAnime texte={format(p.n)} /></b>
             <span className="w-10 text-right text-xs text-stone-500">{total ? Math.round((p.n / total) * 100) : 0} %</span>
+            {p.onClick && <span className="text-stone-300">›</span>}
           </li>
         ))}
       </ul>
@@ -166,7 +167,7 @@ export function Anneau({ parts, centre, sousCentre, format = (n) => n.toLocaleSt
 }
 
 /** Pyramide (triangle) : étapes successives, du plus grand au plus petit ; elle se construit de bas en haut */
-export function Pyramide({ etages }: { etages: { label: string; n: number }[] }) {
+export function Pyramide({ etages }: { etages: { label: string; n: number; onClick?: () => void }[] }) {
   const id = useId().replace(/:/g, "");
   const tons = [VERT_FONCE, "#007a4b", VERT, "#3fbf8a", ORANGE];
   const h = 168, w = 220, n = etages.length;
@@ -183,7 +184,7 @@ export function Pyramide({ etages }: { etages: { label: string; n: number }[] })
           const demi = (y: number) => ((y / h) * w) / 2;
           const p = `${w / 2 - demi(y1)},${y1} ${w / 2 + demi(y1)},${y1} ${w / 2 + demi(y2)},${y2} ${w / 2 - demi(y2)},${y2}`;
           return (
-            <g key={k} className="apparait" style={{ animationDelay: `${k * 0.25}s` }}>
+            <g key={k} className={`apparait ${e.onClick ? "cursor-pointer hover:opacity-85" : ""}`} onClick={e.onClick} style={{ animationDelay: `${k * 0.25}s` }}>
               <polygon points={p} fill={tons[k % tons.length]} />
               <polygon points={p} fill={`url(#p${id})`} />
               <text x={w / 2} y={(k === n - 1 ? y1 + (y2 - y1) * 0.72 : (y1 + y2) / 2) + 4} textAnchor="middle" fontSize="12" fontWeight="800" fill="#fff"><TexteAnime texte={e.n.toLocaleString("fr-FR")} /></text>
@@ -194,11 +195,12 @@ export function Pyramide({ etages }: { etages: { label: string; n: number }[] })
       </svg>
       <ul className="min-w-[160px] flex-1 space-y-2 text-sm">
         {etages.map((e, k) => ({ e, k })).reverse().map(({ e, k }, i) => (
-          <li key={k} className="apparait flex items-center gap-2" style={{ animationDelay: `${0.3 + i * 0.12}s` }}>
+          <li key={k} onClick={e.onClick} role={e.onClick ? "button" : undefined} className={`apparait flex items-center gap-2 rounded-lg px-1.5 py-1 ${e.onClick ? " cursor-pointer hover:bg-emerald-50 hover:ring-1 hover:ring-emerald-200" : ""}`} style={{ animationDelay: `${0.3 + i * 0.12}s` }}>
             <span className="h-3 w-3 shrink-0 rotate-45 rounded-[2px]" style={{ background: tons[k % tons.length] }} />
             <span className="flex-1 text-stone-700">{e.label}</span>
             <b className="tabular-nums text-stone-900">{e.n.toLocaleString("fr-FR")}</b>
             <span className="w-10 text-right text-xs text-stone-500">{Math.round((e.n / haut) * 100)} %</span>
+            {e.onClick && <span className="text-stone-300">›</span>}
           </li>
         ))}
       </ul>
@@ -283,7 +285,7 @@ export function Colonnes({ lignes, couleur = VERT }: { lignes: { label: string; 
    ===================================================================== */
 
 /** Anneaux concentriques (façon montre de sport) : chaque anneau = une part de 0 à 100 % */
-export function Anneaux({ anneaux, centre, sousCentre }: { anneaux: { label: string; pourcent: number; couleur: string; detail?: string }[]; centre?: string; sousCentre?: string }) {
+export function Anneaux({ anneaux, centre, sousCentre }: { anneaux: { label: string; pourcent: number; couleur: string; detail?: string; onClick?: () => void }[]; centre?: string; sousCentre?: string }) {
   const ok = useMonte();
   const id = useId().replace(/:/g, "");
   return (
@@ -312,7 +314,7 @@ export function Anneaux({ anneaux, centre, sousCentre }: { anneaux: { label: str
       </svg>
       <ul className="min-w-[160px] flex-1 space-y-2.5 text-sm">
         {anneaux.map((a, k) => (
-          <li key={k} className="apparait flex items-center gap-2.5" style={{ animationDelay: `${0.2 + k * 0.12}s` }}>
+          <li key={k} onClick={a.onClick} role={a.onClick ? "button" : undefined} className={`apparait flex items-center gap-2.5 rounded-lg px-1.5 py-1 ${a.onClick ? " cursor-pointer hover:bg-emerald-50 hover:ring-1 hover:ring-emerald-200" : ""}`} style={{ animationDelay: `${0.2 + k * 0.12}s` }}>
             <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full" style={{ background: `${a.couleur}22` }}><span className="h-2.5 w-2.5 rounded-full" style={{ background: a.couleur }} /></span>
             <span className="min-w-0 flex-1"><span className="block text-stone-700">{a.label}</span>{a.detail && <span className="block text-xs text-stone-500">{a.detail}</span>}</span>
             <b className="tabular-nums text-stone-900"><Nombre n={Math.round(a.pourcent)} format={(x) => `${x} %`} /></b>
@@ -433,7 +435,7 @@ export function Horloge24({ heures, format = (n) => `${n}` }: { heures: number[]
 }
 
 /** Toile d'araignée (radar) : plusieurs notes de 0 à 100 sur une même figure */
-export function Radar({ axes, couleur = VERT }: { axes: { label: string; pourcent: number }[]; couleur?: string }) {
+export function Radar({ axes, couleur = VERT }: { axes: { label: string; pourcent: number; onClick?: () => void }[]; couleur?: string }) {
   const ok = useMonte();
   const n = axes.length, c = 110, R = 72;
   const pt = (k: number, f: number) => pol(c, c, R * f, (k * 360) / n);
@@ -450,7 +452,8 @@ export function Radar({ axes, couleur = VERT }: { axes: { label: string; pourcen
           const [x, y] = pt(k, ok ? Math.max(0.04, Math.min(100, a.pourcent) / 100) : 0.02);
           const [lx, ly] = pt(k, 1.27);
           return (
-            <g key={k}>
+            <g key={k} onClick={a.onClick} className={a.onClick ? "cursor-pointer" : ""}>
+              {a.onClick && <circle cx={lx} cy={ly + 3} r="20" fill="transparent" />}
               <circle cx={x} cy={y} r="4" fill="#fff" stroke={couleur} strokeWidth="2.5" style={{ transition: "all 1.4s cubic-bezier(.3,1.4,.5,1)" }} />
               <text x={lx} y={ly - 2} textAnchor="middle" fontSize="8.5" fill="#57534e">{a.label}</text>
               <text x={lx} y={ly + 9} textAnchor="middle" fontSize="9.5" fontWeight="800" fill="#1c1917">{Math.round(a.pourcent)} %</text>
@@ -465,7 +468,7 @@ export function Radar({ axes, couleur = VERT }: { axes: { label: string; pourcen
 }
 
 /** Gaufre : 100 petits carrés, chaque carré = 1 % */
-export function Gaufre({ parts }: { parts: { label: string; pourcent: number; couleur: string }[] }) {
+export function Gaufre({ parts }: { parts: { label: string; pourcent: number; couleur: string; onClick?: () => void }[] }) {
   const cases: string[] = [];
   parts.forEach((p) => { for (let k = 0; k < Math.round(p.pourcent) && cases.length < 100; k++) cases.push(p.couleur); });
   while (cases.length < 100) cases.push("#ece9e4");
@@ -476,7 +479,7 @@ export function Gaufre({ parts }: { parts: { label: string; pourcent: number; co
       </div>
       <ul className="min-w-[150px] flex-1 space-y-2 text-sm">
         {parts.map((p, k) => (
-          <li key={k} className="flex items-center gap-2">
+          <li key={k} onClick={p.onClick} role={p.onClick ? "button" : undefined} className={`flex items-center gap-2 rounded-lg px-1.5 py-1 ${p.onClick ? " cursor-pointer hover:bg-emerald-50 hover:ring-1 hover:ring-emerald-200" : ""}`}>
             <span className="h-3 w-3 shrink-0 rounded-[3px]" style={{ background: p.couleur }} />
             <span className="flex-1 text-stone-700">{p.label}</span>
             <b className="tabular-nums text-stone-900"><Nombre n={Math.round(p.pourcent)} format={(x) => `${x} %`} /></b>
