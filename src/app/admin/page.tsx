@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { Jauge, Montre, Anneau, Pyramide, Courbe, Colonnes, TexteAnime, VERT, ORANGE, VIOLET } from "@/components/admin/Graphiques";
 import { DateNaissance } from "@/components/DateNaissance";
 import {
-  Ban, BarChart3, BadgeCheck, Coins, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronLeft, Contact, Download, ExternalLink, FolderOpen, Headset, IdCard, MessageSquareText, Phone, ScrollText, Send, ShieldX, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
+  Activity, Ban, BarChart3, BadgeCheck, Coins, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronLeft, Contact, Download, ExternalLink, FolderOpen, Headset, IdCard, MessageSquareText, Phone, ScrollText, Send, ShieldX, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
 } from "lucide-react";
 import { supabaseAdmin as db } from "@/lib/supabaseAdmin";
 import { TRANCHES_DEFAUT, fraisPour, lirePourcent, lireTranches, lireTranchesPenalite, partCotizPenalite, type Tranche, type TranchePenalite } from "@/lib/fraisService";
@@ -132,9 +132,10 @@ const ONGLETS = [
   { id: "equipe", label: "Équipe", icon: UserCog, ton: "sky" },
   { id: "salaires", label: "Salaires", icon: Wallet, ton: "emerald" },
   { id: "revenus", label: "Mes revenus", icon: Coins, ton: "amber" },
+  { id: "sante", label: "Santé de l’appli", icon: Activity, ton: "emerald" },
 ] as const;
 type Onglet = (typeof ONGLETS)[number]["id"];
-const RESERVE_FONDATEUR: Onglet[] = ["annonces", "journal", "equipe", "salaires", "revenus"];
+const RESERVE_FONDATEUR: Onglet[] = ["annonces", "journal", "equipe", "salaires", "revenus", "sante"];
 type Ton = (typeof ONGLETS)[number]["ton"] | "red";
 
 /** Couleurs par rubrique (pastille d'icône, carte chiffrée) */
@@ -497,6 +498,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
           {onglet === "planning" && <Planning fondateur={fondateur} equipe={equipe} moi={email} />}
           {onglet === "salaires" && fondateur && <Salaires />}
           {onglet === "revenus" && fondateur && <Revenus />}
+          {onglet === "sante" && fondateur && <Sante />}
           {onglet === "codes" && <Codes liste={demandes} recharger={charger} />}
           {onglet === "annonces" && fondateur && <Annonces liste={annonces} recharger={charger} />}
           </div>
@@ -2239,6 +2241,128 @@ function Revenus() {
             <p className="mt-2 text-xs text-stone-500">À cela s’ajoutent les frais de l’opérateur (GeniusPay ≈ 2,5 % + 100 F), payés aussi par le membre. Dans l’application, le membre voit seulement le montant total ; le détail figure sur son reçu.</p>
           </div>
         </div>
+      </Bloc>
+    </>
+  );
+}
+
+type SanteA = {
+  inscrits: number; actifs_jour: number; actifs_7j: number; actifs_30j: number;
+  par_jour: { jour: string; n: number }[]; par_heure: { heure: string; n: number }[];
+  pic_heure: number; pic_le: string | null; moments: { nuit: number; matin: number; apres_midi: number; soir: number };
+  taille_mo: number; groupes: number; paiements: number; capacite_db_mo: number; capacite_mau: number;
+};
+/** Ouvertures d'accueil par seconde encaissées pendant le test de charge (500 000 comptes, 4 processeurs) */
+const CAPACITE_TESTEE_PAR_SECONDE = 1250;
+
+function Sante() {
+  const [d, setD] = useState<SanteA | null | undefined>(undefined);
+  const [reglage, setReglage] = useState(false);
+  const [dbMo, setDbMo] = useState("");
+  const [mau, setMau] = useState("");
+  const [msg, setMsg] = useState("");
+  const charger = useCallback(async () => {
+    const { data, error } = await db.rpc("admin_sante");
+    setD(error ? null : (data as SanteA));
+    if (!error && data) { setDbMo(String((data as SanteA).capacite_db_mo)); setMau(String((data as SanteA).capacite_mau)); }
+  }, []);
+  useEffect(() => { charger(); }, [charger]);
+  if (d === undefined) return <p className="text-sm text-stone-500">Chargement…</p>;
+  if (d === null) return <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Pour suivre la santé de l’application, fais d’abord la <b>mise à jour SQL n°31</b> dans Supabase (fichier <code>migration-31-sante-appli.sql</code>).</p>;
+
+  const picSeconde = d.pic_heure / 3600;
+  const chargePct = Math.min(100, Math.round((picSeconde / CAPACITE_TESTEE_PAR_SECONDE) * 1000) / 10);
+  const dbPct = Math.min(100, Math.round((d.taille_mo / d.capacite_db_mo) * 100));
+  const mauPct = Math.min(100, Math.round((d.actifs_30j / d.capacite_mau) * 100));
+  const fidelite = d.inscrits ? Math.round((d.actifs_30j / d.inscrits) * 100) : 0;
+  const heureFr = (h: string) => new Date(h).toLocaleString("fr-FR", { weekday: "short", hour: "2-digit", minute: "2-digit" });
+  const alerte = Math.max(dbPct, mauPct, chargePct) >= 80;
+  const enregistrer = async () => {
+    const { error } = await db.rpc("admin_capacite", { db_mo: Number(dbMo.replace(/\D/g, "")), mau: Number(mau.replace(/\D/g, "")) });
+    setMsg(error ? "Erreur : " + error.message : "Limites enregistrées.");
+    if (!error) { setReglage(false); charger(); }
+  };
+
+  return (
+    <>
+      <div className={`relative overflow-hidden rounded-3xl p-5 text-white shadow-lg ${alerte ? "bg-gradient-to-br from-orange-500 to-red-600" : "degrade-vert"}`}>
+        <div className="motif pointer-events-none absolute inset-0 opacity-25" />
+        <div className="balaie pointer-events-none absolute inset-y-0 left-0" />
+        <div className="relative flex flex-wrap items-center gap-4">
+          <span className="relative grid h-14 w-14 place-items-center rounded-2xl bg-white/15">
+            <span className="onde absolute inset-0 rounded-2xl bg-white/20" />
+            <Activity size={28} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <p className="text-sm font-semibold text-white/85">État de l’application</p>
+            <p className="text-2xl font-extrabold">{alerte ? "Attention : une limite approche" : "Tout va bien ✅"}</p>
+            <p className="text-sm text-white/85">{alerte ? "Une jauge dépasse 80 % : pense à passer à une formule Supabase supérieure." : "L’application a beaucoup de marge avant d’être chargée."}</p>
+          </div>
+        </div>
+        <div className="bande-kente pointer-events-none absolute inset-x-0 bottom-0" />
+      </div>
+
+      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+        <Chiffre label="Actifs aujourd’hui" valeur={String(d.actifs_jour)} detail="ont ouvert l’application" icone={Activity} ton="emerald" />
+        <Chiffre label="Actifs sur 7 jours" valeur={String(d.actifs_7j)} detail="personnes différentes" icone={Users} ton="sky" />
+        <Chiffre label="Actifs sur 30 jours" valeur={String(d.actifs_30j)} detail={`${fidelite} % des ${d.inscrits} inscrits`} icone={UsersRound} ton="violet" />
+        <Chiffre label="Heure la plus chargée" valeur={`${d.pic_heure} ouvertures`} detail={d.pic_le ? heureFr(d.pic_le) : "pas encore de données"} icone={Clock} ton="amber" />
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Bloc titre="Personnes actives, jour par jour" sous="Personnes différentes qui ont ouvert l’application (30 jours)">
+          <Courbe points={d.par_jour.map((j) => ({ label: dateCourte(j.jour), n: j.n }))} couleur={VERT} format={(n) => `${n} personne${n > 1 ? "s" : ""}`} />
+        </Bloc>
+        <Bloc titre="Ouvertures, heure par heure" sous="Les 48 dernières heures">
+          <Courbe points={d.par_heure.map((h) => ({ label: heureFr(h.heure), n: h.n }))} couleur={ORANGE} format={(n) => `${n} ouverture${n > 1 ? "s" : ""}`} />
+        </Bloc>
+      </div>
+
+      <div className="grid gap-4 md:grid-cols-3">
+        <Bloc titre="Charge au moment le plus chargé" sous={`Heure de pointe comparée au test de charge (${CAPACITE_TESTEE_PAR_SECONDE.toLocaleString("fr-FR")} ouvertures / seconde)`}>
+          <Jauge valeur={chargePct} label="de la capacité testée" sous={`${picSeconde.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} ouverture / seconde au pic`} format={(n) => `${n.toLocaleString("fr-FR")} %`} />
+        </Bloc>
+        <Bloc titre="Place utilisée dans la base" sous={`${d.taille_mo} Mo sur ${d.capacite_db_mo.toLocaleString("fr-FR")} Mo · ${d.groupes} groupes · ${d.paiements} paiements`}>
+          <Montre pourcent={dbPct} label="de l’espace de ta formule" sous={`${d.taille_mo} Mo utilisés`} />
+        </Bloc>
+        <Bloc titre="Comptes actifs du mois" sous={`Limite de ta formule : ${d.capacite_mau.toLocaleString("fr-FR")} comptes actifs par mois`}>
+          <Jauge valeur={mauPct} label="de la limite mensuelle" sous={`${d.actifs_30j} actifs sur 30 jours`} format={(n) => `${n} %`} />
+        </Bloc>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Bloc titre="À quel moment on utilise Cotiz" sous="Ouvertures des 30 derniers jours, heure d’Abidjan">
+          <Anneau parts={[
+            { label: "Matin (6 h – 12 h)", n: d.moments.matin, couleur: "#f5c400" },
+            { label: "Après-midi (12 h – 18 h)", n: d.moments.apres_midi, couleur: ORANGE },
+            { label: "Soir (18 h – minuit)", n: d.moments.soir, couleur: VERT },
+            { label: "Nuit (minuit – 6 h)", n: d.moments.nuit, couleur: "#005234" },
+          ]} sousCentre="ouvertures" />
+        </Bloc>
+        <Bloc titre="Parcours d’activité" sous="Des inscrits aux actifs du jour">
+          <Pyramide etages={[{ label: "Inscrits", n: d.inscrits }, { label: "Actifs sur 30 jours", n: d.actifs_30j }, { label: "Actifs sur 7 jours", n: d.actifs_7j }, { label: "Actifs aujourd’hui", n: d.actifs_jour }]} />
+        </Bloc>
+      </div>
+
+      <Bloc titre="Ce que Cotiz peut supporter" sous="Résultat du test de charge (copie de Cotiz remplie de faux comptes)"
+        action={<button onClick={() => setReglage(!reglage)} className="rounded-full bg-stone-100 px-3 py-1.5 text-xs font-bold text-stone-700">{reglage ? "Fermer" : "Régler mes limites"}</button>}>
+        <div className="grid gap-3 text-sm sm:grid-cols-3">
+          {[["500 000", "comptes testés"], ["6 millions", "de paiements"], [`${CAPACITE_TESTEE_PAR_SECONDE.toLocaleString("fr-FR")} / s`, "ouvertures d’accueil encaissées"]].map(([a, b]) => (
+            <div key={b} className="rounded-2xl bg-gradient-to-br from-emerald-50 to-white p-4 ring-1 ring-emerald-100">
+              <p className="text-2xl font-extrabold text-emerald-800"><TexteAnime texte={a} /></p>
+              <p className="text-xs text-stone-600">{b}</p>
+            </div>
+          ))}
+        </div>
+        <p className="mt-3 text-xs text-stone-500">Les limites « espace » et « comptes actifs » dépendent de ta formule Supabase (gratuite au départ) : vérifie-les sur ta page de facturation Supabase et mets-les à jour ici.</p>
+        {reglage && (
+          <div className="mt-3 grid gap-2 rounded-2xl border border-stone-200 p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
+            <label className="text-xs font-semibold text-stone-600">Espace de la base (Mo)<input value={dbMo} onChange={(e) => setDbMo(e.target.value)} inputMode="numeric" className={champ} /></label>
+            <label className="text-xs font-semibold text-stone-600">Comptes actifs par mois<input value={mau} onChange={(e) => setMau(e.target.value)} inputMode="numeric" className={champ} /></label>
+            <button onClick={enregistrer} className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white">Enregistrer</button>
+          </div>
+        )}
+        {msg && <p className={`mt-2 text-sm ${msg.startsWith("Erreur") ? "text-red-700" : "text-emerald-700"}`}>{msg}</p>}
       </Bloc>
     </>
   );

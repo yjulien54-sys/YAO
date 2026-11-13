@@ -127,6 +127,11 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       setBloque(!error && d?.bloque ? { motif: d.motif ?? null } : null);
     });
   }, [userId, groups]);
+  // « Santé de l'appli » (SQL n°31) : compte une ouverture, une fois par chargement ; sans la mise à jour, l'erreur est ignorée
+  useEffect(() => {
+    if (!userId) return;
+    supabase.rpc("je_suis_la").then(() => {}, () => {});
+  }, [userId]);
   const reloadTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const reload = useCallback(async () => {
