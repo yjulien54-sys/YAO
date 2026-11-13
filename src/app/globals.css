@@ -208,3 +208,6 @@ button { transition-property: transform, background-color, border-color, color, 
 .fond-bleu { background-image: linear-gradient(140deg, #eef6fd 0%, #ffffff 55%, #f1fbf5 100%); }
 .fond-creme { background-image: linear-gradient(140deg, #fff8ee 0%, #ffffff 55%, #f2fbf6 100%); }
 @media (prefers-reduced-motion: reduce) { .vague, .vague-lente { animation: none !important; } }
+@keyframes jauge-anime { from { stroke-dashoffset: var(--c); } }
+.jauge-anime { animation: jauge-anime 1.6s cubic-bezier(0.22, 1, 0.36, 1) both; }
+@media (prefers-reduced-motion: reduce) { .jauge-anime { animation: none !important; } }

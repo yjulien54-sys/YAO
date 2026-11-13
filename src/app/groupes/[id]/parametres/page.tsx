@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
+import { CagnottePublique } from "@/components/CagnottePublique";
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Gift, HandHeart, Settings2, ShieldCheck, Trash2, UserCog, Users } from "lucide-react";
 import { IconBadge } from "@/components/icons";
@@ -107,6 +108,15 @@ export default function Parametres() {
     <Page>
       <Header back={`/groupes/${g.id}`} title="Paramètres du groupe" />
       <div className="space-y-4 p-4">
+        {/* Cagnotte publique (collectes) */}
+        {g.type === "collecte" && d.gestionnaire && (
+          <Card className="space-y-3 ring-2 ring-orange-200">
+            <p className="flex items-center gap-2 font-bold"><span className="grid h-8 w-8 place-items-center rounded-xl bg-orange-100 text-base">🌍</span>Cagnotte publique à partager</p>
+            <p className="text-sm text-stone-600">Une belle page avec photo, jauge et participants : envoie-la sur WhatsApp, même à ceux qui n’ont pas Cotiz.</p>
+            <CagnottePublique groupId={g.id} nom={g.name} />
+          </Card>
+        )}
+
         {/* Informations */}
         <Card className="space-y-3">
           <p className="flex items-center gap-2 font-bold"><IconBadge icon={Settings2} taille="sm" />Informations</p>
