@@ -197,3 +197,14 @@ button { transition-property: transform, background-color, border-color, color, 
 @keyframes tourne { to { transform: rotate(360deg); } }
 .aiguille-trotteuse { animation: tourne 60s linear infinite; }
 @media (prefers-reduced-motion: reduce) { .aiguille-trotteuse { animation: none !important; } }
+@keyframes vague { from { transform: translateX(0); } to { transform: translateX(-100px); } }
+.vague { animation: vague 3s linear infinite; }
+.vague-lente { animation: vague 5s linear infinite reverse; }
+/* Mode discret de l'admin : les chiffres secrets sont floutés */
+.secret { transition: filter 300ms ease; }
+.discret .secret { filter: blur(8px); user-select: none; }
+.discret input.secret { -webkit-text-security: disc; filter: none; }
+.fond-vert { background-image: linear-gradient(140deg, #f2fbf6 0%, #ffffff 55%, #eef7fd 100%); }
+.fond-bleu { background-image: linear-gradient(140deg, #eef6fd 0%, #ffffff 55%, #f1fbf5 100%); }
+.fond-creme { background-image: linear-gradient(140deg, #fff8ee 0%, #ffffff 55%, #f2fbf6 100%); }
+@media (prefers-reduced-motion: reduce) { .vague, .vague-lente { animation: none !important; } }

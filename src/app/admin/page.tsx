@@ -1,7 +1,7 @@
 "use client";
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
-import { Jauge, Montre, Anneau, Pyramide, Courbe, Colonnes, TexteAnime, VERT, ORANGE, VIOLET } from "@/components/admin/Graphiques";
+import { Jauge, Montre, Anneau, Pyramide, Courbe, Colonnes, TexteAnime, Anneaux, Calendrier, Vague, Horloge24, Radar, Gaufre, VERT, ORANGE, VIOLET } from "@/components/admin/Graphiques";
 import { DateNaissance } from "@/components/DateNaissance";
 import {
   Activity, Ban, BarChart3, BadgeCheck, Coins, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronLeft, Contact, Download, ExternalLink, FolderOpen, Headset, IdCard, MessageSquareText, Phone, ScrollText, Send, ShieldX, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
@@ -321,6 +321,10 @@ function Connexion() {
 
 function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "agent" }) {
   const fondateur = role === "fondateur";
+  // Mode discret : chiffres secrets floutés (activé par défaut, mémorisé sur cet appareil)
+  const [discret, setDiscret] = useState(true);
+  useEffect(() => { try { if (localStorage.getItem("cotiz-admin-discret") === "non") setDiscret(false); } catch {} }, []);
+  const basculerDiscret = () => setDiscret((d) => { try { localStorage.setItem("cotiz-admin-discret", d ? "non" : "oui"); } catch {} return !d; });
   const [onglet, setOnglet] = useState<Onglet>(role === "agent" ? "requetes" : "apercu");
   const [stats, setStats] = useState<Stats | null>(null);
   const [inscrits, setInscrits] = useState<Inscrit[]>([]);
@@ -393,7 +397,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
 
   return (
     <AdminCtx.Provider value={{ fondateur, demander: (d) => setFormDossier(d) }}>
-    <div className="zone-admin min-h-dvh bg-[#f4f2ec] text-stone-900 lg:flex">
+    <div className={`zone-admin min-h-dvh bg-[#f4f2ec] bg-[radial-gradient(ellipse_at_top_right,#e3f4ec_0%,transparent_55%),radial-gradient(ellipse_at_bottom_left,#e6f1fb_0%,transparent_50%)] text-stone-900 lg:flex ${discret ? "discret" : ""}`}>
       {/* Barre latérale (ordinateur) */}
       <aside className="degrade-vert relative hidden w-[260px] shrink-0 overflow-hidden text-white lg:sticky lg:top-0 lg:flex lg:h-dvh lg:flex-col">
         <div className="motif pointer-events-none absolute inset-0 opacity-30" />
@@ -449,6 +453,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
               <p className="font-extrabold leading-tight">Cotiz · {fondateur ? "Admin" : "Service client"}</p>
               <p className="truncate text-xs text-emerald-50/80">{maFiche?.numero ? `n°${maFiche.numero} · ` : ""}{maFiche?.nom ?? email}</p>
             </div>
+            <button onClick={basculerDiscret} className="grid h-9 w-9 place-items-center rounded-full bg-white/15" aria-label={discret ? "Afficher les chiffres secrets" : "Cacher les chiffres secrets"} aria-pressed={discret}>{discret ? <EyeOff size={16} /> : <Eye size={16} />}</button>
             <button onClick={() => setMotDePasse(true)} className="grid h-9 w-9 place-items-center rounded-full bg-white/15" aria-label="Changer mon mot de passe"><Lock size={16} /></button>
             <button onClick={charger} className="grid h-9 w-9 place-items-center rounded-full bg-white/15" aria-label="Actualiser"><RefreshCw size={17} className={charge ? "animate-spin" : ""} /></button>
             <button onClick={() => db.auth.signOut()} className="grid h-9 w-9 place-items-center rounded-full bg-white/15" aria-label="Se déconnecter"><LogOut size={16} /></button>
@@ -477,6 +482,9 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
             </div>
             <div className="hidden items-center gap-2 lg:flex">
               {maj && <span className="text-xs text-stone-500">Mis à jour à {maj.toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}</span>}
+              <button onClick={basculerDiscret} aria-pressed={discret} className={`inline-flex items-center gap-1.5 rounded-xl border px-3 py-2 text-sm font-semibold shadow-sm transition ${discret ? "border-emerald-700 bg-emerald-700 text-white" : "border-stone-200 bg-white text-stone-700 hover:bg-stone-50"}`}>
+                {discret ? <EyeOff size={15} /> : <Eye size={15} />} {discret ? "Chiffres cachés" : "Chiffres visibles"}
+              </button>
               <button onClick={charger} className="inline-flex items-center gap-1.5 rounded-xl border border-stone-200 bg-white px-3 py-2 text-sm font-semibold text-stone-700 shadow-sm hover:bg-stone-50">
                 <RefreshCw size={15} className={charge ? "animate-spin" : ""} /> Actualiser
               </button>
@@ -514,7 +522,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
 }
 
 /** Carte chiffrée colorée */
-function Chiffre({ label, valeur, detail, icone: I, ton = "emerald", onClick }: { label: string; valeur: string; detail?: string; icone: typeof Users; ton?: Ton; onClick?: () => void }) {
+function Chiffre({ label, valeur, detail, icone: I, ton = "emerald", onClick, secret = false }: { label: string; valeur: string; detail?: string; icone: typeof Users; ton?: Ton; onClick?: () => void; secret?: boolean }) {
   const t = TON[ton];
   return (
     <button onClick={onClick} disabled={!onClick} className={`carte-vivante group relative overflow-hidden rounded-2xl border bg-gradient-to-br p-4 text-left shadow-sm ${t.carte}`}>
@@ -524,23 +532,23 @@ function Chiffre({ label, valeur, detail, icone: I, ton = "emerald", onClick }: 
         {onClick && <ChevronRight size={16} className="text-stone-300 transition group-hover:translate-x-0.5 group-hover:text-stone-500" />}
       </div>
       <p className="mt-3 text-xs font-semibold text-stone-500">{label}</p>
-      <p className="mt-0.5 truncate text-[1.45rem] font-extrabold tabular-nums leading-tight tracking-tight"><TexteAnime texte={valeur} /></p>
-      {detail && <p className={`mt-0.5 text-xs font-medium ${t.texte}`}>{detail}</p>}
+      <p className={`mt-0.5 truncate text-[1.45rem] font-extrabold tabular-nums leading-tight tracking-tight ${secret ? "secret" : ""}`}><TexteAnime texte={valeur} /></p>
+      {detail && <p className={`mt-0.5 text-xs font-medium ${t.texte} ${secret ? "secret" : ""}`}>{detail}</p>}
     </button>
   );
 }
 
-function Bloc({ titre, sous, action, children, className = "" }: { titre: string; sous?: string; action?: React.ReactNode; children: React.ReactNode; className?: string }) {
+function Bloc({ titre, sous, action, children, className = "", fond, secret = false }: { titre: string; sous?: string; action?: React.ReactNode; children: React.ReactNode; className?: string; fond?: "vert" | "bleu" | "creme"; secret?: boolean }) {
   return (
-    <section className={`rounded-2xl border border-stone-200/80 bg-white p-4 shadow-sm transition-shadow duration-300 hover:shadow-[0_14px_32px_-16px_rgba(0,82,52,0.25)] lg:p-5 ${className}`}>
+    <section className={`rounded-2xl border border-stone-200/80 bg-white ${fond ? `fond-${fond}` : ""} p-4 shadow-sm transition-shadow duration-300 hover:shadow-[0_14px_32px_-16px_rgba(0,82,52,0.25)] lg:p-5 ${className}`}>
       <div className="mb-3 flex items-start justify-between gap-3">
         <div>
           <p className="font-bold">{titre}</p>
-          {sous && <p className="text-xs text-stone-500">{sous}</p>}
+          {sous && <p className={`text-xs text-stone-500 ${secret ? "secret" : ""}`}>{sous}</p>}
         </div>
         {action}
       </div>
-      {children}
+      <div className={secret ? "secret" : ""}>{children}</div>
     </section>
   );
 }
@@ -605,12 +613,12 @@ function Apercu({ stats, inscrits, groupes, attente, demandes, aller, ouvrir, no
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Chiffre label="Inscrits" valeur={String(stats.inscrits)} detail={`+${stats.inscrits_7j} cette semaine`} icone={Users} ton="sky" onClick={() => aller("inscrits")} />
         <Chiffre label="Groupes" valeur={String(stats.groupes)} detail={`${stats.membres} membres au total`} icone={UsersRound} ton="violet" onClick={() => aller("groupes")} />
-        <Chiffre label="Argent confirmé" valeur={fcfa(stats.montant_confirme)} detail={`${stats.paiements_confirmes} paiements`} icone={Wallet} ton="emerald" onClick={() => aller("stats")} />
-        <Chiffre label="En attente" valeur={fcfa(stats.montant_attente)} detail={`${stats.paiements_attente} paiements à confirmer`} icone={Clock} ton="amber" onClick={() => aller("paiements")} />
+        <Chiffre secret label="Argent confirmé" valeur={fcfa(stats.montant_confirme)} detail={`${stats.paiements_confirmes} paiements`} icone={Wallet} ton="emerald" onClick={() => aller("stats")} />
+        <Chiffre secret label="En attente" valeur={fcfa(stats.montant_attente)} detail={`${stats.paiements_attente} paiements à confirmer`} icone={Clock} ton="amber" onClick={() => aller("paiements")} />
       </div>
 
       <div className="grid gap-4 lg:grid-cols-3">
-        <Bloc titre="Inscriptions" sous="Nouveaux comptes, jour par jour" className="lg:col-span-2">
+        <Bloc fond="vert" titre="Inscriptions" sous="Nouveaux comptes, jour par jour" className="lg:col-span-2">
           <CourbeInscriptions inscrits={inscrits} />
         </Bloc>
         <Bloc titre="À surveiller" sous="Ce qui demande ton attention">
@@ -631,14 +639,33 @@ function Apercu({ stats, inscrits, groupes, attente, demandes, aller, ouvrir, no
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Bloc titre="Paiements confirmés" sous="Part des paiements déjà confirmés">
+        <Bloc fond="bleu" titre="Paiements confirmés" sous="Part des paiements déjà confirmés">
           <Jauge valeur={stats.paiements_confirmes + stats.paiements_attente ? Math.round((stats.paiements_confirmes / (stats.paiements_confirmes + stats.paiements_attente)) * 100) : 0} label="de taux de confirmation" sous={`${stats.paiements_confirmes} confirmés · ${stats.paiements_attente} en attente`} />
         </Bloc>
-        <Bloc titre="Groupes par type">
+        <Bloc fond="creme" titre="Groupes par type">
           <Anneau parts={["tontine", "association", "collecte"].map((t) => ({ label: TYPE[t], n: groupes.filter((g) => g.type === t).length, couleur: TYPE_COULEUR[t] }))} sousCentre="groupes" />
         </Bloc>
-        <Bloc titre="Parcours des inscrits" sous="Du compte créé jusqu’au groupe">
+        <Bloc fond="vert" titre="Parcours des inscrits" sous="Du compte créé jusqu’au groupe">
           <Pyramide etages={[{ label: "Inscrits", n: stats.inscrits }, { label: "Code secret créé", n: stats.codes_definis }, { label: "Dans un groupe", n: inscrits.filter((i) => i.nb_groupes > 0).length }]} />
+        </Bloc>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Bloc fond="bleu" titre="Bulletin de santé de Cotiz" sous="5 notes sur 100 : plus la toile est grande, mieux c’est">
+          <Radar axes={[
+            { label: "Paiements confirmés", pourcent: stats.paiements_confirmes + stats.paiements_attente ? (stats.paiements_confirmes / (stats.paiements_confirmes + stats.paiements_attente)) * 100 : 0 },
+            { label: "Dans un groupe", pourcent: inscrits.length ? (inscrits.filter((i) => i.nb_groupes > 0).length / inscrits.length) * 100 : 0 },
+            { label: "Code secret", pourcent: stats.inscrits ? (stats.codes_definis / stats.inscrits) * 100 : 0 },
+            { label: "Groupes vivants", pourcent: groupes.length ? (groupes.filter((g) => g.nb_membres > 1).length / groupes.length) * 100 : 0 },
+            { label: "Comptes sains", pourcent: inscrits.length ? (inscrits.filter((i) => !i.nom.endsWith("(bloqué)")).length / inscrits.length) * 100 : 0 },
+          ]} />
+        </Bloc>
+        <Bloc fond="vert" titre="Les inscrits en 100 carrés" sous="Qui fait quoi, sur 100 inscrits">
+          <Gaufre parts={[
+            { label: "Dans au moins 2 groupes", pourcent: inscrits.length ? (inscrits.filter((i) => i.nb_groupes >= 2).length / inscrits.length) * 100 : 0, couleur: VERT },
+            { label: "Dans 1 groupe", pourcent: inscrits.length ? (inscrits.filter((i) => i.nb_groupes === 1).length / inscrits.length) * 100 : 0, couleur: "#7fd1a8" },
+            { label: "Pas encore de groupe", pourcent: inscrits.length ? (inscrits.filter((i) => i.nb_groupes === 0).length / inscrits.length) * 100 : 0, couleur: ORANGE },
+          ]} />
         </Bloc>
       </div>
 
@@ -683,22 +710,22 @@ function Statistiques({ stats, inscrits, groupes, ouvrir }: { stats: Stats | nul
   return (
     <>
       <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <Bloc titre="Dans un groupe"><Jauge valeur={pct(avecGroupe, inscrits.length)} label="des inscrits" sous={`${avecGroupe} sur ${inscrits.length}`} /></Bloc>
-        <Bloc titre="Code secret"><Montre pourcent={pct(stats.codes_definis, stats.inscrits)} label="ont créé leur code" sous={`${stats.codes_definis} sur ${stats.inscrits}`} /></Bloc>
-        <Bloc titre="Taille moyenne"><Jauge valeur={moyenne} max={Math.max(20, moyenne)} unite="membres" label="par groupe" format={(n) => `${n}`} /></Bloc>
-        <Bloc titre="Paiement moyen"><Jauge valeur={stats.paiements_confirmes ? Math.round(stats.montant_confirme / stats.paiements_confirmes) : 0} max={Math.max(50000, stats.paiements_confirmes ? Math.round(stats.montant_confirme / stats.paiements_confirmes) : 0)} label={`${stats.paiements_confirmes} paiements confirmés`} format={fcfa} /></Bloc>
+        <Bloc fond="vert" titre="Dans un groupe"><Jauge valeur={pct(avecGroupe, inscrits.length)} label="des inscrits" sous={`${avecGroupe} sur ${inscrits.length}`} /></Bloc>
+        <Bloc fond="bleu" titre="Code secret"><Montre pourcent={pct(stats.codes_definis, stats.inscrits)} label="ont créé leur code" sous={`${stats.codes_definis} sur ${stats.inscrits}`} /></Bloc>
+        <Bloc fond="creme" titre="Taille moyenne"><Jauge valeur={moyenne} max={Math.max(20, moyenne)} unite="membres" label="par groupe" format={(n) => `${n}`} /></Bloc>
+        <Bloc fond="vert" titre="Paiement moyen"><Jauge valeur={stats.paiements_confirmes ? Math.round(stats.montant_confirme / stats.paiements_confirmes) : 0} max={Math.max(50000, stats.paiements_confirmes ? Math.round(stats.montant_confirme / stats.paiements_confirmes) : 0)} label={`${stats.paiements_confirmes} paiements confirmés`} format={fcfa} /></Bloc>
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
         <Bloc titre="Groupes par type" sous="Nombre de groupes">
           <Anneau parts={parType.map((p) => ({ label: TYPE[p.t], n: p.n, couleur: TYPE_COULEUR[p.t] }))} sousCentre="groupes" />
         </Bloc>
-        <Bloc titre="Argent confirmé par type" sous="Total des cotisations confirmées">
+        <Bloc fond="bleu" titre="Argent confirmé par type" sous="Total des cotisations confirmées">
           <Anneau parts={parType.map((p) => ({ label: TYPE[p.t], n: p.argent, couleur: TYPE_COULEUR[p.t] }))} format={fcfa} sousCentre="confirmés" />
         </Bloc>
-        <Bloc titre="Groupes qui cotisent le plus" sous="Touche un groupe pour ouvrir sa fiche">
+        <Bloc fond="vert" titre="Groupes qui cotisent le plus" sous="Touche un groupe pour ouvrir sa fiche">
           {top.length === 0 ? <p className="text-sm text-stone-500">Aucun groupe.</p> : <Barres lignes={top.map((g) => ({ label: g.nom, n: g.collecte, couleur: TYPE_COULEUR[g.type] ?? "#059669", onClick: () => ouvrir(g.id) }))} format={fcfa} />}
         </Bloc>
-        <Bloc titre="Taille des groupes" sous="Nombre de groupes par nombre de membres">
+        <Bloc fond="bleu" titre="Taille des groupes" sous="Nombre de groupes par nombre de membres">
           <Colonnes lignes={tailles} couleur={VERT} />
         </Bloc>
       </div>
@@ -1430,6 +1457,19 @@ function Dossiers({ liste, fondateur, recharger, nouveau, ouvrirUtilisateur, ouv
 }
 
 /** Fenêtre simple au centre de l'écran */
+/** Champ mot de passe avec un œil pour l'afficher / le cacher */
+function ChampSecret({ value, onChange, placeholder, autoComplete, minLength, required }: { value: string; onChange: (v: string) => void; placeholder?: string; autoComplete?: string; minLength?: number; required?: boolean }) {
+  const [voir, setVoir] = useState(false);
+  return (
+    <div className="relative">
+      <input type={voir ? "text" : "password"} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} autoComplete={autoComplete} minLength={minLength} required={required} className={`${champ} pr-11 font-mono`} />
+      <button type="button" onClick={() => setVoir(!voir)} aria-label={voir ? "Cacher le mot de passe" : "Afficher le mot de passe"} className="absolute inset-y-0 right-0 grid w-11 place-items-center text-stone-500 hover:text-emerald-700">
+        {voir ? <EyeOff size={18} /> : <Eye size={18} />}
+      </button>
+    </div>
+  );
+}
+
 function Fenetre({ titre, fermer, children }: { titre: string; fermer: () => void; children: React.ReactNode }) {
   return (
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-stone-900/50 sm:items-center sm:p-4" onClick={fermer}>
@@ -1466,8 +1506,8 @@ function ChangerMotDePasse({ fermer }: { fermer: () => void }) {
         </div>
       ) : (
         <form onSubmit={valider} className="space-y-3">
-          <input type="password" value={a} onChange={(e) => setA(e.target.value)} placeholder="Nouveau mot de passe" autoComplete="new-password" className={champ} />
-          <input type="password" value={b} onChange={(e) => setB(e.target.value)} placeholder="Encore une fois" autoComplete="new-password" className={champ} />
+          <ChampSecret value={a} onChange={setA} placeholder="Nouveau mot de passe" autoComplete="new-password" />
+          <ChampSecret value={b} onChange={setB} placeholder="Encore une fois" autoComplete="new-password" />
           {msg && <p className="text-sm font-medium text-red-600">{msg}</p>}
           <button className="w-full rounded-xl bg-emerald-700 py-3 text-sm font-bold text-white">Enregistrer</button>
         </form>
@@ -1795,7 +1835,7 @@ function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string
     <>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Chiffre label="Agents" valeur={String(agents.length)} detail="dans l’équipe" icone={Headset} ton="sky" />
-        <Chiffre label="Masse salariale" valeur={fcfa(masse)} detail="par mois" icone={Wallet} ton="emerald" />
+        <Chiffre secret label="Masse salariale" valeur={fcfa(masse)} detail="par mois" icone={Wallet} ton="emerald" />
         <Chiffre label="CNPS déclarés" valeur={`${agents.filter((a) => a.cnps_declare).length} / ${agents.length}`} detail="agents déclarés" icone={BadgeCheck} ton="teal" />
         <Chiffre label="Non déclarés" valeur={String(agents.filter((a) => !a.cnps_declare).length)} detail="à régulariser" icone={ShieldX} ton="red" />
       </div>
@@ -1810,7 +1850,7 @@ function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string
                 <p className="font-bold">tontine-et-cotise.vercel.app/admin</p>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <div><p className="text-xs uppercase tracking-wide text-emerald-200">Numéro</p><p className="text-3xl font-extrabold">{nouveau.numero}</p></div>
-                  <div><p className="text-xs uppercase tracking-wide text-emerald-200">Mot de passe</p><p className="break-all font-mono text-lg font-bold">{nouveau.mdp}</p></div>
+                  <div><p className="text-xs uppercase tracking-wide text-emerald-200">Mot de passe</p><p className="secret break-all font-mono text-lg font-bold">{nouveau.mdp}</p></div>
                 </div>
               </div>
               <p className="text-xs text-stone-500">Note ces accès maintenant : le mot de passe ne sera plus affiché. Demande à l’agent de le changer à sa première connexion (bouton « Changer mon mot de passe »).</p>
@@ -1840,7 +1880,7 @@ function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string
               </div>
               <label className="block">
                 <span className="mb-1 flex items-center justify-between text-sm font-semibold">Mot de passe provisoire <button type="button" onClick={proposer} className="text-xs font-bold text-sky-700">Générer</button></span>
-                <input value={f.mdp} onChange={(e) => setF({ ...f, mdp: e.target.value })} placeholder="8 caractères minimum" minLength={8} className={`${champ} font-mono`} required />
+                <ChampSecret value={f.mdp} onChange={(v) => setF({ ...f, mdp: v })} placeholder="8 caractères minimum" minLength={8} required autoComplete="new-password" />
               </label>
               <button disabled={occupe} className="w-full rounded-xl bg-sky-700 py-3 text-sm font-bold text-white disabled:opacity-60">{occupe ? "Création…" : "Créer l’agent et son numéro"}</button>
             </form>
@@ -1854,7 +1894,7 @@ function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string
                 <div className="min-w-0 flex-1">
                   <p className="truncate font-semibold"><span className="mr-1.5 rounded-md bg-stone-900 px-1.5 py-0.5 font-mono text-[0.7rem] text-white">{m.numero ?? "—"}</span>{m.nom ?? m.email}{m.email.toLowerCase() === moi.toLowerCase() && <span className="font-normal text-stone-400"> (toi)</span>}</p>
                   {!!m.fonctions?.length && <p className="truncate text-xs font-semibold text-sky-700">{m.fonctions.join(" · ")}</p>}
-                  <p className="truncate text-xs text-stone-500">{m.role === "fondateur" ? "Fondateur" : `${m.telephone ? telAffiche(m.telephone) : "pas de numéro Wave"} · ${m.salaire ? fcfa(m.salaire) + "/mois" : "salaire non renseigné"}`}</p>
+                  <p className="secret truncate text-xs text-stone-500">{m.role === "fondateur" ? "Fondateur" : `${m.telephone ? telAffiche(m.telephone) : "pas de numéro Wave"} · ${m.salaire ? fcfa(m.salaire) + "/mois" : "salaire non renseigné"}`}</p>
                 </div>
                 {m.role === "agent" ? <BadgeCnps ok={m.cnps_declare} /> : <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[0.7rem] font-bold text-emerald-800">{m.email.toLowerCase() === moi.toLowerCase() ? "Fondateur (toi)" : "Co-fondateur"}</span>}
               </button>
@@ -1933,7 +1973,7 @@ function FicheAgent({ a, fermer, recharger, retirer }: { a: Membre_Equipe; ferme
           <div className="grid gap-2 sm:grid-cols-2">
             <label className="text-xs font-semibold text-stone-500">Nom et prénoms<input value={f.nom} onChange={maj("nom")} className={champ} /></label>
             <label className="text-xs font-semibold text-stone-500">Numéro Wave / téléphone<input value={f.telephone} onChange={maj("telephone")} inputMode="tel" className={champ} /></label>
-            <label className="text-xs font-semibold text-stone-500">N° de la pièce d’identité (CNI)<input value={f.cni_numero} onChange={maj("cni_numero")} placeholder="ex : CI001234567" className={champ} /></label>
+            <label className="text-xs font-semibold text-stone-500">N° de la pièce d’identité (CNI)<input value={f.cni_numero} onChange={maj("cni_numero")} placeholder="ex : CI001234567" className={`${champ} secret`} /></label>
             <label className="text-xs font-semibold text-stone-500">Contact d’urgence<input value={f.contact_urgence} onChange={maj("contact_urgence")} placeholder="Nom et numéro" className={champ} /></label>
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-3">
@@ -1949,7 +1989,7 @@ function FicheAgent({ a, fermer, recharger, retirer }: { a: Membre_Equipe; ferme
         </BlocFiche>
         <BlocFiche titre="Contrat et salaire">
           <div className="grid gap-2 sm:grid-cols-3">
-            <label className="text-xs font-semibold text-stone-500">Salaire mensuel (F)<input value={f.salaire} onChange={maj("salaire")} inputMode="numeric" className={champ} /></label>
+            <label className="text-xs font-semibold text-stone-500">Salaire mensuel (F)<input value={f.salaire} onChange={maj("salaire")} inputMode="numeric" className={`${champ} secret`} /></label>
             <label className="text-xs font-semibold text-stone-500">Type de contrat
               <select value={f.contrat} onChange={maj("contrat")} className={champ}>
                 <option value="">—</option>{["CDI", "CDD", "Stage", "Prestataire"].map((c) => <option key={c}>{c}</option>)}
@@ -1968,7 +2008,7 @@ function FicheAgent({ a, fermer, recharger, retirer }: { a: Membre_Equipe; ferme
           </button>
           {f.cnps_declare && (
             <div className="mt-2 grid gap-2 sm:grid-cols-2">
-              <label className="text-xs font-semibold text-stone-500">N° d’immatriculation CNPS<input value={f.cnps_numero} onChange={maj("cnps_numero")} className={champ} /></label>
+              <label className="text-xs font-semibold text-stone-500">N° d’immatriculation CNPS<input value={f.cnps_numero} onChange={maj("cnps_numero")} className={`${champ} secret`} /></label>
               <label className="text-xs font-semibold text-stone-500">Déclaré le<input type="date" value={f.cnps_le} onChange={maj("cnps_le")} className={champ} /></label>
             </div>
           )}
@@ -2023,7 +2063,7 @@ function Salaires() {
     <>
       <div className="flex flex-wrap items-center gap-3">
         <input type="month" value={mois} onChange={(e) => setMois(e.target.value)} className={`${champ} !w-auto`} />
-        <p className="flex-1 text-sm text-stone-600">Reste à payer pour <b>{nomMois}</b> : <b className="text-emerald-800">{fcfa(total)}</b> ({aPayer.length} agent{aPayer.length > 1 ? "s" : ""})</p>
+        <p className="flex-1 text-sm text-stone-600">Reste à payer pour <b>{nomMois}</b> : <b className="secret text-emerald-800">{fcfa(total)}</b> ({aPayer.length} agent{aPayer.length > 1 ? "s" : ""})</p>
         <button onClick={fichierWave} disabled={aPayer.length === 0} className="inline-flex items-center gap-1.5 rounded-xl bg-[#1dc8f2] px-4 py-2.5 text-sm font-bold text-stone-900 shadow-sm disabled:opacity-40"><Download size={16} /> Fichier de paiement Wave</button>
       </div>
       <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
@@ -2032,10 +2072,10 @@ function Salaires() {
       {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}>{msg}</p>}
       {liste.some((a) => a.salaire) && (
         <div className="grid gap-4 md:grid-cols-2">
-          <Bloc titre="Masse salariale du mois">
+          <Bloc fond="vert" secret titre="Masse salariale du mois">
             <Anneau parts={[{ label: "Déjà payé", n: liste.filter((a) => a.paye).reduce((t, a) => t + (a.salaire ?? 0), 0), couleur: VERT }, { label: "Reste à payer", n: total, couleur: ORANGE }]} format={fcfa} sousCentre="au total" />
           </Bloc>
-          <Bloc titre="Agents payés">
+          <Bloc fond="bleu" titre="Agents payés">
             <Montre pourcent={Math.round((liste.filter((a) => a.paye).length / Math.max(1, liste.filter((a) => a.salaire).length)) * 100)} label="de l’équipe est payée" sous={`${liste.filter((a) => a.paye).length} sur ${liste.filter((a) => a.salaire).length} agents`} />
           </Bloc>
         </div>
@@ -2050,7 +2090,7 @@ function Salaires() {
                   <p className="truncate font-semibold">{a.nom}</p>
                   <p className="text-xs text-stone-500">{a.telephone ? <a href={`tel:${a.telephone}`} className="inline-flex items-center gap-1 text-emerald-700 underline"><Phone size={11} />{telAffiche(a.telephone)}</a> : "numéro Wave manquant"} · <BadgeCnps ok={a.cnps_declare} /></p>
                 </div>
-                <b className="shrink-0">{a.salaire ? fcfa(a.salaire) : "—"}</b>
+                <b className="secret shrink-0">{a.salaire ? fcfa(a.salaire) : "—"}</b>
                 {a.paye ? (
                   <span className="flex shrink-0 items-center gap-2">
                     <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-bold text-emerald-800">✓ Payé le {a.paye_le ? dateCourte(a.paye_le) : ""}{a.reference ? ` · ${a.reference}` : ""}</span>
@@ -2138,34 +2178,34 @@ function Revenus() {
         <div className="relative flex flex-wrap items-end justify-between gap-4">
           <div>
             <p className="text-sm font-semibold text-emerald-50/90">Ce que Cotiz a gagné · {periode === "mois" ? "ce mois-ci" : periode === "30j" ? "30 derniers jours" : "cette année"}</p>
-            <p className="mt-1 text-4xl font-extrabold tabular-nums tracking-tight lg:text-5xl"><TexteAnime texte={fcfa(r.total)} /></p>
-            <p className="mt-1 text-sm text-emerald-50/90">{r.nb} paiement{r.nb > 1 ? "s" : ""} en ligne · {fcfa(r.depuis_debut)} depuis le début</p>
+            <p className="secret mt-1 text-4xl font-extrabold tabular-nums tracking-tight lg:text-5xl"><TexteAnime texte={fcfa(r.total)} /></p>
+            <p className="secret mt-1 text-sm text-emerald-50/90">{r.nb} paiement{r.nb > 1 ? "s" : ""} en ligne · {fcfa(r.depuis_debut)} depuis le début</p>
           </div>
-          <span className="flotte rounded-2xl bg-orange-500 px-4 py-2 text-sm font-extrabold shadow-lg shadow-orange-900/30">{pct} % du volume</span>
+          <span className="secret flotte rounded-2xl bg-orange-500 px-4 py-2 text-sm font-extrabold shadow-lg shadow-orange-900/30">{pct} % du volume</span>
         </div>
         <div className="bande-kente pointer-events-none absolute inset-x-0 bottom-0" />
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        <Chiffre label="Mes revenus" valeur={fcfa(r.total)} detail={r.penalites ? `frais ${fcfa(r.frais ?? 0)} + pénalités ${fcfa(r.penalites)}` : `${r.nb} paiement${r.nb > 1 ? "s" : ""} en ligne`} icone={Coins} ton="amber" />
-        <Chiffre label="Argent passé en ligne" valeur={fcfa(r.volume)} detail={`soit ${pct} % pour Cotiz`} icone={Wallet} ton="emerald" />
-        <Chiffre label="Moyenne par paiement" valeur={fcfa(r.nb ? Math.round(r.total / r.nb) : 0)} detail="frais de service" icone={BarChart3} ton="sky" />
-        <Chiffre label="Depuis le début" valeur={fcfa(r.depuis_debut)} detail="total gagné" icone={BadgeCheck} ton="violet" />
+        <Chiffre secret label="Mes revenus" valeur={fcfa(r.total)} detail={r.penalites ? `frais ${fcfa(r.frais ?? 0)} + pénalités ${fcfa(r.penalites)}` : `${r.nb} paiement${r.nb > 1 ? "s" : ""} en ligne`} icone={Coins} ton="amber" />
+        <Chiffre secret label="Argent passé en ligne" valeur={fcfa(r.volume)} detail={`soit ${pct} % pour Cotiz`} icone={Wallet} ton="emerald" />
+        <Chiffre secret label="Moyenne par paiement" valeur={fcfa(r.nb ? Math.round(r.total / r.nb) : 0)} detail="frais de service" icone={BarChart3} ton="sky" />
+        <Chiffre secret label="Depuis le début" valeur={fcfa(r.depuis_debut)} detail="total gagné" icone={BadgeCheck} ton="violet" />
       </div>
       <div className="grid gap-4 lg:grid-cols-2">
-        <Bloc titre="Revenus jour par jour" sous="Frais de service des paiements en ligne confirmés" className="lg:col-span-2">
+        <Bloc fond="creme" secret titre="Revenus jour par jour" sous="Frais de service des paiements en ligne confirmés" className="lg:col-span-2">
           {r.par_jour.length === 0 ? <p className="text-sm text-stone-500">Aucun revenu sur cette période. Les frais s’appliquent seulement aux paiements en ligne (GeniusPay / Wave).</p> : (
             <Courbe points={r.par_jour.map((j) => ({ label: dateCourte(j.jour), n: j.montant }))} couleur={ORANGE} format={fcfa} />
           )}
         </Bloc>
       </div>
       <div className="grid gap-4 lg:grid-cols-3">
-        <Bloc titre="D’où vient l’argent" sous="Frais de service ou part des pénalités">
+        <Bloc fond="vert" secret titre="D’où vient l’argent" sous="Frais de service ou part des pénalités">
           <Anneau parts={[{ label: "Frais de service", n: r.frais ?? r.total - (r.penalites ?? 0), couleur: VERT }, { label: "Part des pénalités", n: r.penalites ?? 0, couleur: ORANGE }]} format={fcfa} sousCentre="gagnés" />
         </Bloc>
-        <Bloc titre="Ta part sur l’argent passé" sous={`${fcfa(r.total)} sur ${fcfa(r.volume)}`}>
+        <Bloc fond="bleu" secret titre="Ta part sur l’argent passé" sous={`${fcfa(r.total)} sur ${fcfa(r.volume)}`}>
           <Jauge valeur={Number(pct.replace(",", "."))} max={5} unite="%" label="pour Cotiz" format={(n) => `${String(n).replace(".", ",")} %`} />
         </Bloc>
-        <Bloc titre="Groupes qui te rapportent le plus">
+        <Bloc fond="creme" secret titre="Groupes qui te rapportent le plus">
           {r.par_groupe.length === 0 ? <p className="text-sm text-stone-500">Rien pour l’instant.</p> : (
             <Barres lignes={r.par_groupe.map((g) => ({ label: `${g.groupe} (${g.nb})`, n: g.montant, couleur: ORANGE }))} format={fcfa} />
           )}
@@ -2310,28 +2350,44 @@ function Sante() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Bloc titre="Personnes actives, jour par jour" sous="Personnes différentes qui ont ouvert l’application (30 jours)">
+        <Bloc fond="vert" titre="Personnes actives, jour par jour" sous="Personnes différentes qui ont ouvert l’application (30 jours)">
           <Courbe points={d.par_jour.map((j) => ({ label: dateCourte(j.jour), n: j.n }))} couleur={VERT} format={(n) => `${n} personne${n > 1 ? "s" : ""}`} />
         </Bloc>
-        <Bloc titre="Ouvertures, heure par heure" sous="Les 48 dernières heures">
+        <Bloc fond="bleu" titre="Ouvertures, heure par heure" sous="Les 48 dernières heures">
           <Courbe points={d.par_heure.map((h) => ({ label: heureFr(h.heure), n: h.n }))} couleur={ORANGE} format={(n) => `${n} ouverture${n > 1 ? "s" : ""}`} />
         </Bloc>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
-        <Bloc titre="Charge au moment le plus chargé" sous={`Heure de pointe comparée au test de charge (${CAPACITE_TESTEE_PAR_SECONDE.toLocaleString("fr-FR")} ouvertures / seconde)`}>
+        <Bloc fond="vert" titre="Charge au moment le plus chargé" sous={`Heure de pointe comparée au test de charge (${CAPACITE_TESTEE_PAR_SECONDE.toLocaleString("fr-FR")} ouvertures / seconde)`}>
           <Jauge valeur={chargePct} label="de la capacité testée" sous={`${picSeconde.toLocaleString("fr-FR", { maximumFractionDigits: 2 })} ouverture / seconde au pic`} format={(n) => `${n.toLocaleString("fr-FR")} %`} />
         </Bloc>
-        <Bloc titre="Place utilisée dans la base" sous={`${d.taille_mo} Mo sur ${d.capacite_db_mo.toLocaleString("fr-FR")} Mo · ${d.groupes} groupes · ${d.paiements} paiements`}>
-          <Montre pourcent={dbPct} label="de l’espace de ta formule" sous={`${d.taille_mo} Mo utilisés`} />
+        <Bloc fond="bleu" titre="Place utilisée dans la base" sous={`${d.taille_mo} Mo sur ${d.capacite_db_mo.toLocaleString("fr-FR")} Mo · ${d.groupes} groupes · ${d.paiements} paiements`}>
+          <Vague pourcent={dbPct} label="de l’espace de ta formule" sous={`${d.taille_mo} Mo utilisés`} couleur="#2c7fb8" />
         </Bloc>
-        <Bloc titre="Comptes actifs du mois" sous={`Limite de ta formule : ${d.capacite_mau.toLocaleString("fr-FR")} comptes actifs par mois`}>
+        <Bloc fond="vert" titre="Comptes actifs du mois" sous={`Limite de ta formule : ${d.capacite_mau.toLocaleString("fr-FR")} comptes actifs par mois`}>
           <Jauge valeur={mauPct} label="de la limite mensuelle" sous={`${d.actifs_30j} actifs sur 30 jours`} format={(n) => `${n} %`} />
         </Bloc>
       </div>
 
+      <div className="grid gap-4 lg:grid-cols-3">
+        <Bloc fond="vert" titre="Fidélité" sous="Part des inscrits qui reviennent">
+          <Anneaux anneaux={[
+            { label: "Aujourd’hui", pourcent: d.inscrits ? (d.actifs_jour / d.inscrits) * 100 : 0, couleur: ORANGE, detail: `${d.actifs_jour} personnes` },
+            { label: "Sur 7 jours", pourcent: d.inscrits ? (d.actifs_7j / d.inscrits) * 100 : 0, couleur: VERT, detail: `${d.actifs_7j} personnes` },
+            { label: "Sur 30 jours", pourcent: d.inscrits ? (d.actifs_30j / d.inscrits) * 100 : 0, couleur: "#2c7fb8", detail: `${d.actifs_30j} personnes` },
+          ]} centre={`${d.inscrits}`} sousCentre="inscrits" />
+        </Bloc>
+        <Bloc fond="bleu" titre="Horloge de la journée" sous="Quelles heures sont les plus chargées (48 dernières heures)">
+          <Horloge24 heures={Array.from({ length: 24 }, (_, h) => d.par_heure.filter((x) => new Date(x.heure).getHours() === h).reduce((t, x) => t + x.n, 0))} format={(n) => `${n} ouverture${n > 1 ? "s" : ""}`} />
+        </Bloc>
+        <Bloc fond="creme" titre="Calendrier d’activité" sous="Une case par jour : plus c’est vert, plus il y a eu de monde">
+          <Calendrier jours={d.par_jour} format={(n) => `${n} personne${n > 1 ? "s" : ""} active${n > 1 ? "s" : ""}`} />
+        </Bloc>
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-2">
-        <Bloc titre="À quel moment on utilise Cotiz" sous="Ouvertures des 30 derniers jours, heure d’Abidjan">
+        <Bloc fond="creme" titre="À quel moment on utilise Cotiz" sous="Ouvertures des 30 derniers jours, heure d’Abidjan">
           <Anneau parts={[
             { label: "Matin (6 h – 12 h)", n: d.moments.matin, couleur: "#f5c400" },
             { label: "Après-midi (12 h – 18 h)", n: d.moments.apres_midi, couleur: ORANGE },
@@ -2339,7 +2395,7 @@ function Sante() {
             { label: "Nuit (minuit – 6 h)", n: d.moments.nuit, couleur: "#005234" },
           ]} sousCentre="ouvertures" />
         </Bloc>
-        <Bloc titre="Parcours d’activité" sous="Des inscrits aux actifs du jour">
+        <Bloc fond="bleu" titre="Parcours d’activité" sous="Des inscrits aux actifs du jour">
           <Pyramide etages={[{ label: "Inscrits", n: d.inscrits }, { label: "Actifs sur 30 jours", n: d.actifs_30j }, { label: "Actifs sur 7 jours", n: d.actifs_7j }, { label: "Actifs aujourd’hui", n: d.actifs_jour }]} />
         </Bloc>
       </div>
@@ -2354,7 +2410,13 @@ function Sante() {
             </div>
           ))}
         </div>
-        <p className="mt-3 text-xs text-stone-500">Les limites « espace » et « comptes actifs » dépendent de ta formule Supabase (gratuite au départ) : vérifie-les sur ta page de facturation Supabase et mets-les à jour ici.</p>
+        <div className="mt-4 space-y-3 rounded-2xl bg-white/70 p-4 text-sm leading-relaxed text-stone-700 ring-1 ring-emerald-100">
+          <p className="font-bold text-stone-900">Comment lire ces chiffres ?</p>
+          <p>• <b>500 000, ce n’est pas une limite.</b> C’est la taille du test : on a rempli une copie de Cotiz avec 500 000 faux comptes inscrits, 62 500 groupes et 6 millions de paiements. L’application n’a <b>jamais bloqué</b> : elle répondait encore en 0,04 seconde. Elle peut donc aller au-delà ; on ne l’a simplement pas testée plus loin.</p>
+          <p>• <b>1 250 ouvertures par seconde</b>, c’est le nombre d’accueils que la base a affichés <b>en même temps</b>, chaque seconde, avec 200 personnes connectées au même instant. Exemple : si 1 inscrit sur 10 ouvre Cotiz 5 fois dans l’heure la plus chargée, 500 000 inscrits font environ 70 ouvertures par seconde, soit à peu près 1/18 de ce que Cotiz encaisse.</p>
+          <p>• <b>Que se passe-t-il au-delà ?</b> L’application ne s’arrête pas d’un coup : elle devient <b>plus lente</b> (quelques secondes d’attente). Il suffit alors de passer à une machine Supabase plus puissante, sans rien changer à l’application.</p>
+          <p>• <b>Les vraies limites aujourd’hui</b> sont celles de ta formule Supabase : l’<b>espace de la base</b> et le nombre de <b>comptes actifs par mois</b> (les 2 jauges ci-dessus). Quand une jauge passe 80 %, le bandeau du haut devient orange : c’est le moment de changer de formule. Vérifie ces limites sur ta page de facturation Supabase et mets-les à jour avec « Régler mes limites ».</p>
+        </div>
         {reglage && (
           <div className="mt-3 grid gap-2 rounded-2xl border border-stone-200 p-3 sm:grid-cols-[1fr_1fr_auto] sm:items-end">
             <label className="text-xs font-semibold text-stone-600">Espace de la base (Mo)<input value={dbMo} onChange={(e) => setDbMo(e.target.value)} inputMode="numeric" className={champ} /></label>
