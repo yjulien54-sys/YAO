@@ -21,25 +21,48 @@ import type { PayMethod } from "../types";
 
 // Nouvelle version de GeniusPay (comptes créés sur geniuspay.ci) ; l'ancienne est pay.genius.ci
 const API = (process.env.GENIUSPAY_API_URL || "https://geniuspay.ci/api/v1/merchant").replace(/\/$/, "");
-const CLE_API = () => process.env.GENIUSPAY_API_KEY || process.env.GENIUSPAY_PUBLIC_KEY || "";
+// .trim() : une espace ou un retour à la ligne collé par erreur dans Vercel fait refuser la clé
+const CLE_API = () => (process.env.GENIUSPAY_API_KEY || process.env.GENIUSPAY_PUBLIC_KEY || "").trim();
+const SECRET = () => (process.env.GENIUSPAY_SECRET_KEY || "").trim();
 
 export const geniuspayConfigure = () => Boolean(CLE_API() && process.env.SUPABASE_SERVICE_ROLE_KEY);
 
-// Nouvelle version : « Authorization: Bearer GPAY-… » ; ancienne : X-API-Key + X-API-Secret (envoyés aussi, au cas où)
-const entetes = (): Record<string, string> => ({
-  Authorization: `Bearer ${CLE_API()}`,
-  "X-API-Key": CLE_API(),
-  ...(process.env.GENIUSPAY_SECRET_KEY ? { "X-API-Secret": process.env.GENIUSPAY_SECRET_KEY } : {}),
-  Accept: "application/json",
-  "Content-Type": "application/json",
-});
+const base = { Accept: "application/json", "Content-Type": "application/json" };
+// 3 façons de s'identifier, essayées dans l'ordre si GeniusPay répond 401 :
+//  1. nouvelle version : Bearer seul (une ancienne clé secrète envoyée en plus peut faire tout refuser)
+//  2. Bearer + X-API-Key + X-API-Secret
+//  3. ancienne version : X-API-Key + X-API-Secret
+const facons = (): Record<string, string>[] => {
+  const k = CLE_API(), sec = SECRET();
+  const l: Record<string, string>[] = [{ ...base, Authorization: `Bearer ${k}` }];
+  if (sec) l.push({ ...base, Authorization: `Bearer ${k}`, "X-API-Key": k, "X-API-Secret": sec }, { ...base, "X-API-Key": k, "X-API-Secret": sec });
+  else l.push({ ...base, "X-API-Key": k });
+  return l;
+};
 
+/** Description sans danger de la clé (jamais la clé elle-même) pour aider au diagnostic */
+const decrireCle = () => {
+  const k = CLE_API();
+  if (!k) return "aucune clé GENIUSPAY_API_KEY dans Vercel";
+  const mode = /live/i.test(k) ? "clé LIVE" : /test|sandbox/i.test(k) ? "clé TEST (sandbox)" : "clé";
+  return `${mode} commençant par « ${k.slice(0, 5)}… », ${k.length} caractères`;
+};
+
+let faconOk = 0;
 async function appel(chemin: string, init?: RequestInit) {
-  const res = await fetch(`${API}${chemin}`, { ...init, headers: entetes(), signal: AbortSignal.timeout(30000) });
-  const json = await res.json().catch(() => ({}));
-  if (res.status === 401) throw new Error("GeniusPay : clé API refusée (vérifie GENIUSPAY_API_KEY dans Vercel, et l’adresse GENIUSPAY_API_URL)");
-  if (!res.ok) throw new Error(`GeniusPay : ${json?.message ?? `erreur ${res.status}`}`);
-  return (json?.data ?? json) as Record<string, unknown>;
+  const liste = facons();
+  let dernier: { status: number; json: Record<string, unknown> } | null = null;
+  for (let i = 0; i < liste.length; i++) {
+    const idx = (faconOk + i) % liste.length;
+    const res = await fetch(`${API}${chemin}`, { ...init, headers: liste[idx], signal: AbortSignal.timeout(30000) });
+    const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+    if (res.status === 401 || res.status === 403) { dernier = { status: res.status, json }; continue; }
+    faconOk = idx;
+    if (!res.ok) throw new Error(`GeniusPay : ${(json?.message as string) ?? `erreur ${res.status}`}`);
+    return ((json?.data as Record<string, unknown>) ?? json) as Record<string, unknown>;
+  }
+  const msg = (dernier?.json?.message as string) || (dernier?.json?.error as string) || "";
+  throw new Error(`GeniusPay refuse la clé (${dernier?.status}${msg ? ` : ${msg}` : ""}). ${decrireCle()}, adresse ${API}. Vérifie dans Vercel que GENIUSPAY_API_KEY est la clé actuelle du Dashboard GeniusPay (même mode test/live), puis redéploie.`);
 }
 
 /** Code opérateur Cotiz -> code GeniusPay (laisser vide = le client choisit sur la page GeniusPay) */
