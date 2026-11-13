@@ -4,27 +4,10 @@ import { ServiceClient } from "@/components/ServiceClient";
 import { RequeteClient } from "@/components/RequeteClient";
 import { BottomNav } from "@/components/BottomNav";
 import { Header, Page } from "@/components/ui";
+import { FAQ } from "@/lib/faq";
 
 export const metadata: Metadata = { title: "Aide — Cotiz" };
 
-const FAQ: { q: string; r: string; id?: string }[] = [
-  { q: "Comment créer une tontine ?", r: "Touche « Créer un groupe », choisis « Tontine », indique le montant, la fréquence et la date de la première échéance, puis ajoute les membres avec leur numéro. Tu deviens automatiquement le trésorier." },
-  { q: "Comment inviter les membres ?", r: "Dans le groupe, touche « Inviter » : un message WhatsApp est prêt avec le lien du groupe. Si c’est le créateur ou le trésorier qui invite, la personne entre directement dans le groupe. Si c’est un autre membre, la demande attend que le créateur ou le trésorier l’accepte." },
-  { q: "Comment payer ma cotisation ?", r: "Dans le groupe, touche « Payer ma part », choisis le nombre de tours, puis « Ouvrir Wave et payer » : le numéro du trésorier est copié et Wave s’ouvre. Envoie le montant affiché, vérifie le nom du trésorier, valide, puis reviens et touche « J’ai envoyé »." },
-  { q: "Qui reçoit l’argent ?", r: "L’argent est envoyé directement sur le numéro Mobile Money du trésorier. Cotiz ne touche jamais l’argent. Quand la caisse est complète, le trésorier la verse au bénéficiaire du tour et l’enregistre dans l’application." },
-  { q: "Pourquoi mon paiement est « en attente » ?", r: "Le trésorier doit vérifier sur son téléphone qu’il a bien reçu l’argent, puis le confirmer. Tu peux le prévenir sur WhatsApp depuis l’écran de paiement. Personne ne peut se marquer « payé » tout seul." },
-  { q: "Que peut faire le trésorier ?", r: "Le trésorier peut tout gérer : modifier le groupe, l’ordre de passage et le bénéficiaire, ajouter ou retirer des membres, nommer des co-gestionnaires, confirmer les paiements et verser la caisse." },
-  { q: "Qu’est-ce qu’un co-gestionnaire ?", r: "Une personne de confiance choisie par le trésorier. Elle peut ajouter et modifier les membres et l’ordre des tours. Par sécurité, seul le trésorier confirme les paiements et verse l’argent." },
-  { q: "Une personne peut-elle avoir plusieurs parts (bras) ?", r: "Oui. Dans une tontine, une même personne peut avoir 1, 2 ou 3 parts (on dit aussi « bras »). Elle cotise pour chaque part et reçoit la caisse autant de fois qu’elle a de parts." },
-  { q: "Peut-on payer plusieurs tours en avance ?", r: "Oui. Sur l’écran de paiement, choisis le nombre de tours. Chaque part est attribuée au bon tour, et l’application affiche « Payé jusqu’au tour X »." },
-  { q: "Comment fonctionnent les pénalités de retard ?", r: "Si une pénalité est prévue dans le groupe, elle s’ajoute automatiquement au montant dû quand l’échéance est dépassée. Pour une collecte (funérailles, mariage…), il n’y a jamais de pénalité." },
-  { q: "J’ai oublié mon code secret", r: "Sur l’écran du code, touche « Code oublié ». Donne ton nom et ta date de naissance (ceux de l’inscription) : si c’est bon, tu crées tout de suite un nouveau code. Sinon, écris au service client depuis cette page." },
-  { q: "J’ai changé de téléphone", r: "Sur l’écran d’accueil, touche « J’ai déjà un compte (nouveau téléphone) », puis entre ton numéro, ta date de naissance et ton code secret. Tu retrouves tous tes groupes." },
-  { q: "Comment contacter le service client ?", r: "Juste au-dessus, dans « Écrire au service client » : choisis le sujet et explique ton problème. Un agent te répond ici et tu reçois une notification. Tu peux aussi écrire sur WhatsApp ou appeler." },
-  { q: "À quoi sert l’œil sur la caisse du groupe ?", r: "Dans un groupe, la carte « Somme de la caisse » montre tout ce qui a été cotisé, ta cotisation et ce qui reste. Touche l’œil pour cacher ou afficher les montants, par exemple en public." },
-  { q: "Comment installer Cotiz sur iPhone ?", id: "iphone", r: "Ouvre tontine-et-cotise.vercel.app dans Safari, touche le bouton Partager (carré avec une flèche), puis « Sur l’écran d’accueil ». Cotiz apparaît avec son logo, comme une application." },
-  { q: "Mes informations sont-elles protégées ?", r: "Seuls les membres de tes groupes voient tes informations. Cotiz ne te demande jamais ton code secret Mobile Money. Détails dans la politique de confidentialité." },
-];
 
 export default function Aide() {
   return (

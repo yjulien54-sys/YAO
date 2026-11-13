@@ -4,7 +4,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import { Jauge, Montre, Anneau, Pyramide, Courbe, Colonnes, TexteAnime, Anneaux, Calendrier, Vague, Horloge24, Radar, Gaufre, VERT, ORANGE, VIOLET } from "@/components/admin/Graphiques";
 import { DateNaissance } from "@/components/DateNaissance";
 import {
-  Activity, Ban, BarChart3, UserX, Lightbulb, BadgeCheck, Coins, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronLeft, Contact, Download, ExternalLink, FolderOpen, Headset, IdCard, MessageSquareText, Phone, ScrollText, Send, ShieldX, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
+  Activity, Ban, BarChart3, UserX, Lightbulb, Sparkles, Bot, Power, BadgeCheck, Coins, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronLeft, Contact, Download, ExternalLink, FolderOpen, Headset, IdCard, MessageSquareText, Phone, ScrollText, Send, ShieldX, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
 } from "lucide-react";
 import { supabaseAdmin as db } from "@/lib/supabaseAdmin";
 import { TRANCHES_DEFAUT, fraisPour, lirePourcent, lireTranches, lireTranchesPenalite, partCotizPenalite, type Tranche, type TranchePenalite } from "@/lib/fraisService";
@@ -25,8 +25,10 @@ type LigneJournal = { id: number; le: string; admin_email: string | null; action
 type Dossier = { id: string; numero: number; cree_le: string; cree_par: string; motif: string; priorite: "normale" | "urgente"; client_profile_id: string | null; client_nom: string | null; client_tel: string | null; groupe_id: string | null; groupe_nom: string | null; montant: number | null; reference: string | null; description: string; donnees: Record<string, string>; statut: "ouvert" | "valide" | "refuse"; reponse: string | null; traite_par: string | null; traite_le: string | null };
 type DossierInit = { motif?: string; client_profile_id?: string | null; client_nom?: string | null; client_tel?: string | null; groupe_id?: string | null; groupe_nom?: string | null; montant?: number | null; reference?: string | null; donnees?: Record<string, string>; resume?: string };
 type Membre_Equipe = { email: string; nom: string | null; role: "fondateur" | "agent"; ajoute_le: string; numero: number | null; fonctions?: string[]; telephone: string | null; photo_path: string | null; cni_numero: string | null; cni_path: string | null; salaire: number | null; cnps_declare: boolean; cnps_numero: string | null; cnps_le: string | null; embauche_le: string | null; contrat: string | null; contact_urgence: string | null; note: string | null };
-type Requete = { id: string; numero: number; cree_le: string; profile_id: string; nom: string | null; telephone: string | null; motif: string; message: string; statut: "nouvelle" | "en_cours" | "resolue"; agent_email: string | null; reponse: string | null; maj_le: string; dernier_auteur?: string | null; nb_messages?: number; premiere_reponse_le?: string | null; fermee_le?: string | null; fermee_par?: string | null; note?: number | null; avis?: string | null; avis_le?: string | null; rouverte_par_client?: number };
-type MsgRequete = { id: string; requete_id: string; cree_le: string; auteur: "client" | "agent"; agent_email: string | null; texte: string };
+type Requete = { id: string; numero: number; cree_le: string; profile_id: string; nom: string | null; telephone: string | null; motif: string; message: string; statut: "nouvelle" | "en_cours" | "resolue"; agent_email: string | null; reponse: string | null; maj_le: string; dernier_auteur?: string | null; nb_messages?: number; premiere_reponse_le?: string | null; fermee_le?: string | null; fermee_par?: string | null; note?: number | null; avis?: string | null; avis_le?: string | null; rouverte_par_client?: number; ia_statut?: "en_cours" | "transmis" | "resolu" | null; ia_raison?: string | null; ia_messages?: number; ia_verifiee?: boolean; ia_verifiee_par?: string | null; ia_verifiee_le?: string | null };
+type MsgRequete = { id: string; requete_id: string; cree_le: string; auteur: "client" | "agent" | "ia"; agent_email: string | null; texte: string };
+/** Conversation menée par Cotiz IA (pas encore reprise par un humain) */
+const estIA = (r: Requete) => r.ia_statut === "en_cours" || r.ia_statut === "resolu";
 type Creneau = { id: string; email: string; nom: string | null; numero: number | null; fonctions?: string[]; jour: string; debut: string; fin: string; note: string | null };
 type Salaire = { email: string; nom: string | null; numero: number | null; telephone: string | null; salaire: number | null; cnps_declare: boolean; paye: boolean; montant_paye: number | null; paye_le: string | null; reference: string | null };
 /** Fonctions (postes) qu'on trouve dans l'entreprise, à cocher pour chaque membre de l'équipe */
@@ -423,7 +425,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
   const aValider = attente.length + versements.length;
   const ouverts = (dossiers ?? []).filter((d) => d.statut === "ouvert").length;
   // Requêtes qui attendent l'agent : nouvelles, ou conversations où le client a écrit en dernier
-  const nouvelles = (requetes ?? []).filter((r) => r.statut === "nouvelle" || (r.statut === "en_cours" && (r.dernier_auteur ?? "agent") === "client")).length;
+  const nouvelles = (requetes ?? []).filter((r) => !estIA(r) && (r.statut === "nouvelle" || (r.statut === "en_cours" && (r.dernier_auteur ?? "agent") === "client"))).length;
   const compteurs: Partial<Record<Onglet, number>> = { inscrits: inscrits.length, groupes: groupes.length, membres: membres?.length, paiements: aValider, codes: demandes.length, annonces: annonces.length, dossiers: dossiers ? ouverts : undefined, equipe: equipe.length || undefined, requetes: requetes ? nouvelles : undefined };
   const alerte: Partial<Record<Onglet, boolean>> = { paiements: aValider > 0, dossiers: fondateur && ouverts > 0, requetes: nouvelles > 0 };
   const onglets = ONGLETS.filter((o) => fondateur || !RESERVE_FONDATEUR.includes(o.id));
@@ -1638,9 +1640,11 @@ type Qualite = {
 const etoiles = (n: number) => <span className="whitespace-nowrap text-amber-500">{"★".repeat(Math.round(n))}<span className="text-stone-300">{"★".repeat(5 - Math.round(n))}</span></span>;
 const duree = (min: number | null | undefined) => min == null ? "—" : min < 60 ? `${Math.round(min)} min` : min < 1440 ? `${(min / 60).toFixed(1).replace(".", ",")} h` : `${(min / 1440).toFixed(1).replace(".", ",")} j`;
 
-function Requetes({ liste, moi, recharger, ouvrirUtilisateur }: { liste: Requete[] | null; moi: string; recharger: () => void; ouvrirUtilisateur: (id: string) => void }) {
+function Requetes({ liste: listeComplete, moi, recharger, ouvrirUtilisateur }: { liste: Requete[] | null; moi: string; recharger: () => void; ouvrirUtilisateur: (id: string) => void }) {
+  let liste = listeComplete;
   const { fondateur } = useContext(AdminCtx);
   const [filtre, setFiltre] = useState<"non_finalisees" | "finalisees" | "negatifs" | "miennes" | "toutes">("non_finalisees");
+  const [espace, setEspace] = useState<"personnel" | "ia">("personnel");
   const [msg, setMsg] = useState("");
   const [q, setQ] = useState<Qualite | null>(null);
   useEffect(() => {
@@ -1649,6 +1653,9 @@ function Requetes({ liste, moi, recharger, ouvrirUtilisateur }: { liste: Requete
     db.rpc("admin_qualite", { du: iso(du), au: iso(au) }).then(({ data, error }) => setQ(error ? null : (data as Qualite)));
   }, [fondateur, liste]);
   if (!liste) return <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Pour voir les requêtes des clients, fais d’abord la <b>mise à jour SQL n°18</b> dans Supabase.</p>;
+  const toutes = liste;
+  const listeIA = toutes.filter(estIA);
+  liste = toutes.filter((r) => !estIA(r));
   const tests = {
     non_finalisees: (r: Requete) => r.statut !== "resolue",
     finalisees: (r: Requete) => r.statut === "resolue",
@@ -1665,8 +1672,19 @@ function Requetes({ liste, moi, recharger, ouvrirUtilisateur }: { liste: Requete
     { id: "negatifs" as const, titre: "Avis négatifs", n: liste.filter(tests.negatifs).length, ton: "from-red-500 to-red-600", detail: "1–2 étoiles ou rouvertes" },
     { id: "toutes" as const, titre: "Note moyenne", n: moyenne, ton: "from-amber-400 to-orange-500", detail: `${notees.length} avis reçus` },
   ];
+  const onglets = (
+    <div className="grid grid-cols-2 gap-2 rounded-2xl bg-white p-1.5 shadow-sm ring-1 ring-stone-200">
+      {([["personnel", "Traités par le personnel", Headset, toutes.length - listeIA.length], ["ia", "Traités par Cotiz IA", Sparkles, listeIA.length]] as const).map(([id, label, Ico, n]) => (
+        <button key={id} onClick={() => setEspace(id)} className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition ${espace === id ? (id === "ia" ? "bg-gradient-to-r from-violet-600 to-sky-600 text-white shadow" : "bg-emerald-700 text-white shadow") : "text-stone-600 hover:bg-stone-50"}`}>
+          <Ico size={16} /> <span className="truncate">{label}</span> <span className={`rounded-full px-1.5 text-xs ${espace === id ? "bg-white/20" : "bg-stone-100"}`}>{n}</span>
+        </button>
+      ))}
+    </div>
+  );
+  if (espace === "ia") return <>{onglets}<EspaceIA liste={listeIA} toutes={toutes} moi={moi} recharger={recharger} ouvrirUtilisateur={ouvrirUtilisateur} /></>;
   return (
     <>
+      {onglets}
       <div className="rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-white p-4 text-sm text-sky-900">
         Les clients écrivent depuis l’application (page <b>Aide</b>). Touche <b>« Je m’en occupe »</b>, puis écris-lui : <b>chaque requête est une conversation</b>, le client te répond dans le même fil tant que tu ne l’as pas fermée. À la fermeture, le client <b>donne une note de 1 à 5 étoiles</b> ; avec 1 ou 2 étoiles il peut rouvrir. Les conversations fermées restent visibles dans « Finalisés ».
       </div>
@@ -1692,6 +1710,81 @@ function Requetes({ liste, moi, recharger, ouvrirUtilisateur }: { liste: Requete
       {vus.length === 0 && <p className="rounded-2xl border border-dashed border-stone-300 p-8 text-center text-sm text-stone-500">{filtre === "non_finalisees" ? "Aucune requête en attente. 🎉" : "Rien ici."}</p>}
       <div className="grid gap-3 lg:grid-cols-2">
         {vus.map((r) => <CarteRequete key={r.id + r.maj_le} r={r} moi={moi} recharger={recharger} ouvrirUtilisateur={ouvrirUtilisateur} setMsg={setMsg} />)}
+      </div>
+    </>
+  );
+}
+
+/** Espace Cotiz IA : interrupteur, chiffres, revue du matin et conversations de l'IA */
+function EspaceIA({ liste, toutes, moi, recharger, ouvrirUtilisateur }: { liste: Requete[]; toutes: Requete[]; moi: string; recharger: () => void; ouvrirUtilisateur: (id: string) => void }) {
+  const { fondateur } = useContext(AdminCtx);
+  const [actif, setActif] = useState<boolean | null>(null);
+  const [filtre, setFiltre] = useState<"a_verifier" | "en_cours" | "resolues" | "transmises" | "toutes">("a_verifier");
+  const [msg, setMsg] = useState("");
+  useEffect(() => { db.rpc("admin_ia_etat").then(({ data, error }) => setActif(error ? null : data !== "non")); }, []);
+  const transmises = toutes.filter((r) => r.ia_statut === "transmis");
+  const tests = {
+    a_verifier: (r: Requete) => !r.ia_verifiee,
+    en_cours: (r: Requete) => r.ia_statut === "en_cours",
+    resolues: (r: Requete) => r.ia_statut === "resolu",
+    transmises: () => true,
+    toutes: () => true,
+  };
+  const vus = filtre === "transmises" ? transmises : liste.filter(tests[filtre]);
+  const notes = liste.filter((r) => r.note);
+  const basculer = async () => {
+    const { error } = await db.rpc("admin_ia_activer", { actif: !actif });
+    if (error) return setMsg("Erreur : " + error.message);
+    setActif(!actif); setMsg(!actif ? "Cotiz IA est allumée : elle lit chaque nouvelle requête." : "Cotiz IA est éteinte : toutes les requêtes vont directement au personnel.");
+  };
+  return (
+    <>
+      <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-indigo-600 to-sky-600 p-5 text-white shadow-lg">
+        <div className="motif pointer-events-none absolute inset-0 opacity-20" />
+        <div className="balaie pointer-events-none absolute inset-y-0 left-0" />
+        <div className="relative flex flex-wrap items-center gap-4">
+          <span className="relative grid h-14 w-14 place-items-center rounded-2xl bg-white/15"><span className="onde absolute inset-0 rounded-2xl bg-white/20" /><Bot size={28} /></span>
+          <div className="min-w-0 flex-1">
+            <p className="text-2xl font-extrabold">Cotiz IA</p>
+            <p className="text-sm text-white/90">Lit chaque nouvelle requête, répond aux questions d’utilisation et transmet au personnel tout ce qui touche aux données ou à l’argent.</p>
+          </div>
+          {fondateur && actif !== null && (
+            <button onClick={basculer} className={`inline-flex items-center gap-2 rounded-full px-4 py-2 text-sm font-extrabold shadow ${actif ? "bg-white text-violet-700" : "bg-white/20 text-white ring-1 ring-white/40"}`}>
+              <Power size={16} /> {actif ? "Allumée" : "Éteinte"}
+            </button>
+          )}
+        </div>
+      </div>
+      {actif === null && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Pour activer Cotiz IA, fais la <b>mise à jour SQL n°35</b> dans Supabase, puis ajoute <code>ANTHROPIC_API_KEY</code> et <code>SUPABASE_SERVICE_ROLE_KEY</code> dans Vercel.</p>}
+      {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") ? "bg-red-50 text-red-700" : "bg-violet-50 text-violet-800"}`}>{msg}</p>}
+      <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+        {[
+          { id: "a_verifier" as const, t: "À vérifier ce matin", n: liste.filter(tests.a_verifier).length, ton: "from-orange-500 to-orange-600", d: "pas encore relues" },
+          { id: "resolues" as const, t: "Réglées par l’IA", n: liste.filter(tests.resolues).length, ton: "from-emerald-600 to-emerald-700", d: "sans aide humaine" },
+          { id: "transmises" as const, t: "Transmises au personnel", n: transmises.length, ton: "from-sky-600 to-sky-700", d: "données ou argent" },
+          { id: "toutes" as const, t: "Note des clients", n: notes.length ? notes.reduce((t, r) => t + (r.note ?? 0), 0) / notes.length : null, ton: "from-violet-500 to-violet-600", d: `${notes.length} avis sur l’IA` },
+        ].map((c) => (
+          <button key={c.t} onClick={() => setFiltre(c.id)} className={`carte-vivante relative overflow-hidden rounded-2xl bg-gradient-to-br ${c.ton} p-3.5 text-left text-white shadow-md ${filtre === c.id && c.id !== "toutes" ? "ring-4 ring-stone-900/20 ring-offset-2" : ""}`}>
+            <span className="pointer-events-none absolute -right-5 -top-5 h-20 w-20 rounded-full bg-white/10" />
+            <p className="relative text-xs font-semibold text-white/90">{c.t}</p>
+            <p className="relative mt-1 text-3xl font-extrabold tabular-nums">{c.id === "toutes" ? (c.n == null ? "—" : `${(c.n as number).toFixed(1).replace(".", ",")} ★`) : <TexteAnime texte={String(c.n)} />}</p>
+            <p className="relative text-[0.7rem] text-white/85">{c.d}</p>
+          </button>
+        ))}
+      </div>
+      <div className="rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-50 to-white p-4 text-sm text-violet-900">
+        <b>Revue du matin :</b> ouvre chaque conversation de « À vérifier », relis ce que Cotiz IA a répondu, puis touche <b>« Vérifié »</b>. Si une réponse est fausse, écris au client dans la conversation : tu prends la main et elle passe chez le personnel.
+      </div>
+      <Puces options={[
+        { id: "a_verifier" as const, label: "À vérifier", n: liste.filter(tests.a_verifier).length },
+        { id: "en_cours" as const, label: "En cours avec l’IA", n: liste.filter(tests.en_cours).length },
+        { id: "resolues" as const, label: "Réglées par l’IA", n: liste.filter(tests.resolues).length },
+        { id: "transmises" as const, label: "Transmises", n: transmises.length },
+        { id: "toutes" as const, label: "Toutes", n: liste.length },
+      ]} valeur={filtre} onChange={setFiltre} />
+      {vus.length === 0 && <p className="rounded-2xl border border-dashed border-violet-200 p-8 text-center text-sm text-stone-500">{filtre === "a_verifier" ? "Tout est vérifié. 🎉" : "Rien ici."}</p>}
+      <div className="grid gap-3 lg:grid-cols-2">
+        {vus.map((r) => <CarteRequete key={r.id + r.maj_le} r={r} moi={moi} recharger={recharger} ouvrirUtilisateur={ouvrirUtilisateur} setMsg={setMsg} modeIA />)}
       </div>
     </>
   );
@@ -1754,8 +1847,8 @@ function QualiteService({ q }: { q: Qualite }) {
 }
 
 /** Une requête client = une conversation : le fil des messages et la réponse dans le même fil */
-function CarteRequete({ r, moi, recharger, ouvrirUtilisateur, setMsg }: { r: Requete; moi: string; recharger: () => void; ouvrirUtilisateur: (id: string) => void; setMsg: (m: string) => void }) {
-  const { demander } = useContext(AdminCtx);
+function CarteRequete({ r, moi, recharger, ouvrirUtilisateur, setMsg, modeIA = false }: { r: Requete; moi: string; recharger: () => void; ouvrirUtilisateur: (id: string) => void; setMsg: (m: string) => void; modeIA?: boolean }) {
+  const { demander, fondateur } = useContext(AdminCtx);
   const [fil, setFil] = useState<MsgRequete[] | null>(null); // null : SQL n°33 pas encore faite
   const [texte, setTexte] = useState("");
   const [occupe, setOccupe] = useState(false);
@@ -1763,6 +1856,8 @@ function CarteRequete({ r, moi, recharger, ouvrirUtilisateur, setMsg }: { r: Req
   const [l, c] = STATUT_REQ[r.statut];
   const aMoi = (r.agent_email ?? "").toLowerCase() === moi.toLowerCase();
   const attendReponse = r.statut !== "resolue" && (r.dernier_auteur ?? "client") === "client";
+  // Carte repliable : ouverte d'office seulement si le client attend une réponse du personnel
+  const [ouverte, setOuverte] = useState(!modeIA && attendReponse);
   const messages: MsgRequete[] = fil ?? [
     { id: "c", requete_id: r.id, cree_le: r.cree_le, auteur: "client", agent_email: null, texte: r.message },
     ...(r.reponse ? [{ id: "a", requete_id: r.id, cree_le: r.maj_le, auteur: "agent" as const, agent_email: r.agent_email, texte: r.reponse }] : []),
@@ -1776,17 +1871,42 @@ function CarteRequete({ r, moi, recharger, ouvrirUtilisateur, setMsg }: { r: Req
     recharger();
   };
   const envoyer = (fermer: boolean) => agir(() => db.rpc("admin_requete_repondre", { r: r.id, texte, resoudre: fermer }), fermer ? "Réponse envoyée, conversation fermée." : "Message envoyé au client.", true);
-  const nomAgent = (e: string | null) => !e ? "Agent" : e.toLowerCase() === moi.toLowerCase() ? "Toi" : e.replace("@tontine-et-cotise.vercel.app", "").replace("agent", "Agent n°");
+  const nomAgent = (e: string | null) => !e ? "Agent" : e === "cotiz-ia" ? "Cotiz IA" : e.toLowerCase() === moi.toLowerCase() ? "Toi" : e.replace("@tontine-et-cotise.vercel.app", "").replace("agent", "Agent n°");
+  const dernier = messages[messages.length - 1];
   return (
-    <article className={`flex flex-col rounded-2xl border bg-white p-4 shadow-sm ${attendReponse ? "border-sky-300 ring-2 ring-sky-100" : "border-stone-200/80"}`}>
+    <article className={`flex flex-col self-start rounded-2xl border p-4 shadow-sm ${modeIA ? "border-violet-200 bg-gradient-to-br from-white to-violet-50/40" : "bg-white"} ${attendReponse && !modeIA ? "border-sky-300 ring-2 ring-sky-100" : modeIA ? "" : "border-stone-200/80"}`}>
       <div className="flex items-start gap-3">
         <Pastille nom={r.nom ?? "?"} />
         <div className="min-w-0 flex-1">
           <button onClick={() => ouvrirUtilisateur(r.profile_id)} className="truncate text-left font-bold hover:underline">{r.nom ?? "Client"}</button>
-          <p className="text-xs text-stone-500">{r.telephone && <a href={`tel:${r.telephone}`} className="font-semibold text-emerald-700 underline">{telAffiche(r.telephone)}</a>} · n°{r.numero} · {new Date(r.cree_le).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>
+          <p className="text-xs text-stone-500">{r.telephone && <a href={`tel:${r.telephone}`} className="secret font-semibold text-emerald-700 underline">{telAffiche(r.telephone)}</a>} · n°{r.numero} · {new Date(r.cree_le).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}</p>
         </div>
         <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.7rem] font-bold ${c}`}>{l}</span>
+        <button onClick={() => setOuverte(!ouverte)} aria-expanded={ouverte} aria-label={ouverte ? "Replier" : "Déplier"} className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-stone-100 text-stone-600 hover:bg-stone-200">
+          <ChevronDown size={17} className={`transition ${ouverte ? "rotate-180" : ""}`} />
+        </button>
       </div>
+      {r.ia_statut === "transmis" && (
+        <p className="mt-2 inline-flex items-center gap-1.5 self-start rounded-full bg-violet-100 px-2.5 py-1 text-[0.7rem] font-bold text-violet-800"><Sparkles size={12} /> Transmis par Cotiz IA{r.ia_raison ? ` : ${r.ia_raison}` : ""}</p>
+      )}
+      {modeIA && (
+        <div className="mt-2 flex flex-wrap items-center gap-2">
+          {r.ia_verifiee
+            ? <span className="rounded-full bg-emerald-100 px-2.5 py-1 text-[0.7rem] font-bold text-emerald-800">✓ Vérifié{r.ia_verifiee_par ? ` par ${nomAgent(r.ia_verifiee_par)}` : ""}</span>
+            : <span className="rounded-full bg-orange-100 px-2.5 py-1 text-[0.7rem] font-bold text-orange-800">À vérifier</span>}
+          {fondateur && (
+            <button disabled={occupe} onClick={() => agir(() => db.rpc("admin_requete_ia_verifier", { r: r.id, ok: !r.ia_verifiee }), r.ia_verifiee ? "Remis en « À vérifier »." : "Conversation vérifiée.")} className={`rounded-full px-3 py-1 text-xs font-bold ${r.ia_verifiee ? "bg-white text-stone-600 ring-1 ring-stone-200" : "bg-emerald-700 text-white"}`}>{r.ia_verifiee ? "Annuler" : "Vérifié ✓"}</button>
+          )}
+        </div>
+      )}
+      {!ouverte && (
+        <button onClick={() => setOuverte(true)} className="mt-2 w-full rounded-xl bg-stone-50 p-2.5 text-left text-sm text-stone-600 hover:bg-stone-100">
+          <span className="text-xs font-bold uppercase tracking-wide text-sky-700">{r.motif}</span>
+          <span className="mt-0.5 block truncate"><b className="font-semibold">{dernier?.auteur === "client" ? (r.nom ?? "Client") : dernier?.auteur === "ia" ? "Cotiz IA" : nomAgent(dernier?.agent_email ?? null)} :</b> {dernier?.texte}</span>
+          <span className="mt-0.5 block text-[0.7rem] text-stone-400">{messages.length} message{messages.length > 1 ? "s" : ""}{r.note ? ` · ${r.note}/5 ★` : ""} · toucher pour déplier</span>
+        </button>
+      )}
+      {ouverte && <>
       <div className="mt-2 flex flex-wrap items-center gap-2">
         <p className="text-xs font-bold uppercase tracking-wide text-sky-700">{r.motif}</p>
         {attendReponse && r.statut === "en_cours" && <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[0.65rem] font-bold text-white">Le client a répondu</span>}
@@ -1806,11 +1926,11 @@ function CarteRequete({ r, moi, recharger, ouvrirUtilisateur, setMsg }: { r: Req
       ) : r.statut === "resolue" && "note" in r ? <p className="mt-2 text-xs text-stone-400">Le client n’a pas encore donné son avis.</p> : null}
       <div className="mt-2 max-h-80 space-y-2 overflow-y-auto rounded-xl bg-stone-50 p-2.5">
         {messages.map((m) => (
-          <div key={m.id} className={`flex ${m.auteur === "agent" ? "justify-end" : "justify-start"}`}>
-            <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${m.auteur === "agent" ? "rounded-br-md bg-emerald-700 text-white" : "rounded-bl-md bg-white text-stone-800 ring-1 ring-stone-200"}`}>
-              <p className={`text-[0.65rem] font-bold ${m.auteur === "agent" ? "text-emerald-100" : "text-sky-700"}`}>{m.auteur === "agent" ? nomAgent(m.agent_email) : r.nom ?? "Client"}</p>
+          <div key={m.id} className={`flex ${m.auteur !== "client" ? "justify-end" : "justify-start"}`}>
+            <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${m.auteur === "agent" ? "rounded-br-md bg-emerald-700 text-white" : m.auteur === "ia" ? "rounded-br-md bg-gradient-to-br from-violet-600 to-indigo-600 text-white" : "rounded-bl-md bg-white text-stone-800 ring-1 ring-stone-200"}`}>
+              <p className={`flex items-center gap-1 text-[0.65rem] font-bold ${m.auteur === "agent" ? "text-emerald-100" : m.auteur === "ia" ? "text-violet-100" : "text-sky-700"}`}>{m.auteur === "ia" ? <><Sparkles size={10} /> Cotiz IA</> : m.auteur === "agent" ? nomAgent(m.agent_email) : r.nom ?? "Client"}</p>
               <p className="whitespace-pre-line">{m.texte}</p>
-              <p className={`mt-0.5 text-right text-[0.6rem] ${m.auteur === "agent" ? "text-emerald-100" : "text-stone-400"}`}>{new Date(m.cree_le).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
+              <p className={`mt-0.5 text-right text-[0.6rem] ${m.auteur !== "client" ? "text-white/70" : "text-stone-400"}`}>{new Date(m.cree_le).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
             </div>
           </div>
         ))}
@@ -1836,6 +1956,8 @@ function CarteRequete({ r, moi, recharger, ouvrirUtilisateur, setMsg }: { r: Req
           {fil !== null && <button disabled={occupe} onClick={() => agir(() => db.rpc("admin_requete_fermer", { r: r.id, fermer: false }), "Conversation rouverte : le client peut de nouveau écrire.")} className="font-bold text-emerald-700 underline">Rouvrir</button>}
         </div>
       )}
+      <button onClick={() => setOuverte(false)} className="mt-2 inline-flex items-center justify-center gap-1 self-center rounded-full px-3 py-1 text-xs font-bold text-stone-500 hover:bg-stone-100"><ChevronDown size={14} className="rotate-180" /> Replier</button>
+      </>}
     </article>
   );
 }
@@ -2879,6 +3001,7 @@ function ListePersonnes({ l, fermer, ouvrir }: { l: ListeP; fermer: () => void; 
               {p.telephone && (
                 <span className="flex shrink-0 gap-1.5">
                   <a href={`tel:${p.telephone}`} className="grid h-9 w-9 place-items-center rounded-full bg-emerald-50 text-emerald-700 hover:bg-emerald-100" aria-label={`Appeler ${p.nom}`}><Phone size={16} /></a>
+                  <a href={`sms:+${waNumero(p.telephone)}`} className="grid h-9 w-9 place-items-center rounded-full bg-sky-50 text-sky-700 hover:bg-sky-100" aria-label={`SMS à ${p.nom}`}><Mail size={16} /></a>
                   <a href={`https://wa.me/${waNumero(p.telephone)}`} target="_blank" rel="noopener" className="grid h-9 w-9 place-items-center rounded-full bg-[#25d366]/15 text-[#128c4a] hover:bg-[#25d366]/25" aria-label={`WhatsApp ${p.nom}`}><MessageSquareText size={16} /></a>
                 </span>
               )}

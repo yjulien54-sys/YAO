@@ -1,14 +1,24 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, ChevronDown, Clock, Lock, MessageSquareText, Send, Star } from "lucide-react";
+import { CheckCircle2, ChevronDown, Clock, Lock, MessageSquareText, Send, Sparkles, Star } from "lucide-react";
 import { IconBadge } from "./icons";
 import { supabase } from "@/lib/supabase";
 import { useStore } from "@/lib/store";
 
 const MOTIFS = ["Un paiement", "Mon compte / mon code", "Un groupe", "Un versement", "Une arnaque / un problème grave", "Une suggestion", "Autre"];
 type Requete = { id: string; numero: number; cree_le: string; motif: string; message: string; statut: "nouvelle" | "en_cours" | "resolue"; reponse: string | null; dernier_auteur?: string | null; note?: number | null; avis?: string | null };
-type Msg = { id: string; requete_id: string; cree_le: string; auteur: "client" | "agent"; texte: string };
+type Msg = { id: string; requete_id: string; cree_le: string; auteur: "client" | "agent" | "ia"; texte: string };
+
+/** Demande à Cotiz IA de lire la conversation et de répondre (sans effet si elle n'est pas configurée) */
+async function appelerCotizIA(requete: string) {
+  try {
+    const { data } = await supabase.auth.getSession();
+    const t = data.session?.access_token;
+    if (!t) return;
+    await fetch("/api/service-client/ia", { method: "POST", headers: { "Content-Type": "application/json", Authorization: `Bearer ${t}` }, body: JSON.stringify({ requete }) });
+  } catch { /* réseau : un agent humain répondra */ }
+}
 const STATUT: Record<Requete["statut"], [string, string]> = {
   nouvelle: ["Envoyée", "bg-amber-50 text-amber-800"],
   en_cours: ["En cours", "bg-sky-50 text-sky-700"],
@@ -26,6 +36,7 @@ export function RequeteClient() {
   const [erreur, setErreur] = useState("");
   const [msgs, setMsgs] = useState<Msg[] | null>(null); // null : mise à jour SQL n°33 pas encore faite
   const [ouverte, setOuverte] = useState<string | null>(null);
+  const [iaEcrit, setIaEcrit] = useState<string | null>(null);
 
   const charger = useCallback(async () => {
     if (!userId) return;
@@ -59,10 +70,11 @@ export function RequeteClient() {
     if (!motif) return setErreur("Choisis le sujet de ton message.");
     if (message.trim().length < 5) return setErreur("Explique ton problème en quelques mots.");
     setEtat("envoi"); setErreur("");
-    const { error } = await supabase.from("requetes_clients").insert({ motif, message: message.trim() });
+    const { data: cree, error } = await supabase.from("requetes_clients").insert({ motif, message: message.trim() }).select("id").single();
     if (error) { setEtat(""); return setErreur(error.message.includes("plusieurs messages") ? error.message : "Envoi impossible. Réessaie dans un instant."); }
     setEtat("ok"); setMotif(""); setMessage("");
-    charger();
+    await charger();
+    if (cree?.id) { setOuverte(cree.id); setIaEcrit(cree.id); await appelerCotizIA(cree.id); setIaEcrit(null); charger(); }
   }
 
   return (
@@ -101,7 +113,8 @@ export function RequeteClient() {
               ...(r.reponse ? [{ id: r.id + "a", requete_id: r.id, cree_le: r.cree_le, auteur: "agent" as const, texte: r.reponse }] : []),
             ];
             const nouveau = r.statut !== "resolue" && r.dernier_auteur === "agent";
-            return <Conversation key={r.id} r={r} fil={fil} statut={[l, c]} nouveau={nouveau} ouverte={ouverte === r.id} basculer={() => setOuverte(ouverte === r.id ? null : r.id)} peutEcrire={msgs !== null && r.statut !== "resolue"} envoye={charger} />;
+            return <Conversation key={r.id} r={r} fil={fil} statut={[l, c]} nouveau={nouveau} ouverte={ouverte === r.id} basculer={() => setOuverte(ouverte === r.id ? null : r.id)} peutEcrire={msgs !== null && r.statut !== "resolue"} envoye={charger}
+              iaEcrit={iaEcrit === r.id} apresEnvoi={async () => { setIaEcrit(r.id); await charger(); await appelerCotizIA(r.id); setIaEcrit(null); charger(); }} />;
           })}
         </div>
       )}
@@ -110,7 +123,7 @@ export function RequeteClient() {
 }
 
 /** Une conversation avec le service client, en bulles, avec réponse dans le même fil */
-function Conversation({ r, fil, statut: [l, c], nouveau, ouverte, basculer, peutEcrire, envoye }: { r: Requete; fil: Msg[]; statut: [string, string]; nouveau: boolean; ouverte: boolean; basculer: () => void; peutEcrire: boolean; envoye: () => void }) {
+function Conversation({ r, fil, statut: [l, c], nouveau, ouverte, basculer, peutEcrire, envoye, iaEcrit, apresEnvoi }: { r: Requete; fil: Msg[]; statut: [string, string]; nouveau: boolean; ouverte: boolean; basculer: () => void; peutEcrire: boolean; envoye: () => void; iaEcrit: boolean; apresEnvoi: () => void }) {
   const [texte, setTexte] = useState("");
   const [envoi, setEnvoi] = useState(false);
   const [err, setErr] = useState("");
@@ -122,7 +135,7 @@ function Conversation({ r, fil, statut: [l, c], nouveau, ouverte, basculer, peut
     setEnvoi(false);
     if (error) return setErr(error.message.includes("fermée") || error.message.includes("beaucoup") ? error.message : "Envoi impossible. Réessaie dans un instant.");
     setTexte("");
-    envoye();
+    apresEnvoi();
   };
   const heure = (d: string) => new Date(d).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   return (
@@ -133,7 +146,7 @@ function Conversation({ r, fil, statut: [l, c], nouveau, ouverte, basculer, peut
             <span className="truncate font-semibold">{r.motif}</span>
             {nouveau && <span className="shrink-0 rounded-full bg-emerald-600 px-2 py-0.5 text-[0.65rem] font-bold text-white">Nouveau message</span>}
           </span>
-          <span className="block truncate text-xs text-stone-500">{fil[fil.length - 1]?.auteur === "agent" ? "Service client : " : "Toi : "}{fil[fil.length - 1]?.texte}</span>
+          <span className="block truncate text-xs text-stone-500">{fil[fil.length - 1]?.auteur === "agent" ? "Service client : " : fil[fil.length - 1]?.auteur === "ia" ? "Cotiz IA : " : "Toi : "}{fil[fil.length - 1]?.texte}</span>
         </span>
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.7rem] font-bold ${c}`}>{l}</span>
         <ChevronDown size={16} className={`shrink-0 text-stone-400 transition ${ouverte ? "rotate-180" : ""}`} />
@@ -142,15 +155,18 @@ function Conversation({ r, fil, statut: [l, c], nouveau, ouverte, basculer, peut
         <div className="space-y-2 border-t border-stone-200/70 bg-white/70 p-3">
           {fil.map((m) => (
             <div key={m.id} className={`flex ${m.auteur === "client" ? "justify-end" : "justify-start"}`}>
-              <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${m.auteur === "client" ? "rounded-br-md bg-emerald-700 text-white" : "rounded-bl-md bg-white text-stone-800 ring-1 ring-stone-200"}`}>
+              <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${m.auteur === "client" ? "rounded-br-md bg-emerald-700 text-white" : m.auteur === "ia" ? "rounded-bl-md bg-gradient-to-br from-violet-50 to-sky-50 text-stone-800 ring-1 ring-violet-200" : "rounded-bl-md bg-white text-stone-800 ring-1 ring-stone-200"}`}>
                 {m.auteur === "agent" && <p className="text-[0.7rem] font-bold text-emerald-700">Service client</p>}
+                {m.auteur === "ia" && <p className="flex items-center gap-1 text-[0.7rem] font-bold text-violet-700"><Sparkles size={11} /> Cotiz IA <span className="font-normal text-stone-400">· assistant automatique</span></p>}
                 <p className="whitespace-pre-line">{m.texte}</p>
                 <p className={`mt-0.5 text-right text-[0.65rem] ${m.auteur === "client" ? "text-emerald-100" : "text-stone-400"}`}>{heure(m.cree_le)}</p>
               </div>
             </div>
           ))}
-          {r.statut !== "resolue" && fil[fil.length - 1]?.auteur === "client" && (
-            <p className="flex items-center justify-center gap-1 text-xs text-stone-400"><Clock size={12} /> Un agent va te répondre ici</p>
+          {iaEcrit ? (
+            <p className="flex items-center gap-1.5 text-xs text-violet-700"><Sparkles size={12} className="animate-pulse" /> Cotiz IA écrit<span className="animate-pulse">…</span></p>
+          ) : r.statut !== "resolue" && fil[fil.length - 1]?.auteur === "client" && (
+            <p className="flex items-center justify-center gap-1 text-xs text-stone-400"><Clock size={12} /> Un conseiller va te répondre ici</p>
           )}
           {peutEcrire ? (
             <form onSubmit={ecrire} className="flex items-end gap-2 pt-1">
