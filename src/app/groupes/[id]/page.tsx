@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { BanniereCagnotte } from "@/components/BanniereCagnotte";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Avatar, Button, Card, Header, Loading, Page, Progress, StatusBadge, WhatsAppIcon, btnClass, inputClass, useRequireUser } from "@/components/ui";
@@ -159,6 +160,7 @@ export default function GroupeDetail() {
         </Card>
 
         <CaisseGroupe g={g} userId={userId} />
+        {g.type === "collecte" && <BanniereCagnotte groupId={g.id} nom={g.name} gestionnaire={dr.gestionnaire} />}
 
         {enValidation.length > 0 && (
           <div id="a-valider" className="scroll-mt-20 rounded-[18px]">
