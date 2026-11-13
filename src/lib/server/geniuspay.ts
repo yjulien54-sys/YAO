@@ -22,6 +22,7 @@ import type { PayMethod } from "../types";
 // Nouvelle version de GeniusPay (comptes créés sur geniuspay.ci) ; l'ancienne est pay.genius.ci
 const API = (process.env.GENIUSPAY_API_URL || "https://geniuspay.ci/api/v1/merchant").replace(/\/$/, "");
 // .trim() : une espace ou un retour à la ligne collé par erreur dans Vercel fait refuser la clé
+const AUTRES_API = ["https://geniuspay.ci/api/v1/merchant", "https://pay.genius.ci/api/v1/merchant"];
 const CLE_API = () => (process.env.GENIUSPAY_API_KEY || process.env.GENIUSPAY_PUBLIC_KEY || "").trim();
 const SECRET = () => (process.env.GENIUSPAY_SECRET_KEY || "").trim();
 
@@ -45,24 +46,29 @@ const decrireCle = () => {
   const k = CLE_API();
   if (!k) return "aucune clé GENIUSPAY_API_KEY dans Vercel";
   const mode = /live/i.test(k) ? "clé LIVE" : /test|sandbox/i.test(k) ? "clé TEST (sandbox)" : "clé";
-  return `${mode} commençant par « ${k.slice(0, 5)}… », ${k.length} caractères`;
+  const sec = SECRET();
+  return `${mode} commençant par « ${k.slice(0, 5)}… » (${k.length} caractères) ; clé secrète : ${sec ? `« ${sec.slice(0, 5)}… » (${sec.length} caractères)` : "ABSENTE (GENIUSPAY_SECRET_KEY)"}`;
 };
 
 let faconOk = 0;
 async function appel(chemin: string, init?: RequestInit) {
   const liste = facons();
   let dernier: { status: number; json: Record<string, unknown> } | null = null;
-  for (let i = 0; i < liste.length; i++) {
-    const idx = (faconOk + i) % liste.length;
-    const res = await fetch(`${API}${chemin}`, { ...init, headers: liste[idx], signal: AbortSignal.timeout(30000) });
+  const bases = [API, ...AUTRES_API.filter((b) => b !== API)];
+  for (let i = 0; i < liste.length * bases.length; i++) {
+    const idx = (faconOk + i) % (liste.length * bases.length);
+    const url = bases[Math.floor(idx / liste.length)];
+    const res = await fetch(`${url}${chemin}`, { ...init, headers: liste[idx % liste.length], signal: AbortSignal.timeout(30000) }).catch(() => null);
+    if (!res) continue;
     const json = (await res.json().catch(() => ({}))) as Record<string, unknown>;
     if (res.status === 401 || res.status === 403) { dernier = { status: res.status, json }; continue; }
     faconOk = idx;
-    if (!res.ok) throw new Error(`GeniusPay : ${(json?.message as string) ?? `erreur ${res.status}`}`);
+    if (!res.ok) { const m = json?.message ?? json?.error; throw new Error(`GeniusPay : ${m ? (typeof m === "string" ? m : JSON.stringify(m).slice(0, 200)) : `erreur ${res.status}`}`); }
     return ((json?.data as Record<string, unknown>) ?? json) as Record<string, unknown>;
   }
-  const msg = (dernier?.json?.message as string) || (dernier?.json?.error as string) || "";
-  throw new Error(`GeniusPay refuse la clé (${dernier?.status}${msg ? ` : ${msg}` : ""}). ${decrireCle()}, adresse ${API}. Vérifie dans Vercel que GENIUSPAY_API_KEY est la clé actuelle du Dashboard GeniusPay (même mode test/live), puis redéploie.`);
+  const brut = dernier?.json?.message ?? dernier?.json?.error ?? "";
+  const msg = typeof brut === "string" ? brut : JSON.stringify(brut).slice(0, 200);
+  throw new Error(`GeniusPay refuse la clé (${dernier?.status}${msg ? ` : ${msg}` : ""}). ${decrireCle()}, adresses essayées : ${bases.join(" et ")}. Vérifie dans Vercel que GENIUSPAY_API_KEY est la clé actuelle du Dashboard GeniusPay (même mode test/live), puis redéploie.`);
 }
 
 /** Code opérateur Cotiz -> code GeniusPay (laisser vide = le client choisit sur la page GeniusPay) */
