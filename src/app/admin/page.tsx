@@ -25,7 +25,7 @@ type LigneJournal = { id: number; le: string; admin_email: string | null; action
 type Dossier = { id: string; numero: number; cree_le: string; cree_par: string; motif: string; priorite: "normale" | "urgente"; client_profile_id: string | null; client_nom: string | null; client_tel: string | null; groupe_id: string | null; groupe_nom: string | null; montant: number | null; reference: string | null; description: string; donnees: Record<string, string>; statut: "ouvert" | "valide" | "refuse"; reponse: string | null; traite_par: string | null; traite_le: string | null };
 type DossierInit = { motif?: string; client_profile_id?: string | null; client_nom?: string | null; client_tel?: string | null; groupe_id?: string | null; groupe_nom?: string | null; montant?: number | null; reference?: string | null; donnees?: Record<string, string>; resume?: string };
 type Membre_Equipe = { email: string; nom: string | null; role: "fondateur" | "agent"; ajoute_le: string; numero: number | null; fonctions?: string[]; telephone: string | null; photo_path: string | null; cni_numero: string | null; cni_path: string | null; salaire: number | null; cnps_declare: boolean; cnps_numero: string | null; cnps_le: string | null; embauche_le: string | null; contrat: string | null; contact_urgence: string | null; note: string | null };
-type Requete = { id: string; numero: number; cree_le: string; profile_id: string; nom: string | null; telephone: string | null; motif: string; message: string; statut: "nouvelle" | "en_cours" | "resolue"; agent_email: string | null; reponse: string | null; maj_le: string; dernier_auteur?: string | null; nb_messages?: number };
+type Requete = { id: string; numero: number; cree_le: string; profile_id: string; nom: string | null; telephone: string | null; motif: string; message: string; statut: "nouvelle" | "en_cours" | "resolue"; agent_email: string | null; reponse: string | null; maj_le: string; dernier_auteur?: string | null; nb_messages?: number; premiere_reponse_le?: string | null; fermee_le?: string | null; fermee_par?: string | null; note?: number | null; avis?: string | null; avis_le?: string | null; rouverte_par_client?: number };
 type MsgRequete = { id: string; requete_id: string; cree_le: string; auteur: "client" | "agent"; agent_email: string | null; texte: string };
 type Creneau = { id: string; email: string; nom: string | null; numero: number | null; fonctions?: string[]; jour: string; debut: string; fin: string; note: string | null };
 type Salaire = { email: string; nom: string | null; numero: number | null; telephone: string | null; salaire: number | null; cnps_declare: boolean; paye: boolean; montant_paye: number | null; paye_le: string | null; reference: string | null };
@@ -1627,37 +1627,129 @@ function ChangerMotDePasse({ fermer }: { fermer: () => void }) {
 const STATUT_REQ: Record<Requete["statut"], [string, string]> = {
   nouvelle: ["Nouvelle", "bg-sky-600 text-white"],
   en_cours: ["En cours", "bg-amber-50 text-amber-800 ring-1 ring-amber-200"],
-  resolue: ["Répondu", "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"],
+  resolue: ["Fermée", "bg-emerald-50 text-emerald-700 ring-1 ring-emerald-200"],
 };
 
+type Qualite = {
+  non_finalisees: number; finalisees: number; delai_reponse_min: number | null;
+  notes: { n: number; moyenne: number | null; n1: number; n2: number; n3: number; n4: number; n5: number };
+  agents: { email: string; nom: string | null; numero: number | null; traitees: number; en_cours: number; nb_notes: number; moyenne: number | null; mauvaises: number; rouvertes: number; delai_reponse_min: number | null; delai_fermeture_h: number | null }[];
+};
+const etoiles = (n: number) => <span className="whitespace-nowrap text-amber-500">{"★".repeat(Math.round(n))}<span className="text-stone-300">{"★".repeat(5 - Math.round(n))}</span></span>;
+const duree = (min: number | null | undefined) => min == null ? "—" : min < 60 ? `${Math.round(min)} min` : min < 1440 ? `${(min / 60).toFixed(1).replace(".", ",")} h` : `${(min / 1440).toFixed(1).replace(".", ",")} j`;
+
 function Requetes({ liste, moi, recharger, ouvrirUtilisateur }: { liste: Requete[] | null; moi: string; recharger: () => void; ouvrirUtilisateur: (id: string) => void }) {
-  const [filtre, setFiltre] = useState<"a_traiter" | "miennes" | "resolue" | "toutes">("a_traiter");
+  const { fondateur } = useContext(AdminCtx);
+  const [filtre, setFiltre] = useState<"non_finalisees" | "finalisees" | "negatifs" | "miennes" | "toutes">("non_finalisees");
   const [msg, setMsg] = useState("");
+  const [q, setQ] = useState<Qualite | null>(null);
+  useEffect(() => {
+    if (!fondateur) return;
+    const au = new Date(), du = new Date(); du.setDate(du.getDate() - 29);
+    db.rpc("admin_qualite", { du: iso(du), au: iso(au) }).then(({ data, error }) => setQ(error ? null : (data as Qualite)));
+  }, [fondateur, liste]);
   if (!liste) return <p className="rounded-xl bg-amber-50 p-4 text-sm text-amber-900">Pour voir les requêtes des clients, fais d’abord la <b>mise à jour SQL n°18</b> dans Supabase.</p>;
   const tests = {
-    a_traiter: (r: Requete) => r.statut !== "resolue",
+    non_finalisees: (r: Requete) => r.statut !== "resolue",
+    finalisees: (r: Requete) => r.statut === "resolue",
+    negatifs: (r: Requete) => (r.note ?? 9) <= 2 || (r.rouverte_par_client ?? 0) > 0,
     miennes: (r: Requete) => (r.agent_email ?? "").toLowerCase() === moi.toLowerCase(),
-    resolue: (r: Requete) => r.statut === "resolue",
     toutes: () => true,
   };
   const vus = liste.filter(tests[filtre]);
+  const notees = liste.filter((r) => r.note);
+  const moyenne = notees.length ? notees.reduce((t, r) => t + (r.note ?? 0), 0) / notees.length : null;
+  const cartes = [
+    { id: "non_finalisees" as const, titre: "Non finalisés", n: liste.filter(tests.non_finalisees).length, ton: "from-sky-600 to-sky-700", detail: "en attente ou en cours" },
+    { id: "finalisees" as const, titre: "Finalisés", n: liste.filter(tests.finalisees).length, ton: "from-emerald-600 to-emerald-700", detail: "conversations fermées" },
+    { id: "negatifs" as const, titre: "Avis négatifs", n: liste.filter(tests.negatifs).length, ton: "from-red-500 to-red-600", detail: "1–2 étoiles ou rouvertes" },
+    { id: "toutes" as const, titre: "Note moyenne", n: moyenne, ton: "from-amber-400 to-orange-500", detail: `${notees.length} avis reçus` },
+  ];
   return (
     <>
       <div className="rounded-2xl border border-sky-200 bg-gradient-to-r from-sky-50 to-white p-4 text-sm text-sky-900">
-        Les clients écrivent depuis l’application (page <b>Aide</b>). Touche <b>« Je m’en occupe »</b>, puis écris-lui : <b>chaque requête est une conversation</b>, le client te répond dans le même fil tant que tu ne l’as pas fermée. Les conversations où le client a répondu remontent en haut, encadrées en bleu. S’il faut une action que tu ne peux pas faire, envoie un dossier au fondateur.
+        Les clients écrivent depuis l’application (page <b>Aide</b>). Touche <b>« Je m’en occupe »</b>, puis écris-lui : <b>chaque requête est une conversation</b>, le client te répond dans le même fil tant que tu ne l’as pas fermée. À la fermeture, le client <b>donne une note de 1 à 5 étoiles</b> ; avec 1 ou 2 étoiles il peut rouvrir. Les conversations fermées restent visibles dans « Finalisés ».
       </div>
+      <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
+        {cartes.map((c) => (
+          <button key={c.titre} onClick={() => setFiltre(c.id)} className={`carte-vivante relative overflow-hidden rounded-2xl bg-gradient-to-br ${c.ton} p-3.5 text-left text-white shadow-md ${filtre === c.id && c.titre !== "Note moyenne" ? "ring-4 ring-offset-2 ring-stone-900/20" : ""}`}>
+            <span className="pointer-events-none absolute -right-5 -top-5 h-20 w-20 rounded-full bg-white/10" />
+            <p className="relative text-xs font-semibold text-white/90">{c.titre}</p>
+            <p className="relative mt-1 text-3xl font-extrabold tabular-nums">{c.titre === "Note moyenne" ? (c.n == null ? "—" : `${c.n.toFixed(1).replace(".", ",")} ★`) : <TexteAnime texte={String(c.n)} />}</p>
+            <p className="relative text-[0.7rem] text-white/85">{c.detail}</p>
+          </button>
+        ))}
+      </div>
+      {fondateur && q && <QualiteService q={q} />}
       <Puces options={[
-        { id: "a_traiter" as const, label: "À traiter", n: liste.filter(tests.a_traiter).length },
+        { id: "non_finalisees" as const, label: "Non finalisés", n: liste.filter(tests.non_finalisees).length },
+        { id: "finalisees" as const, label: "Finalisés", n: liste.filter(tests.finalisees).length },
+        { id: "negatifs" as const, label: "Avis négatifs", n: liste.filter(tests.negatifs).length },
         { id: "miennes" as const, label: "Les miennes", n: liste.filter(tests.miennes).length },
-        { id: "resolue" as const, label: "Fermées", n: liste.filter(tests.resolue).length },
         { id: "toutes" as const, label: "Toutes", n: liste.length },
       ]} valeur={filtre} onChange={setFiltre} />
       {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}>{msg}</p>}
-      {vus.length === 0 && <p className="rounded-2xl border border-dashed border-stone-300 p-8 text-center text-sm text-stone-500">{filtre === "a_traiter" ? "Aucune requête en attente. 🎉" : "Rien ici."}</p>}
+      {vus.length === 0 && <p className="rounded-2xl border border-dashed border-stone-300 p-8 text-center text-sm text-stone-500">{filtre === "non_finalisees" ? "Aucune requête en attente. 🎉" : "Rien ici."}</p>}
       <div className="grid gap-3 lg:grid-cols-2">
         {vus.map((r) => <CarteRequete key={r.id + r.maj_le} r={r} moi={moi} recharger={recharger} ouvrirUtilisateur={ouvrirUtilisateur} setMsg={setMsg} />)}
       </div>
     </>
+  );
+}
+
+/** Tableau de qualité du service client (fondateur), 30 derniers jours */
+function QualiteService({ q }: { q: Qualite }) {
+  const n = q.notes;
+  const max = Math.max(1, n.n1, n.n2, n.n3, n.n4, n.n5);
+  const tons = ["#dc2626", "#f97316", "#f5c400", "#22c55e", VERT];
+  return (
+    <Bloc fond="creme" titre="Qualité du service client" sous="30 derniers jours : notes des clients, délais et suivi par agent">
+      <div className="grid gap-5 lg:grid-cols-[260px_1fr]">
+        <div className="space-y-3">
+          <div className="flex items-end gap-3">
+            <p className="text-4xl font-extrabold tabular-nums text-stone-900">{n.moyenne == null ? "—" : String(n.moyenne).replace(".", ",")}</p>
+            <div className="pb-1 text-lg">{etoiles(n.moyenne ?? 0)}<p className="text-xs text-stone-500">{n.n} avis</p></div>
+          </div>
+          <div className="space-y-1">
+            {[5, 4, 3, 2, 1].map((k) => {
+              const v = (n as unknown as Record<string, number>)[`n${k}`];
+              return (
+                <div key={k} className="flex items-center gap-2 text-xs">
+                  <span className="w-6 text-right font-bold text-stone-600">{k} ★</span>
+                  <div className="h-2.5 flex-1 overflow-hidden rounded-full bg-stone-100"><div className="etire h-full rounded-full" style={{ width: `${(v / max) * 100}%`, background: tons[k - 1], animationDelay: `${(5 - k) * 0.08}s` }} /></div>
+                  <span className="w-6 tabular-nums text-stone-500">{v}</span>
+                </div>
+              );
+            })}
+          </div>
+          <div className="grid grid-cols-2 gap-2 text-center">
+            <div className="rounded-xl bg-white p-2 ring-1 ring-stone-200"><p className="text-lg font-extrabold">{duree(q.delai_reponse_min)}</p><p className="text-[0.65rem] text-stone-500">1re réponse en moyenne</p></div>
+            <div className="rounded-xl bg-white p-2 ring-1 ring-stone-200"><p className="text-lg font-extrabold">{q.finalisees}</p><p className="text-[0.65rem] text-stone-500">finalisées sur 30 j</p></div>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          {q.agents.length === 0 ? <p className="text-sm text-stone-500">Aucune conversation traitée sur la période.</p> : (
+            <table className="w-full min-w-[560px] text-sm">
+              <thead><tr className="text-left text-xs text-stone-500"><th className="py-2 pr-2">Agent</th><th className="px-2 text-right">Finalisés</th><th className="px-2 text-right">En cours</th><th className="px-2">Note</th><th className="px-2 text-right">Avis négatifs</th><th className="px-2 text-right">1re réponse</th><th className="pl-2 text-right">Fermeture</th></tr></thead>
+              <tbody className="divide-y divide-stone-100">
+                {q.agents.map((a) => (
+                  <tr key={a.email} className={a.mauvaises > 0 ? "bg-red-50/40" : ""}>
+                    <td className="py-2 pr-2"><p className="font-semibold">{a.nom ?? a.email.split("@")[0]}</p><p className="text-xs text-stone-500">{a.numero ? `n°${a.numero}` : a.email}</p></td>
+                    <td className="px-2 text-right font-bold tabular-nums">{a.traitees}</td>
+                    <td className="px-2 text-right tabular-nums text-stone-600">{a.en_cours}</td>
+                    <td className="px-2">{a.moyenne == null ? <span className="text-xs text-stone-400">pas d’avis</span> : <span className="inline-flex items-center gap-1">{etoiles(a.moyenne)} <span className="text-xs text-stone-500">{String(a.moyenne).replace(".", ",")} ({a.nb_notes})</span></span>}</td>
+                    <td className={`px-2 text-right font-bold tabular-nums ${a.mauvaises ? "text-red-600" : "text-stone-400"}`}>{a.mauvaises}{a.rouvertes ? <span className="block text-[0.65rem] font-normal">{a.rouvertes} rouverte{a.rouvertes > 1 ? "s" : ""}</span> : null}</td>
+                    <td className="px-2 text-right tabular-nums">{duree(a.delai_reponse_min)}</td>
+                    <td className="pl-2 text-right tabular-nums">{a.delai_fermeture_h == null ? "—" : duree(a.delai_fermeture_h * 60)}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+          <p className="mt-2 text-xs text-stone-500">Une ligne rouge = au moins un avis à 1 ou 2 étoiles : ouvre « Avis négatifs » pour relire la conversation complète.</p>
+        </div>
+      </div>
+    </Bloc>
   );
 }
 
@@ -1700,6 +1792,18 @@ function CarteRequete({ r, moi, recharger, ouvrirUtilisateur, setMsg }: { r: Req
         {attendReponse && r.statut === "en_cours" && <span className="rounded-full bg-sky-600 px-2 py-0.5 text-[0.65rem] font-bold text-white">Le client a répondu</span>}
         {r.agent_email && <span className="text-xs text-stone-500">· suivi par {aMoi ? "toi" : nomAgent(r.agent_email)}</span>}
       </div>
+      {(r.premiere_reponse_le || r.note || (r.rouverte_par_client ?? 0) > 0) && (
+        <div className="mt-2 flex flex-wrap gap-1.5 text-[0.7rem]">
+          {r.premiere_reponse_le && <span className="rounded-full bg-stone-100 px-2 py-0.5 text-stone-600">1re réponse en {duree((new Date(r.premiere_reponse_le).getTime() - new Date(r.cree_le).getTime()) / 60000)}</span>}
+          {(r.rouverte_par_client ?? 0) > 0 && <span className="rounded-full bg-red-100 px-2 py-0.5 font-bold text-red-700">Rouverte par le client</span>}
+        </div>
+      )}
+      {r.note ? (
+        <div className={`mt-2 rounded-xl p-2.5 text-sm ${r.note <= 2 ? "bg-red-50 ring-1 ring-red-200" : "bg-amber-50"}`}>
+          <p className="flex items-center gap-2 text-xs font-bold text-stone-700">Avis du client : {etoiles(r.note)} <span className="font-normal text-stone-500">{r.note}/5</span></p>
+          {r.avis && <p className="mt-1 italic text-stone-700">« {r.avis} »</p>}
+        </div>
+      ) : r.statut === "resolue" && "note" in r ? <p className="mt-2 text-xs text-stone-400">Le client n’a pas encore donné son avis.</p> : null}
       <div className="mt-2 max-h-80 space-y-2 overflow-y-auto rounded-xl bg-stone-50 p-2.5">
         {messages.map((m) => (
           <div key={m.id} className={`flex ${m.auteur === "agent" ? "justify-end" : "justify-start"}`}>
@@ -1728,7 +1832,7 @@ function CarteRequete({ r, moi, recharger, ouvrirUtilisateur, setMsg }: { r: Req
         </div>
       ) : (
         <div className="mt-3 flex items-center justify-between gap-2 rounded-xl bg-stone-50 p-2.5 text-xs text-stone-500">
-          <span className="inline-flex items-center gap-1"><Lock size={12} /> Conversation fermée</span>
+          <span className="inline-flex items-center gap-1"><Lock size={12} /> Fermée{r.fermee_le ? ` le ${new Date(r.fermee_le).toLocaleString("fr-FR", { dateStyle: "short", timeStyle: "short" })}` : ""}{r.fermee_par ? ` par ${nomAgent(r.fermee_par)}` : ""}</span>
           {fil !== null && <button disabled={occupe} onClick={() => agir(() => db.rpc("admin_requete_fermer", { r: r.id, fermer: false }), "Conversation rouverte : le client peut de nouveau écrire.")} className="font-bold text-emerald-700 underline">Rouvrir</button>}
         </div>
       )}

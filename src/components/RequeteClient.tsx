@@ -1,13 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, ChevronDown, Clock, Lock, MessageSquareText, Send } from "lucide-react";
+import { CheckCircle2, ChevronDown, Clock, Lock, MessageSquareText, Send, Star } from "lucide-react";
 import { IconBadge } from "./icons";
 import { supabase } from "@/lib/supabase";
 import { useStore } from "@/lib/store";
 
 const MOTIFS = ["Un paiement", "Mon compte / mon code", "Un groupe", "Un versement", "Une arnaque / un problème grave", "Une suggestion", "Autre"];
-type Requete = { id: string; numero: number; cree_le: string; motif: string; message: string; statut: "nouvelle" | "en_cours" | "resolue"; reponse: string | null; dernier_auteur?: string | null };
+type Requete = { id: string; numero: number; cree_le: string; motif: string; message: string; statut: "nouvelle" | "en_cours" | "resolue"; reponse: string | null; dernier_auteur?: string | null; note?: number | null; avis?: string | null };
 type Msg = { id: string; requete_id: string; cree_le: string; auteur: "client" | "agent"; texte: string };
 const STATUT: Record<Requete["statut"], [string, string]> = {
   nouvelle: ["Envoyée", "bg-amber-50 text-amber-800"],
@@ -30,7 +30,8 @@ export function RequeteClient() {
   const charger = useCallback(async () => {
     if (!userId) return;
     const lire = (cols: string) => supabase.from("requetes_clients").select(cols).order("cree_le", { ascending: false }).limit(20);
-    let { data, error } = await lire("id, numero, cree_le, motif, message, statut, reponse, dernier_auteur");
+    let { data, error } = await lire("id, numero, cree_le, motif, message, statut, reponse, dernier_auteur, note, avis");
+    if (error) ({ data, error } = await lire("id, numero, cree_le, motif, message, statut, reponse, dernier_auteur"));
     if (error) ({ data, error } = await lire("id, numero, cree_le, motif, message, statut, reponse"));
     if (error) return setDispo(false); // mise à jour SQL n°18 pas encore faite
     const l = (data as unknown as Requete[]) ?? [];
@@ -159,11 +160,66 @@ function Conversation({ r, fil, statut: [l, c], nouveau, ouverte, basculer, peut
               <button disabled={envoi || !texte.trim()} aria-label="Envoyer" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-emerald-700 text-white disabled:opacity-40"><Send size={17} /></button>
             </form>
           ) : r.statut === "resolue" ? (
-            <p className="flex items-center justify-center gap-1.5 rounded-xl bg-stone-100 p-2 text-xs text-stone-500"><Lock size={12} /> Conversation fermée par le service client. Pour autre chose, écris un nouveau message ci-dessus.</p>
+            <>
+              <p className="flex items-center justify-center gap-1.5 rounded-xl bg-stone-100 p-2 text-xs text-stone-500"><Lock size={12} /> Conversation fermée par le service client. Pour autre chose, écris un nouveau message ci-dessus.</p>
+              {"note" in r && <Avis r={r} envoye={envoye} />}
+            </>
           ) : null}
           {err && <p className="text-sm font-medium text-red-600">{err}</p>}
         </div>
       )}
+    </div>
+  );
+}
+
+/** Avis du client à la fin d'une conversation : 1 à 5 étoiles + commentaire ; 1 ou 2 étoiles → il peut rouvrir */
+function Avis({ r, envoye }: { r: Requete; envoye: () => void }) {
+  const [note, setNote] = useState(r.note ?? 0);
+  const [survol, setSurvol] = useState(0);
+  const [commentaire, setCommentaire] = useState(r.avis ?? "");
+  const [rouvrir, setRouvrir] = useState(false);
+  const [modifier, setModifier] = useState(!r.note);
+  const [envoi, setEnvoi] = useState(false);
+  const [err, setErr] = useState("");
+  const MOTS = ["", "Très mauvais", "Mauvais", "Moyen", "Bien", "Excellent"];
+  const valider = async () => {
+    if (!note) return setErr("Choisis une note.");
+    setEnvoi(true); setErr("");
+    const { error } = await supabase.rpc("requete_noter", { r: r.id, note, commentaire: commentaire.trim() || null, rouvrir: rouvrir && note <= 2 });
+    setEnvoi(false);
+    if (error) return setErr(error.message);
+    setModifier(false);
+    envoye();
+  };
+  if (!modifier && r.note) {
+    return (
+      <div className="flex items-center justify-between gap-2 rounded-xl bg-amber-50 p-2.5 text-xs text-amber-900">
+        <span className="flex items-center gap-1.5">Ton avis : <span className="text-amber-500">{"★".repeat(r.note)}<span className="text-amber-200">{"★".repeat(5 - r.note)}</span></span> Merci !</span>
+        <button onClick={() => setModifier(true)} className="font-bold underline">Modifier</button>
+      </div>
+    );
+  }
+  return (
+    <div className="space-y-2 rounded-2xl bg-gradient-to-br from-amber-50 to-white p-3 ring-1 ring-amber-200">
+      <p className="text-center text-sm font-bold">Comment le service client t’a-t-il aidé ?</p>
+      <div className="flex justify-center gap-1" onMouseLeave={() => setSurvol(0)}>
+        {[1, 2, 3, 4, 5].map((k) => (
+          <button key={k} type="button" onMouseEnter={() => setSurvol(k)} onClick={() => setNote(k)} aria-label={`${k} étoile${k > 1 ? "s" : ""}`} className="p-1 transition-transform active:scale-90">
+            <Star size={30} className={k <= (survol || note) ? "fill-amber-400 text-amber-400" : "text-stone-300"} />
+          </button>
+        ))}
+      </div>
+      <p className="h-4 text-center text-xs font-semibold text-amber-800">{MOTS[survol || note]}</p>
+      {note > 0 && (
+        <>
+          <textarea value={commentaire} onChange={(e) => setCommentaire(e.target.value)} rows={2} maxLength={500} placeholder={note <= 2 ? "Qu’est-ce qui n’a pas été ? (facultatif)" : "Un mot pour l’agent ? (facultatif)"} className="w-full resize-none rounded-xl border border-stone-300/80 bg-white px-3 py-2 text-base outline-none focus:border-amber-400 focus:ring-4 focus:ring-amber-100" />
+          {note <= 2 && (
+            <label className="flex items-center gap-2 text-xs text-stone-700"><input type="checkbox" checked={rouvrir} onChange={(e) => setRouvrir(e.target.checked)} className="h-4 w-4 accent-emerald-700" /> Mon problème n’est pas réglé : rouvrir la conversation</label>
+          )}
+          <button onClick={valider} disabled={envoi} className="w-full rounded-xl bg-amber-500 py-2.5 text-sm font-bold text-white disabled:opacity-50">{envoi ? "Envoi…" : "Envoyer mon avis"}</button>
+        </>
+      )}
+      {err && <p className="text-center text-xs font-medium text-red-600">{err}</p>}
     </div>
   );
 }
