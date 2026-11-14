@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { LogoOperateur } from "@/components/LogosOperateurs";
 import { Suspense, useEffect, useState } from "react";
 import Link from "next/link";
 import { Button, Card, Field, Header, Loading, Page, WhatsAppIcon, btnClass, inputClass, useRequireUser } from "@/components/ui";
@@ -184,9 +185,7 @@ function Payer() {
       <Page>
         <div className="grid min-h-dvh place-items-center p-8 text-center">
           <div>
-            <div className="mx-auto mb-6 grid h-20 w-20 animate-pulse place-items-center rounded-full text-2xl font-extrabold" style={{ background: op.bg, color: op.fg }}>
-              {op.nom[0]}
-            </div>
+            <LogoOperateur id={op.id} taille={80} className="mx-auto mb-6 animate-pulse shadow-lg" />
             <h2 className="text-xl font-bold">{fournisseurPour(method) === "wave" ? "Ouverture de Wave…" : fournisseurPour(method) ? "Ouverture du paiement sécurisé…" : "Confirme sur ton téléphone"}</h2>
             <p className="mt-2 text-sm leading-relaxed text-stone-600">
               Paiement de <b>{fcfa(total)}</b> via {op.nom}.
@@ -273,7 +272,7 @@ function Payer() {
               <div className="grid grid-cols-2 gap-2">
                 {operateurs.map((o) => (
                   <button key={o.id} type="button" onClick={() => setMethod(o.id)} className={`flex items-center gap-2.5 rounded-2xl border-2 bg-white p-3 text-left text-sm font-bold transition ${method === o.id ? "border-emerald-500" : "border-stone-200"}`}>
-                    <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl text-base font-extrabold" style={{ background: o.bg, color: o.fg }}>{o.nom[0]}</span>
+                    <LogoOperateur id={o.id} taille={40} />
                     {o.nom}
                   </button>
                 ))}

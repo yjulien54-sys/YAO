@@ -5,10 +5,11 @@
  * (fixe sur ordinateur, barre en bas sur téléphone).
  */
 import type { Metadata } from "next";
+import { LogosOperateurs } from "@/components/LogosOperateurs";
 import { messageCagnotte, phraseMotif } from "@/lib/motif";
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
-import { CalendarClock, HandCoins, Lock, ReceiptText, ShieldCheck, Smartphone, Users } from "lucide-react";
+import { CalendarClock, HandCoins, Lock, ReceiptText, ShieldCheck, Users } from "lucide-react";
 import { Partage } from "./Partage";
 import { TexteAnime } from "@/components/Anime";
 
@@ -113,7 +114,7 @@ export default async function PageCagnotte({ params }: { params: Promise<{ slug:
       </Link>
       <div className="mt-3"><Partage texte={texteWhatsApp} lien={lien} large /></div>
       <ul className="mt-6 space-y-3 border-t border-black/[0.06] pt-5 text-[0.95rem] text-stone-600">
-        <li className="flex gap-3"><Smartphone size={18} className="mt-0.5 shrink-0 text-[#009e60]" /> Wave, Orange Money, MTN MoMo ou Moov Money</li>
+        <li className="flex flex-wrap items-center gap-3"><LogosOperateurs taille={30} /> <span>Wave, Orange Money, MTN ou Moov</span></li>
         <li className="flex gap-3"><HandCoins size={18} className="mt-0.5 shrink-0 text-[#009e60]" /> L’argent est versé à la cagnotte gérée par {c.tresorier ?? "l’organisateur"}</li>
         <li className="flex gap-3"><ReceiptText size={18} className="mt-0.5 shrink-0 text-[#009e60]" /> Chaque participation est enregistrée, avec un reçu</li>
       </ul>

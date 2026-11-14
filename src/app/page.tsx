@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter, useSearchParams } from "next/navigation";
+import { LogosOperateurs } from "@/components/LogosOperateurs";
 import { DateNaissance } from "@/components/DateNaissance";
 import { Suspense, useEffect, useState } from "react";
 import { Button, Card, Field, Loading, Logo, inputClass } from "@/components/ui";
@@ -169,6 +170,7 @@ function Accueil() {
           </li>
         ))}
       </ul>
+      <p className="mt-3 flex items-center justify-center gap-2 px-4 text-xs font-semibold text-stone-500 lg:px-0">Payez avec <LogosOperateurs taille={26} /></p>
 
       <div className="mt-4 px-4 pb-10 lg:px-0 lg:pb-0">
         <Card className="relative shadow-lg shadow-stone-900/5">

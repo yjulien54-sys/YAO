@@ -32,6 +32,8 @@ export default async function Image({ params }: { params: Promise<{ slug: string
   // Fichiers locaux : si l'un manque, l'image se fabrique quand même (police par défaut, sans logo)
   const lire = (chemin: string) => readFile(join(process.cwd(), chemin)).catch(() => null);
   const [icone, gras, moyen] = await Promise.all([lire("public/icons/icon-192.png"), lire("public/polices/PlusJakartaSans-ExtraBold.ttf"), lire("public/polices/PlusJakartaSans-Medium.ttf")]);
+  const ops = (await Promise.all(["wave", "orange", "mtn", "moov"].map((n) => lire(`public/operateurs/${n}.png`))))
+    .flatMap((b) => (b ? [`data:image/png;base64,${b.toString("base64")}`] : []));
   const logo = icone ? `data:image/png;base64,${icone.toString("base64")}` : null;
   const pct = c?.objectif ? Math.min(100, Math.round((c.collecte / c.objectif) * 100)) : null;
   const titre = c?.nom ?? "Cagnotte Cotiz";
@@ -92,7 +94,9 @@ export default async function Image({ params }: { params: Promise<{ slug: string
               )}
               <div style={{ display: "flex", alignItems: "center", marginTop: 26, gap: 16 }}>
                 <div style={{ display: "flex", background: ORANGE, color: "white", fontSize: 26, fontWeight: 800, padding: "14px 34px", borderRadius: 999 }}>Participer</div>
-                <span style={{ fontSize: 20, color: "#e3f3ec" }}>Wave · Orange · MTN · Moov</span>
+                {ops.length === 4
+                  ? <div style={{ display: "flex", gap: 10 }}>{ops.map((src, k) => <img key={k} src={src} alt="" width={50} height={50} style={{ borderRadius: 12, background: "white" }} />)}</div>
+                  : <span style={{ fontSize: 20, color: "#e3f3ec" }}>Wave · Orange · MTN · Moov</span>}
               </div>
             </div>
           )}
