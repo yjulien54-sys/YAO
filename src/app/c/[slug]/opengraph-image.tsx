@@ -26,13 +26,14 @@ export default async function Image({ params }: { params: Promise<{ slug: string
     const { data } = await sb.rpc("cagnotte_publique", { s: slug, compter: false });
     c = (data as Infos | null) ?? null;
   }
-  const logo = `data:image/png;base64,${(await readFile(join(process.cwd(), "public/icons/icon-192.png"))).toString("base64")}`;
+  // Fichiers locaux : si l'un manque, l'image se fabrique quand même (police par défaut, sans logo)
+  const lire = (chemin: string) => readFile(join(process.cwd(), chemin)).catch(() => null);
+  const [icone, gras, moyen] = await Promise.all([lire("public/icons/icon-192.png"), lire("public/polices/PlusJakartaSans-ExtraBold.ttf"), lire("public/polices/PlusJakartaSans-Medium.ttf")]);
+  const logo = icone ? `data:image/png;base64,${icone.toString("base64")}` : null;
   const pct = c?.objectif ? Math.min(100, Math.round((c.collecte / c.objectif) * 100)) : null;
   const titre = c?.nom ?? "Cagnotte Cotiz";
   // Titre : plus il est long, plus il est petit (3 lignes maximum, jamais sur le montant)
   const taille = titre.length > 70 ? 36 : titre.length > 52 ? 40 : titre.length > 34 ? 48 : 58;
-  const dossier = join(process.cwd(), "src/app/c/[slug]/polices");
-  const [gras, moyen] = await Promise.all([readFile(join(dossier, "PlusJakartaSans-ExtraBold.ttf")), readFile(join(dossier, "PlusJakartaSans-Medium.ttf"))]);
 
   // Bande de motifs (inspirée du kente) : petits blocs vert, or, orange, noir
   const motif = Array.from({ length: 48 }, (_, k) => [VERT, OR, ORANGE, "#1c1917", VERT, ORANGE][k % 6]);
@@ -46,7 +47,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
             ? <img src={c.photo} alt="" width={560} height={630} style={{ width: 560, height: 630, objectFit: "cover" }} />
             : (
               <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                <img src={logo} alt="" width={200} height={200} style={{ borderRadius: 48 }} />
+                {logo ? <img src={logo} alt="" width={200} height={200} style={{ borderRadius: 48 }} /> : <span style={{ fontSize: 96, fontWeight: 800, color: "white" }}>Cotiz</span>}
               </div>
             )}
           <div style={{ position: "absolute", top: 0, right: 0, width: 12, height: "100%", display: "flex", flexDirection: "column" }}>
@@ -57,7 +58,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
         {/* Texte */}
         <div style={{ flex: 1, display: "flex", flexDirection: "column", padding: "48px 56px 0 52px", color: "white", position: "relative" }}>
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
-            <img src={logo} alt="" width={64} height={64} style={{ borderRadius: 16 }} />
+            {logo && <img src={logo} alt="" width={64} height={64} style={{ borderRadius: 16 }} />}
             <div style={{ display: "flex", flexDirection: "column" }}>
               <span style={{ fontSize: 38, fontWeight: 800, letterSpacing: -1 }}>Cotiz</span>
               <span style={{ fontSize: 18, color: "#a7d9c2", letterSpacing: 3 }}>CAGNOTTE</span>
@@ -94,6 +95,6 @@ export default async function Image({ params }: { params: Promise<{ slug: string
         </div>
       </div>
     ),
-    { ...size, fonts: [{ name: "Jakarta", data: gras, weight: 800, style: "normal" }, { name: "Jakarta", data: moyen, weight: 500, style: "normal" }] },
+    { ...size, fonts: gras && moyen ? [{ name: "Jakarta", data: gras, weight: 800, style: "normal" }, { name: "Jakarta", data: moyen, weight: 500, style: "normal" }] : undefined },
   );
 }
