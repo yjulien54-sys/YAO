@@ -4,7 +4,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, Check, ExternalLink, Eye, Globe, Loader2, Move, X, ZoomIn } from "lucide-react";
 import { supabase } from "@/lib/supabase";
-import { phraseMotif } from "@/lib/motif";
+import { messageCagnotte } from "@/lib/motif";
 
 type Etat = { slug: string | null; actif: boolean; photo: string | null; montants: boolean; message: string | null; fin: string | null; vues: number };
 
@@ -88,7 +88,7 @@ export function CagnottePublique({ groupId, nom, cause }: { groupId: string; nom
     if (!prete) { setEnvoi(false); return setMsg("Impossible de préparer cette photo. Essaie une autre image."); }
     envoyer(prete, "jpg", "image/jpeg", true);
   };
-  const texte = `*${nom}*\n${[motif.trim() ? `*Motif : ${motif.trim()}*` : "", phraseMotif(message, 140) ?? "Chaque geste compte 🙏"].filter(Boolean).join("\n")}\n\nParticipez ici :\n${lien}`;
+  const texte = messageCagnotte({ nom, cause: motif, message, lien });
 
   return (
     <div className="space-y-3">

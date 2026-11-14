@@ -4,6 +4,7 @@
  * avec une bande de motifs aux couleurs de Cotiz.
  */
 import { ImageResponse } from "next/og";
+import sharp from "sharp";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { createClient } from "@supabase/supabase-js";
@@ -12,7 +13,8 @@ import { phraseMotif } from "@/lib/motif";
 export const runtime = "nodejs";
 export const alt = "Cagnotte Cotiz";
 export const size = { width: 1200, height: 630 };
-export const contentType = "image/png";
+// JPEG léger (moins de 300 Ko) : au-delà, WhatsApp n'affiche pas l'aperçu
+export const contentType = "image/jpeg";
 
 type Infos = { nom: string; cause: string | null; message: string | null; description: string | null; photo: string | null; objectif: number | null; collecte: number; donateurs_nb: number; tresorier: string | null };
 
@@ -44,7 +46,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
   // Bande de motifs (inspirée du kente) : petits blocs vert, or, orange, noir
   const motif = Array.from({ length: 48 }, (_, k) => [VERT, OR, ORANGE, "#1c1917", VERT, ORANGE][k % 6]);
 
-  return new ImageResponse(
+  const png = new ImageResponse(
     (
       <div style={{ width: "100%", height: "100%", display: "flex", background: "linear-gradient(135deg, #3a7a62 0%, #2f6b55 55%, #295f4c 100%)", fontFamily: "Jakarta", fontWeight: 500 }}>
         {/* Photo */}
@@ -104,4 +106,11 @@ export default async function Image({ params }: { params: Promise<{ slug: string
     ),
     { ...size, fonts: gras && moyen ? [{ name: "Jakarta", data: gras, weight: 800, style: "normal" }, { name: "Jakarta", data: moyen, weight: 500, style: "normal" }] : undefined },
   );
+  const brut = Buffer.from(await png.arrayBuffer());
+  try {
+    const jpeg = await sharp(brut).jpeg({ quality: 78, mozjpeg: true, chromaSubsampling: "4:2:0" }).toBuffer();
+    return new Response(new Uint8Array(jpeg), { headers: { "Content-Type": "image/jpeg", "Cache-Control": "public, max-age=600, s-maxage=600" } });
+  } catch {
+    return new Response(new Uint8Array(brut), { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=600" } });
+  }
 }

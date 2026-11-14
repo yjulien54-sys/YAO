@@ -5,7 +5,7 @@
  * (fixe sur ordinateur, barre en bas sur téléphone).
  */
 import type { Metadata } from "next";
-import { phraseMotif } from "@/lib/motif";
+import { messageCagnotte, phraseMotif } from "@/lib/motif";
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 import { CalendarClock, HandCoins, Lock, ReceiptText, ShieldCheck, Smartphone, Users } from "lucide-react";
@@ -87,9 +87,7 @@ export default async function PageCagnotte({ params }: { params: Promise<{ slug:
   const participer = `/groupes/${c.id}/payer${c.cle ? `?i=${c.cle}` : ""}`;
   const lien = `${site}/c/${slug}`;
   const histoire = c.message ?? c.description;
-  const phrase = phraseMotif(histoire, 140);
-  const motifCourt = [c.cause ? `*Motif : ${c.cause}*` : "", phrase ?? ""].filter(Boolean).join("\n");
-  const texteWhatsApp = `*${c.nom}*\n${motifCourt ? `${motifCourt}\n\n` : ""}${fcfa(c.collecte)} déjà collectés${c.objectif ? ` sur ${fcfa(c.objectif)}` : ""}. Chaque geste compte 🙏\n\nParticipez ici :\n${lien}`;
+  const texteWhatsApp = messageCagnotte({ nom: c.nom, cause: c.cause, message: histoire, lien, collecte: `${fcfa(c.collecte)} déjà collectés${c.objectif ? ` sur ${fcfa(c.objectif)}` : ""}` });
   const dateCreation = new Date(c.cree_le).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
   const initiale = (n: string) => n.trim().slice(0, 1).toUpperCase();
 

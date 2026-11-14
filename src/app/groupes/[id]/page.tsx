@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { BanniereCagnotte } from "@/components/BanniereCagnotte";
+import { BanniereCagnotte, lienPartageCagnotte, useCagnotte } from "@/components/BanniereCagnotte";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Avatar, Button, Card, Header, Loading, Page, Progress, StatusBadge, WhatsAppIcon, btnClass, inputClass, useRequireUser } from "@/components/ui";
@@ -62,6 +62,9 @@ export default function GroupeDetail() {
     }, 350);
     return () => clearTimeout(t);
   }, [pret]);
+
+  // Cagnotte publique de la collecte (pour le bouton Partager et la bannière)
+  const cagnotte = useCagnotte(id, !!g && g.type === "collecte" && droits(g, me, userId).gestionnaire);
 
   if (!ok || !loaded) return <Loading />;
   if (!g) return <Invitation id={id} onJoin={(inv) => joinGroup(id, inv)} />;
@@ -160,7 +163,7 @@ export default function GroupeDetail() {
         </Card>
 
         <CaisseGroupe g={g} userId={userId} />
-        {g.type === "collecte" && <BanniereCagnotte groupId={g.id} nom={g.name} gestionnaire={dr.gestionnaire} />}
+        {g.type === "collecte" && <BanniereCagnotte groupId={g.id} nom={g.name} cause={g.donCause} gestionnaire={dr.gestionnaire} etat={cagnotte} />}
 
         {enValidation.length > 0 && (
           <div id="a-valider" className="scroll-mt-20 rounded-[18px]">
@@ -404,13 +407,24 @@ export default function GroupeDetail() {
           {me && myStatus === "paye" && g.type === "collecte" && (
             <Link href={`/groupes/${g.id}/payer`} className={btnClass("secondary", "w-full")}>Ajouter une participation</Link>
           )}
+          {isTreasurer && g.type === "collecte" && cs.solde > 0 && (
+            <button type="button" disabled={enValidation.length > 0} onClick={() => setVersement(true)} className={btnClass("secondary", "w-full !border-emerald-300 !bg-emerald-50 text-base !text-emerald-900")}>
+              <ArrowUpRight size={18} strokeWidth={2} className="mr-1 inline -mt-0.5" />
+              {enValidation.length > 0 ? "Remise des fonds en cours de validation" : `Remettre les fonds · ${fcfa(cs.solde)}`}
+            </button>
+          )}
           {/* Actions rapides, façon application bancaire */}
           <div className="grid grid-cols-4 gap-1 pt-1">
             <ActionRapide
               label={g.type === "collecte" ? "Partager" : "Relancer"}
               badge={g.type !== "collecte" && unpaid.length > 0 ? unpaid.length : undefined}
               disabled={g.type !== "collecte" && unpaid.length === 0}
-              onClick={() => setMsg({ type: "groupe" })}
+              onClick={() => {
+                // Collecte en ligne : on partage le message de la cagnotte (motif + lien vers la belle page)
+                const wa = g.type === "collecte" ? lienPartageCagnotte(cagnotte, g.name, g.donCause) : null;
+                if (wa) window.open(wa, "_blank", "noopener");
+                else setMsg({ type: "groupe" });
+              }}
             >
               <WhatsAppIcon size={20} />
             </ActionRapide>
