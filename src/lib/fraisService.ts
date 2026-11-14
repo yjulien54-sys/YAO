@@ -64,3 +64,6 @@ export function partCotizPenalite(penalite: number, tranches: TranchePenalite[])
   const t = tranches.find((x) => x.max === null || penalite < x.max) ?? tranches[tranches.length - 1];
   return Math.round((penalite * Math.min(100, Math.max(0, t?.part ?? 0))) / 100);
 }
+
+/** Montant arrondi au multiple de 5 F supérieur (les opérateurs Mobile Money refusent parfois les montants comme 1 187 F) */
+export const arrondi5 = (n: number) => Math.ceil(Math.round(n) / 5) * 5;

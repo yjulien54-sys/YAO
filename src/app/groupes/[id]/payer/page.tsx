@@ -7,7 +7,7 @@ import { Button, Card, Field, Header, Loading, Page, WhatsAppIcon, btnClass, inp
 import { dateCourte, fcfa, prenom, telAffiche } from "@/lib/format";
 import { dueDate, roundAmount, roundsToPay } from "@/lib/logic";
 import { lienCaisse, useCaisseCotiz, useFraisService } from "@/lib/caisse";
-import { fraisOperateurPour } from "@/lib/fraisService";
+import { arrondi5, fraisOperateurPour } from "@/lib/fraisService";
 import { MODE_PAIEMENT, fournisseurPour, OPERATEURS, initierPaiement, lienWaveAvecMontant, lienWaveValide } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
 import { supabase } from "@/lib/supabase";
@@ -104,7 +104,7 @@ function Payer() {
   // Tous les frais (service Cotiz + opérateur) s'ajoutent au montant : la caisse reçoit la cotisation entière.
   // Ils ne sont pas détaillés ici, seulement sur le reçu.
   const fraisCotiz = enLigne ? service.frais(total) : 0;
-  const totalAPayer = enLigne && total > 0 ? total + fraisCotiz + fraisOperateurPour(total + fraisCotiz, fournisseurPour(method)) : total;
+  const totalAPayer = enLigne && total > 0 ? arrondi5(total + fraisCotiz + fraisOperateurPour(total + fraisCotiz, fournisseurPour(method))) : total;
   const rienAPayer = !isCollecte && aPayer.length === 0;
   const operateurs = MODE_PAIEMENT === "wave" ? OPERATEURS.filter((o) => o.id === "wave") : OPERATEURS;
   const op = operateurs.find((o) => o.id === method) ?? operateurs[0];

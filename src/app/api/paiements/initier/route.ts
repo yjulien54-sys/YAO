@@ -6,7 +6,7 @@ import { creerSessionWave } from "@/lib/server/wave";
 import { geniuspayConfigure, initierGeniuspay } from "@/lib/server/geniuspay";
 import { waveConfigured } from "@/lib/server/wave";
 import type { PayMethod } from "@/lib/types";
-import { fraisOperateurPour, fraisPour, lirePourcent, lireTranches, lireTranchesPenalite, partCotizPenalite } from "@/lib/fraisService";
+import { arrondi5, fraisOperateurPour, fraisPour, lirePourcent, lireTranches, lireTranchesPenalite, partCotizPenalite } from "@/lib/fraisService";
 
 export const runtime = "nodejs";
 
@@ -54,8 +54,9 @@ export async function POST(req: Request) {
   const r = Object.fromEntries((reglages ?? []).map((x: { cle: string; valeur: string | null }) => [x.cle, x.valeur]));
   const fraisService = reglages?.length && r.frais_service_actif !== "non" ? fraisPour(total, lireTranches(r.frais_service_tranches), lirePourcent(r.frais_service_pourcent)) : 0;
   // Frais de l'opérateur ajoutés au paiement : la caisse du groupe reçoit la cotisation entière
-  const fraisOperateur = fraisOperateurPour(total + fraisService, fournisseur);
-  const aPayer = total + fraisService + fraisOperateur;
+  // Total arrondi au multiple de 5 F supérieur : les quelques francs d'écart vont aux frais de l'opérateur
+  const aPayer = arrondi5(total + fraisService + fraisOperateurPour(total + fraisService, fournisseur));
+  const fraisOperateur = aPayer - total - fraisService;
   // Part de Cotiz sur les pénalités payées en ligne (réglée dans /admin → Mes revenus)
   const penalites = lignes.reduce((t, l) => t + l.penalty, 0);
   // Offre spéciale en cours (période choisie par le fondateur) : elle remplace la part habituelle
