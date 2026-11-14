@@ -38,10 +38,14 @@ export function CagnottePublique({ groupId, nom }: { groupId: string; nom: strin
   };
   const choisirPhoto = async (f: File | undefined) => {
     if (!f) return;
-    if (f.size > 6 * 1024 * 1024) return setMsg("Photo trop lourde (6 Mo maximum).");
+    if (!f.type.startsWith("image/")) return setMsg("Choisis une photo (JPG, PNG…).");
+    if (f.size > 25 * 1024 * 1024) return setMsg("Photo trop lourde (25 Mo maximum).");
     setEnvoi(true); setMsg("");
-    const chemin = `${groupId}/couverture-${Date.now()}.${(f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "")}`;
-    const { error } = await supabase.storage.from("cagnottes").upload(chemin, f, { upsert: true, contentType: f.type || "image/jpeg" });
+    // Photo réduite (1200 px, JPEG) : page rapide et aperçu WhatsApp qui s'affiche (WhatsApp ignore les images trop lourdes)
+    const leger = await reduirePhoto(f).catch(() => null);
+    if (!leger) { setEnvoi(false); return setMsg("Impossible de lire cette photo. Essaie une autre image."); }
+    const chemin = `${groupId}/couverture-${Date.now()}.jpg`;
+    const { error } = await supabase.storage.from("cagnottes").upload(chemin, leger, { upsert: true, contentType: "image/jpeg" });
     if (error) { setEnvoi(false); return setMsg("Erreur photo : " + error.message); }
     const url = supabase.storage.from("cagnottes").getPublicUrl(chemin).data.publicUrl;
     setPhoto(url);
@@ -87,4 +91,22 @@ export function CagnottePublique({ groupId, nom }: { groupId: string; nom: strin
       {msg && <p className={`text-sm font-medium ${msg.startsWith("Erreur") || msg.includes("lourde") ? "text-red-600" : "text-emerald-700"}`}>{msg}</p>}
     </div>
   );
+}
+
+/** Réduit une photo du téléphone : 1200 px de large maximum, JPEG qualité 0,82 (souvent 150 à 300 Ko) */
+async function reduirePhoto(f: File): Promise<Blob> {
+  const url = URL.createObjectURL(f);
+  try {
+    const img = await new Promise<HTMLImageElement>((ok, ko) => { const i = new Image(); i.onload = () => ok(i); i.onerror = ko; i.src = url; });
+    const echelle = Math.min(1, 1200 / Math.max(img.naturalWidth, 1));
+    const c = document.createElement("canvas");
+    c.width = Math.round(img.naturalWidth * echelle);
+    c.height = Math.round(img.naturalHeight * echelle);
+    const ctx = c.getContext("2d");
+    if (!ctx) throw new Error("canvas");
+    ctx.drawImage(img, 0, 0, c.width, c.height);
+    return await new Promise<Blob>((ok, ko) => c.toBlob((b) => (b ? ok(b) : ko(new Error("jpeg"))), "image/jpeg", 0.82));
+  } finally {
+    URL.revokeObjectURL(url);
+  }
 }

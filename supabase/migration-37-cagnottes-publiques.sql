@@ -59,13 +59,14 @@ revoke all on function public.cagnotte_publier(uuid, boolean, boolean, text, tex
 grant execute on function public.cagnotte_publier(uuid, boolean, boolean, text, text, date) to authenticated;
 
 -- La page publique (lisible par tout le monde, sans compte) : seulement si le trésorier l'a publiée
-create or replace function public.cagnotte_publique(s text) returns json
+drop function if exists public.cagnotte_publique(text);
+create or replace function public.cagnotte_publique(s text, compter boolean default true) returns json
 language plpgsql security definer set search_path = public as $$
 declare q groups; total integer; nb integer; k text; tres text;
 begin
   select * into q from groups where public_slug = s and public_actif;
   if q.id is null then return null; end if;
-  update groups set public_vues = public_vues + 1 where id = q.id;
+  if compter then update groups set public_vues = public_vues + 1 where id = q.id; end if;
   select coalesce(sum(p.amount), 0), count(distinct p.member_id) into total, nb
     from payments p where p.group_id = q.id and coalesce(p.status, 'reussi') = 'reussi';
   select cle into k from cles_invitation where group_id = q.id;
@@ -82,8 +83,8 @@ begin
       group by m.id, m.name order by max(p.created_at) desc limit 40) d)
   );
 end $$;
-revoke all on function public.cagnotte_publique(text) from public;
-grant execute on function public.cagnotte_publique(text) to anon, authenticated;
+revoke all on function public.cagnotte_publique(text, boolean) from public;
+grant execute on function public.cagnotte_publique(text, boolean) to anon, authenticated;
 
 -- Pour l'écran du trésorier : l'état de la page publique de son groupe
 create or replace function public.cagnotte_etat(g uuid) returns json

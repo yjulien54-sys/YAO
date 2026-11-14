@@ -20,16 +20,16 @@ type Cagnotte = {
 const fcfa = (n: number) => `${Math.round(n).toLocaleString("fr-FR").replace(/ /g, " ")} F`;
 const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tontine-et-cotise.vercel.app";
 
-async function lire(slug: string): Promise<Cagnotte | null> {
+async function lire(slug: string, compter = true): Promise<Cagnotte | null> {
   if (!/^[a-z0-9-]{3,60}$/.test(slug)) return null;
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-  const { data, error } = await sb.rpc("cagnotte_publique", { s: slug });
+  const { data, error } = await sb.rpc("cagnotte_publique", { s: slug, compter });
   return error ? null : ((data as Cagnotte | null) ?? null);
 }
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
-  const c = await lire(slug);
+  const c = await lire(slug, false);
   if (!c) return { title: "Cagnotte introuvable — Cotiz" };
   const pct = c.objectif ? Math.min(100, Math.round((c.collecte / c.objectif) * 100)) : null;
   const titre = `${c.nom} — Cagnotte Cotiz`;
