@@ -113,7 +113,7 @@ export default function Parametres() {
           <div id="cagnotte" className="scroll-mt-20"><Card className="space-y-3 ring-2 ring-orange-200">
             <p className="flex items-center gap-2 font-bold"><span className="grid h-8 w-8 place-items-center rounded-xl bg-orange-100 text-base">🌍</span>Cagnotte publique à partager</p>
             <p className="text-sm text-stone-600">Une belle page avec photo, jauge et participants : envoie-la sur WhatsApp, même à ceux qui n’ont pas Cotiz.</p>
-            <CagnottePublique groupId={g.id} nom={g.name} />
+            <CagnottePublique groupId={g.id} nom={g.name} cause={g.donCause} />
           </Card></div>
         )}
 

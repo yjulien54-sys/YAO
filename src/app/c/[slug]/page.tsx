@@ -5,6 +5,7 @@
  * (fixe sur ordinateur, barre en bas sur téléphone).
  */
 import type { Metadata } from "next";
+import { phraseMotif } from "@/lib/motif";
 import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 import { CalendarClock, HandCoins, Lock, ReceiptText, ShieldCheck, Smartphone, Users } from "lucide-react";
@@ -35,7 +36,8 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   if (!c) return { title: "Cagnotte introuvable · Cotiz" };
   const pct = c.objectif ? Math.min(100, Math.round((c.collecte / c.objectif) * 100)) : null;
   const titre = `${c.nom} · Cagnotte Cotiz`;
-  const desc = `${fcfa(c.collecte)} collectés${c.objectif ? ` sur ${fcfa(c.objectif)} (${pct} %)` : ""}, ${c.donateurs_nb} participant${c.donateurs_nb > 1 ? "s" : ""}. ${c.message ?? c.description ?? "Participez par Wave, Orange Money, MTN ou Moov."}`.slice(0, 200);
+  const phraseDesc = phraseMotif(c.message ?? c.description, 110);
+  const desc = `${c.cause ? `Motif : ${c.cause}. ` : ""}${phraseDesc ? `${phraseDesc} ` : ""}${fcfa(c.collecte)} collectés${c.objectif ? ` sur ${fcfa(c.objectif)} (${pct} %)` : ""}, ${c.donateurs_nb} participant${c.donateurs_nb > 1 ? "s" : ""}. Participez par Wave, Orange Money, MTN ou Moov.`.slice(0, 220);
   // L'image d'aperçu (photo + logo + montant) est fabriquée par opengraph-image.tsx
   return {
     metadataBase: new URL(site),
@@ -85,7 +87,9 @@ export default async function PageCagnotte({ params }: { params: Promise<{ slug:
   const participer = `/groupes/${c.id}/payer${c.cle ? `?i=${c.cle}` : ""}`;
   const lien = `${site}/c/${slug}`;
   const histoire = c.message ?? c.description;
-  const texteWhatsApp = `*${c.nom}*\n${fcfa(c.collecte)} déjà collectés${c.objectif ? ` sur ${fcfa(c.objectif)}` : ""}. Chaque geste compte 🙏\n\nParticipez ici :\n${lien}`;
+  const phrase = phraseMotif(histoire, 140);
+  const motifCourt = [c.cause ? `*Motif : ${c.cause}*` : "", phrase ?? ""].filter(Boolean).join("\n");
+  const texteWhatsApp = `*${c.nom}*\n${motifCourt ? `${motifCourt}\n\n` : ""}${fcfa(c.collecte)} déjà collectés${c.objectif ? ` sur ${fcfa(c.objectif)}` : ""}. Chaque geste compte 🙏\n\nParticipez ici :\n${lien}`;
   const dateCreation = new Date(c.cree_le).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
   const initiale = (n: string) => n.trim().slice(0, 1).toUpperCase();
 

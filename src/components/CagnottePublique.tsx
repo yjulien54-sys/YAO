@@ -4,11 +4,13 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, Check, ExternalLink, Eye, Globe, Loader2, Move, X, ZoomIn } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { phraseMotif } from "@/lib/motif";
 
 type Etat = { slug: string | null; actif: boolean; photo: string | null; montants: boolean; message: string | null; fin: string | null; vues: number };
 
-export function CagnottePublique({ groupId, nom }: { groupId: string; nom: string }) {
+export function CagnottePublique({ groupId, nom, cause }: { groupId: string; nom: string; cause?: string }) {
   const [etat, setEtat] = useState<Etat | null | undefined>(undefined);
+  const [motif, setMotif] = useState(cause ?? "");
   const [message, setMessage] = useState("");
   const [montants, setMontants] = useState(true);
   const [fin, setFin] = useState("");
@@ -31,6 +33,8 @@ export function CagnottePublique({ groupId, nom }: { groupId: string; nom: strin
   const lien = etat.slug ? `${window.location.origin}/c/${etat.slug}` : "";
   const enregistrer = async (actif: boolean, nouvellePhoto: string | null = photo) => {
     setEnvoi(true); setMsg("");
+    // Le motif (ex : « Funérailles », « Solidarité du village ») s'affiche en tête de la page et du lien partagé
+    if (motif.trim() !== (cause ?? "").trim()) await supabase.from("groups").update({ don_cause: motif.trim() || null }).eq("id", groupId);
     const { data, error } = await supabase.rpc("cagnotte_publier", { g: groupId, actif, montants, message: message || null, photo: nouvellePhoto ?? "", fin: fin || null });
     setEnvoi(false);
     if (error) return setMsg("Erreur : " + error.message);
@@ -84,7 +88,7 @@ export function CagnottePublique({ groupId, nom }: { groupId: string; nom: strin
     if (!prete) { setEnvoi(false); return setMsg("Impossible de préparer cette photo. Essaie une autre image."); }
     envoyer(prete, "jpg", "image/jpeg", true);
   };
-  const texte = `*${nom}*\n${message ? message.split("\n").find((l) => l.trim().length > 20)?.slice(0, 140) ?? "" : "Chaque geste compte 🙏"}\n\nParticipez ici :\n${lien}`;
+  const texte = `*${nom}*\n${[motif.trim() ? `*Motif : ${motif.trim()}*` : "", phraseMotif(message, 140) ?? "Chaque geste compte 🙏"].filter(Boolean).join("\n")}\n\nParticipez ici :\n${lien}`;
 
   return (
     <div className="space-y-3">
@@ -105,7 +109,10 @@ export function CagnottePublique({ groupId, nom }: { groupId: string; nom: strin
           <input type="file" accept="image/*" className="hidden" onChange={(e) => choisirPhoto(e.target.files?.[0])} />
         </label>
       </div>
-      <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} maxLength={600} placeholder="Un mot pour ceux qui reçoivent le lien (ex : Soutenons la famille de Koffi pour les funérailles de sa maman…)" className="w-full resize-y rounded-[14px] border border-stone-300/80 bg-white px-3 py-3 text-base outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" />
+      <label className="block text-xs font-semibold text-stone-600">Motif de la cagnotte <span className="font-normal text-stone-500">(il s’affiche en gros sur le lien partagé)</span>
+        <input value={motif} onChange={(e) => setMotif(e.target.value)} maxLength={40} placeholder="Ex : Funérailles, Solidarité du village, Mariage, Santé…" className="mt-1 w-full rounded-[14px] border border-stone-300/80 bg-white px-3 py-3 text-base font-semibold text-stone-900 outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" />
+      </label>
+      <textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={3} maxLength={600} placeholder="Expliquez à quoi sert l’argent (ex : Cette cagnotte sert à soutenir la famille de Koffi pour les funérailles de sa maman…)" className="w-full resize-y rounded-[14px] border border-stone-300/80 bg-white px-3 py-3 text-base outline-none focus:border-emerald-500 focus:ring-4 focus:ring-emerald-100" />
       <div className="grid grid-cols-2 gap-2">
         <label className="flex items-center gap-2 rounded-xl bg-stone-50 p-3 text-sm"><input type="checkbox" checked={montants} onChange={(e) => setMontants(e.target.checked)} className="h-4 w-4 accent-emerald-700" /> Afficher les montants des participants</label>
         <label className="text-xs font-semibold text-stone-600">Date de fin (facultatif)<input type="date" value={fin} onChange={(e) => setFin(e.target.value)} className="mt-1 w-full rounded-xl border border-stone-300/80 bg-white px-3 py-2 text-sm" /></label>
