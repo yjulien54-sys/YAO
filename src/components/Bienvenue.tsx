@@ -3,7 +3,7 @@
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { useStore } from "@/lib/store";
-import { CLE_SESSION, aEmpreinte, empreinteDisponible, etatCode, oublierSurCeTelephone, verifierEmpreinte, type Etat } from "@/lib/verrou";
+import { CLE_SESSION, GRACE_MS, dansLaGrace, noterPresence, oublierPresence, aEmpreinte, empreinteDisponible, etatCode, oublierSurCeTelephone, verifierEmpreinte, type Etat } from "@/lib/verrou";
 import { vibrer } from "@/lib/haptique";
 import { ClavierCode } from "./ClavierCode";
 import { Check, Fingerprint, Gift, Grid3x3, Repeat, Shuffle, Wallet } from "lucide-react";
@@ -90,7 +90,7 @@ function BoutonRond({ etat, onAppui, libelle, aria, icone: Icone, principal }: {
 }
 
 const PAGES_PUBLIQUES = ["/", "/cgu", "/confidentialite", "/mentions-legales", "/telecharger", "/suppression-compte", "/admin"];
-const RE_VERROUILLER_MS = 3 * 60_000; // l'application se reverrouille après 3 min en arrière-plan
+const RE_VERROUILLER_MS = GRACE_MS; // l'application se reverrouille après 2 min en dehors de Cotiz
 
 /** Écran d'accueil sécurisé : code secret à 4 chiffres ou empreinte du téléphone */
 export function Bienvenue() {
@@ -129,17 +129,36 @@ export function Bienvenue() {
     if (!actif) return;
     try {
       if (sessionStorage.getItem(CLE_SESSION)) return;
+      // Revenu vite (lien ouvert, application rouverte…) : pas besoin du code
+      if (userId && dansLaGrace(userId)) {
+        sessionStorage.setItem(CLE_SESSION, "1");
+        noterPresence(userId);
+        return;
+      }
     } catch {}
     setSortie(false);
     setEtat("repos");
     setVisible(true);
-  }, [actif]);
+  }, [actif, userId]);
+
+  // Tant que Cotiz est ouvert et déverrouillé, on note la présence (pour le délai de grâce)
+  useEffect(() => {
+    if (!actif || visible || !userId) return;
+    noterPresence(userId);
+    const t = setInterval(() => { if (!document.hidden) noterPresence(userId); }, 15_000);
+    const quitter = () => noterPresence(userId);
+    window.addEventListener("pagehide", quitter);
+    return () => { clearInterval(t); window.removeEventListener("pagehide", quitter); };
+  }, [actif, visible, userId]);
 
   // Reverrouillage après un moment en arrière-plan (téléphone posé, autre application…)
   useEffect(() => {
     let cache = 0;
     const vu = () => {
-      if (document.hidden) cache = Date.now();
+      if (document.hidden) {
+        cache = Date.now();
+        if (userId && !visible) noterPresence(userId);
+      }
       else if (cache && Date.now() - cache > RE_VERROUILLER_MS && actif) {
         try { sessionStorage.removeItem(CLE_SESSION); } catch {}
         setClavier(false);
@@ -151,7 +170,7 @@ export function Bienvenue() {
     };
     document.addEventListener("visibilitychange", vu);
     return () => document.removeEventListener("visibilitychange", vu);
-  }, [actif]);
+  }, [actif, userId, visible]);
 
   // Les notifications arrivent l'une après l'autre, en boucle
   useEffect(() => {
@@ -201,7 +220,7 @@ export function Bienvenue() {
   async function oubli() {
     const uid = userId;
     await logout();
-    if (uid) oublierSurCeTelephone(uid);
+    if (uid) { oublierSurCeTelephone(uid); oublierPresence(uid); }
     try { sessionStorage.removeItem(CLE_SESSION); } catch {}
     setVisible(false);
     router.replace("/");

@@ -2,11 +2,23 @@
 
 import { useEffect, useState } from "react";
 import { DateNaissance } from "./DateNaissance";
-import { CalendarDays, Delete, Fingerprint, Headset, Lock, ShieldCheck, X } from "lucide-react";
+import { CalendarDays, Delete, Fingerprint, Headset, Lock, Shuffle, ShieldCheck, X } from "lucide-react";
 import { ESSAIS_MAX, aEmpreinte, activerEmpreinte, definirCode, empreinteDisponible, enregistrerNaissance, reinitialiserParNaissance, verifierCode, verifierEmpreinte } from "@/lib/verrou";
 import { vibrer } from "@/lib/haptique";
 import { SUPPORT_PHONE } from "@/lib/support";
 import { waLink } from "@/lib/whatsapp";
+
+/** Les 10 chiffres dans un ordre au hasard : le clavier change à chaque ouverture (personne ne peut deviner le code en regardant les doigts) */
+const melanger = () => {
+  const t = ["1", "2", "3", "4", "5", "6", "7", "8", "9", "0"];
+  for (let i = t.length - 1; i > 0; i--) {
+    const r = new Uint32Array(1);
+    crypto.getRandomValues(r);
+    const j = r[0] % (i + 1);
+    [t[i], t[j]] = [t[j], t[i]];
+  }
+  return t;
+};
 
 type Mode = "creation" | "confirmation" | "saisie" | "ancien" | "oubli" | "empreinte" | "naissance";
 
@@ -35,6 +47,7 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
   const [naissance, setNaissance] = useState("");
   const [indispo, setIndispo] = useState(false);
   const [bioActive, setBioActive] = useState(() => aEmpreinte(uid));
+  const [ordre, setOrdre] = useState<string[]>(melanger);
 
   useEffect(() => {
     empreinteDisponible().then(setBioDispo);
@@ -83,6 +96,7 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
     setTimeout(() => {
       setSecoue(false);
       setCode("");
+      setOrdre(melanger()); // nouvel ordre après une erreur
     }, 450);
   };
 
@@ -280,18 +294,18 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
         ) : (
           <>
             {/* Les 4 points */}
-            <div className={`mt-6 flex justify-center gap-4 ${secoue ? "secoue" : ""}`}>
+            <div className={`mt-6 flex justify-center gap-5 ${secoue ? "secoue" : ""}`}>
               {[0, 1, 2, 3].map((i) => (
-                <span key={i} className={`h-4 w-4 rounded-full transition-all duration-150 ${i < code.length ? (erreur && secoue ? "scale-110 bg-red-500" : "scale-110 bg-emerald-600") : "bg-stone-200"}`} />
+                <span key={i} className={`h-[18px] w-[18px] rounded-full transition-all duration-150 ${i < code.length ? (erreur && secoue ? "scale-110 bg-red-500" : "scale-125 bg-[#f77f00] shadow-[0_0_0_4px_rgba(247,127,0,0.18)]") : "bg-white ring-2 ring-[#0b3d2c]/25"}`} />
               ))}
             </div>
-            <p className={`mt-3 min-h-[1.25rem] text-center text-sm font-medium ${erreur || attente > 0 ? "text-red-600" : "text-stone-400"}`}>
+            <p className={`mt-3 min-h-[1.25rem] text-center text-sm font-semibold ${erreur || attente > 0 ? "text-red-600" : "text-stone-500"}`}>
               {attente > 0 ? `Réessaie dans ${attente} s` : erreur || (mode === "saisie" ? `${ESSAIS_MAX} essais maximum` : occupe ? "Enregistrement…" : " ")}
             </p>
 
             {/* Clavier */}
-            <div className="mx-auto mt-2 grid max-w-[300px] grid-cols-3 gap-x-6 gap-y-2.5">
-              {["1", "2", "3", "4", "5", "6", "7", "8", "9"].map((t) => (
+            <div className="mx-auto mt-2 grid max-w-[312px] grid-cols-3 gap-x-5 gap-y-3 rounded-[28px] bg-gradient-to-b from-[#effaf4] to-[#f6fbf8] p-4 ring-1 ring-[#009e60]/10">
+              {ordre.slice(0, 9).map((t) => (
                 <Touche key={t} onClick={() => touche(t)} disabled={attente > 0}>{t}</Touche>
               ))}
               {mode === "saisie" && !sansEmpreinte && bioActive && bioDispo ? (
@@ -299,10 +313,11 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
               ) : (
                 <span />
               )}
-              <Touche onClick={() => touche("0")} disabled={attente > 0}>0</Touche>
+              <Touche onClick={() => touche(ordre[9])} disabled={attente > 0}>{ordre[9]}</Touche>
               <Touche onClick={() => { vibrer("touche"); setCode((c) => c.slice(0, -1)); }} label="Effacer" discret><Delete size={24} strokeWidth={1.8} /></Touche>
             </div>
 
+            <p className="mt-2.5 flex items-center justify-center gap-1.5 text-xs font-medium text-stone-500"><Shuffle size={13} strokeWidth={2} className="text-[#009e60]" /> Les chiffres changent de place à chaque fois, pour ta sécurité</p>
             {(mode === "saisie" || mode === "ancien") && (
               <button type="button" onClick={() => { vibrer("touche"); setMode("oubli"); }} className="mx-auto mt-3 block text-sm font-semibold text-emerald-700">Code oublié ?</button>
             )}
@@ -321,7 +336,7 @@ function Touche({ children, onClick, disabled, label, discret }: { children: Rea
       disabled={disabled}
       onPointerDown={(e) => { e.preventDefault(); if (!disabled) onClick(); }}
       onClick={(e) => { if (e.detail === 0) onClick(); }}
-      className={`mx-auto grid h-[62px] w-[62px] select-none [touch-action:manipulation] place-items-center rounded-full text-[1.6rem] font-semibold transition active:scale-90 disabled:opacity-30 ${discret ? "text-stone-500 active:bg-stone-100" : "bg-stone-100 text-stone-900 active:bg-emerald-100"}`}
+      className={`mx-auto grid h-[66px] w-[66px] select-none [touch-action:manipulation] place-items-center rounded-full text-[1.85rem] font-extrabold tabular-nums leading-none antialiased transition duration-100 active:scale-90 disabled:opacity-30 ${discret ? "text-[#0b3d2c] active:bg-white" : "border-2 border-[#009e60]/15 bg-white text-[#0b3d2c] shadow-[0_3px_0_rgba(0,158,96,0.18),0_6px_14px_-8px_rgba(11,61,44,0.35)] active:translate-y-[2px] active:border-[#009e60] active:bg-[#009e60] active:text-white active:shadow-none"}`}
     >
       {children}
     </button>

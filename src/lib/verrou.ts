@@ -18,6 +18,29 @@ const cleEssais = (uid: string) => `cotiz:verrou-essais:${uid}`;
 export const CLE_SESSION = "cotiz:deverrouille";
 export const ESSAIS_MAX = 5;
 
+/**
+ * Délai de grâce : si la personne revient dans Cotiz moins de 2 minutes après l'avoir quitté
+ * (autre application, lien copié, application fermée puis rouverte…), on ne redemande pas le code.
+ * Au-delà, le code est demandé. L'heure de la dernière présence est gardée sur ce téléphone seulement.
+ */
+export const GRACE_MS = 2 * 60_000;
+const clePresence = (uid: string) => `cotiz:presence:${uid}`;
+export function noterPresence(uid: string) {
+  try { localStorage.setItem(clePresence(uid), String(Date.now())); } catch {}
+}
+export function oublierPresence(uid: string) {
+  try { localStorage.removeItem(clePresence(uid)); } catch {}
+}
+/** Vrai si Cotiz a été déverrouillé et quitté il y a moins de GRACE_MS */
+export function dansLaGrace(uid: string): boolean {
+  try {
+    const t = Number(localStorage.getItem(clePresence(uid)) ?? 0);
+    return t > 0 && Date.now() - t >= 0 && Date.now() - t < GRACE_MS;
+  } catch {
+    return false;
+  }
+}
+
 const lire = <T,>(k: string): T | null => {
   try {
     const v = localStorage.getItem(k);

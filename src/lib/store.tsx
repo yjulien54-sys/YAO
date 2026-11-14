@@ -283,6 +283,8 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(async () => {
     await supabase.auth.signOut();
     ecrireCache(null);
+    // Déconnexion : le délai de grâce du code ne compte plus
+    try { Object.keys(localStorage).filter((k) => k.startsWith("cotiz:presence:")).forEach((k) => localStorage.removeItem(k)); } catch {}
     setUser(null);
     setUserId(null);
     setGroups([]);
