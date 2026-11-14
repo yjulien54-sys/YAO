@@ -72,6 +72,9 @@ function Payer() {
     } catch {}
   }, []);
   const [erreur, setErreur] = useState("");
+  // Secours : si le paiement en ligne échoue, le membre peut payer directement le trésorier (qui confirme ensuite)
+  const [secours, setSecours] = useState(false);
+  const modeManuel = MODE_PAIEMENT === "manuel" || secours;
 
   if (!ok || !loaded) return <Loading />;
   // Lien reçu sur WhatsApp par quelqu'un qui n'est pas encore membre : on l'invite à rejoindre, puis il paie
@@ -91,13 +94,13 @@ function Payer() {
   const numeroCaisse = g.paymentPhone || tresorier?.phone || "";
   const jeSuisTresorier = me?.role === "tresorier";
   // Caisse Cotiz : en Wave, l'argent va sur le compte marchand de Cotiz, qui confirme
-  const viaCotiz = MODE_PAIEMENT === "manuel" && !!caisse?.actif && !!caisse.lien && method === "wave" && !jeSuisTresorier;
+  const viaCotiz = modeManuel && !!caisse?.actif && !!caisse.lien && method === "wave" && !jeSuisTresorier;
   const choix = aPayer.slice(0, Math.min(aPayer.length, 6));
   const tours = choix.slice(0, nb);
   const lignes = tours.map((r) => ({ r, ...roundAmount(g, r) }));
   const total = isCollecte ? Number(montant) || 0 : lignes.reduce((s, l) => s + l.total, 0);
   // Frais de service Cotiz : seulement pour un paiement en ligne (le paiement manuel au trésorier reste gratuit)
-  const enLigne = MODE_PAIEMENT !== "manuel" && MODE_PAIEMENT !== "simulation";
+  const enLigne = !modeManuel && MODE_PAIEMENT !== "simulation";
   // Tous les frais (service Cotiz + opérateur) s'ajoutent au montant : la caisse reçoit la cotisation entière.
   // Ils ne sont pas détaillés ici, seulement sur le reçu.
   const fraisCotiz = enLigne ? service.frais(total) : 0;
@@ -109,7 +112,7 @@ function Payer() {
 
   async function payer() {
     setErreur("");
-    if (MODE_PAIEMENT === "manuel") {
+    if (modeManuel) {
       try {
         if (jeSuisTresorier) {
           // le trésorier enregistre un paiement qu'il a lui-même reçu
@@ -266,7 +269,7 @@ function Payer() {
         {!rienAPayer && (
           <>
             <div>
-              <p className="mb-2 px-1 text-sm font-semibold text-stone-700">{MODE_PAIEMENT === "manuel" ? "Avec quelle application paies-tu ?" : "Moyen de paiement"}</p>
+              <p className="mb-2 px-1 text-sm font-semibold text-stone-700">{modeManuel ? "Avec quelle application paies-tu ?" : "Moyen de paiement"}</p>
               <div className="grid grid-cols-2 gap-2">
                 {operateurs.map((o) => (
                   <button key={o.id} type="button" onClick={() => setMethod(o.id)} className={`flex items-center gap-2.5 rounded-2xl border-2 bg-white p-3 text-left text-sm font-bold transition ${method === o.id ? "border-emerald-500" : "border-stone-200"}`}>
@@ -276,7 +279,7 @@ function Payer() {
                 ))}
               </div>
             </div>
-            {MODE_PAIEMENT === "manuel" && !jeSuisTresorier && (
+            {modeManuel && !jeSuisTresorier && (
               <Card className="space-y-3 border-emerald-300 bg-emerald-50/50">
                 <p className="text-sm font-bold">1. Envoie l’argent à {viaCotiz ? caisse?.nom : tresorier ? prenom(tresorier.name) : "la caisse"}</p>
                 <div className="rounded-2xl bg-white p-3 ring-1 ring-stone-200">
@@ -384,7 +387,7 @@ function Payer() {
                 </Field>
               </Card>
             )}
-            {MODE_PAIEMENT === "manuel" ? null : fournisseurPour(method) === "wave" ? (
+            {modeManuel ? null : fournisseurPour(method) === "wave" ? (
               <p className="px-1 text-sm text-stone-600">Tu vas être redirigé vers <b>Wave</b> pour valider le paiement, puis tu reviendras automatiquement sur Cotiz.</p>
             ) : (
               <Field label={`Numéro ${op.nom}`}>
@@ -397,8 +400,15 @@ function Payer() {
               </div>
             )}
             {erreur && <p className="text-sm font-medium text-red-600">{erreur}</p>}
-            <Button className="w-full text-base" disabled={total <= 0 || (MODE_PAIEMENT !== "manuel" && fournisseurPour(method) !== "wave" && phone.replace(/\D/g, "").length < 10)} onClick={payer}>
-              {MODE_PAIEMENT === "manuel"
+            {erreur && !modeManuel && !jeSuisTresorier && (
+              <div className="space-y-2 rounded-2xl bg-amber-50 p-3 ring-1 ring-amber-200">
+                <p className="text-sm font-bold text-amber-900">Le paiement en ligne ne marche pas pour le moment.</p>
+                <p className="text-xs text-amber-900">Tu peux payer directement ton trésorier avec ton application Wave, Orange Money, MTN ou Moov, puis déclarer ton paiement : le trésorier le confirmera.</p>
+                <button type="button" onClick={() => { setSecours(true); setErreur(""); window.scrollTo({ top: 0, behavior: "smooth" }); }} className="w-full rounded-xl bg-amber-500 py-2.5 text-sm font-extrabold text-white">Payer directement le trésorier</button>
+              </div>
+            )}
+            <Button className="w-full text-base" disabled={total <= 0 || (!modeManuel && fournisseurPour(method) !== "wave" && phone.replace(/\D/g, "").length < 10)} onClick={payer}>
+              {modeManuel
                 ? jeSuisTresorier
                   ? `Enregistrer le paiement de ${fcfa(total)} (reçu par ${op.nom})`
                   : `J’ai envoyé ${fcfa(total)} par ${op.nom}`
@@ -406,14 +416,14 @@ function Payer() {
             </Button>
             <p className="text-center text-xs leading-relaxed text-stone-500">
               <Lock size={12} strokeWidth={2} className="mr-1 inline -mt-0.5" />
-              {MODE_PAIEMENT === "manuel"
+              {modeManuel
                 ? jeSuisTresorier && !pourAutrui
                   ? "Ton paiement est enregistré tout de suite. Tout le groupe verra le reçu."
                   : jeSuisTresorier
                     ? "Le paiement est enregistré tout de suite comme reçu. Tout le groupe verra le reçu."
                     : "Ton paiement sera validé par le trésorier après vérification. Tout le groupe verra le reçu."
                 : `Ta cotisation de ${fcfa(total)} va entièrement au groupe. Le détail figure sur ton reçu.`}
-              {MODE_PAIEMENT !== "manuel" && !pourAutrui ? ` Reçu visible par tout le groupe.` : ""}
+              {!modeManuel && !pourAutrui ? ` Reçu visible par tout le groupe.` : ""}
             </p>
             <LienAide sujet={`Bonjour, j’ai besoin d’aide pour payer dans le groupe « ${g.name} ».`} />
           </>
