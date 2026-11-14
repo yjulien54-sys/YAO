@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { LogoOperateur } from "@/components/LogosOperateurs";
 import { fcfa } from "@/lib/format";
 import { METHOD_LABEL } from "@/lib/payments";
 import type { PayoutMethod } from "@/lib/types";
@@ -51,7 +52,8 @@ export function PayoutModal({
           <p className="mb-1.5 text-sm font-semibold text-stone-700">Envoyé par</p>
           <div className="flex flex-wrap gap-2">
             {METHODES.map((m) => (
-              <button key={m} type="button" onClick={() => setMethode(m)} className={`rounded-full px-3 py-1.5 text-sm font-semibold ring-1 ${methode === m ? "bg-emerald-600 text-white ring-emerald-600" : "bg-white text-stone-700 ring-stone-300"}`}>
+              <button key={m} type="button" onClick={() => setMethode(m)} className={`inline-flex items-center gap-1.5 rounded-full py-1.5 pl-1.5 pr-3 text-sm font-semibold ring-1 ${methode === m ? "bg-emerald-600 text-white ring-emerald-600" : "bg-white text-stone-700 ring-stone-300"}`}>
+                {m === "wave" || m === "orange" || m === "mtn" || m === "moov" ? <LogoOperateur id={m} taille={22} /> : <span className="grid h-[22px] w-[22px] place-items-center rounded-full bg-stone-100 text-xs">{m === "especes" ? "💵" : "🏦"}</span>}
                 {METHOD_LABEL[m]}
               </button>
             ))}

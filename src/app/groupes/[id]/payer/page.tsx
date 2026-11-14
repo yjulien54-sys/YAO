@@ -359,7 +359,7 @@ function Payer() {
                       }}
                       className={btnClass(method === "wave" ? "primary" : "secondary", `w-full cursor-pointer ${method === "wave" ? "!from-[#3dd0ff] !to-[#1aa9e6] !shadow-sky-900/20" : ""}`)}
                     >
-                      {lienBusiness ? `Payer ${fcfa(total)} avec Wave` : app.label} <ArrowUpRight size={17} strokeWidth={2} />
+                      <LogoOperateur id={op.id} taille={28} /> {lienBusiness ? `Payer ${fcfa(total)} avec Wave` : app.label} <ArrowUpRight size={17} strokeWidth={2} />
                     </a>
                     {method === "wave" && !ios && !enApp && (
                       <a
