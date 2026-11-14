@@ -9,6 +9,7 @@ import Link from "next/link";
 import { createClient } from "@supabase/supabase-js";
 import { CalendarClock, HandCoins, Lock, ReceiptText, ShieldCheck, Smartphone, Users } from "lucide-react";
 import { Partage } from "./Partage";
+import { TexteAnime } from "@/components/Anime";
 
 export const dynamic = "force-dynamic";
 
@@ -35,11 +36,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const pct = c.objectif ? Math.min(100, Math.round((c.collecte / c.objectif) * 100)) : null;
   const titre = `${c.nom} · Cagnotte Cotiz`;
   const desc = `${fcfa(c.collecte)} collectés${c.objectif ? ` sur ${fcfa(c.objectif)} (${pct} %)` : ""}, ${c.donateurs_nb} participant${c.donateurs_nb > 1 ? "s" : ""}. ${c.message ?? c.description ?? "Participez par Wave, Orange Money, MTN ou Moov."}`.slice(0, 200);
-  const image = c.photo ?? `${site}/icons/icon-512.png`;
+  // L'image d'aperçu (photo + logo + montant) est fabriquée par opengraph-image.tsx
   return {
+    metadataBase: new URL(site),
     title: titre, description: desc,
-    openGraph: { title: titre, description: desc, images: [{ url: image, width: 1200, height: 630 }], type: "website", url: `${site}/c/${slug}`, siteName: "Cotiz" },
-    twitter: { card: "summary_large_image", title: titre, description: desc, images: [image] },
+    openGraph: { title: titre, description: desc, type: "website", url: `${site}/c/${slug}`, siteName: "Cotiz" },
+    twitter: { card: "summary_large_image", title: titre, description: desc },
   };
 }
 
@@ -83,32 +85,32 @@ export default async function PageCagnotte({ params }: { params: Promise<{ slug:
   const participer = `/groupes/${c.id}/payer${c.cle ? `?i=${c.cle}` : ""}`;
   const lien = `${site}/c/${slug}`;
   const histoire = c.message ?? c.description;
-  const texteWhatsApp = `${c.nom}\n\n${histoire ?? "Je participe à cette cagnotte. Rejoignez-nous."}\n\n${fcfa(c.collecte)} déjà collectés${c.objectif ? ` sur ${fcfa(c.objectif)}` : ""}.\nParticiper (Wave, Orange Money, MTN, Moov) :\n${lien}`;
+  const texteWhatsApp = `*${c.nom}*\n${fcfa(c.collecte)} déjà collectés${c.objectif ? ` sur ${fcfa(c.objectif)}` : ""}. Chaque geste compte 🙏\n\nParticipez ici :\n${lien}`;
   const dateCreation = new Date(c.cree_le).toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
   const initiale = (n: string) => n.trim().slice(0, 1).toUpperCase();
 
   const Carte = ({ className = "" }: { className?: string }) => (
     <div className={`rounded-[22px] border border-black/[0.06] bg-white p-6 shadow-[0_1px_2px_rgba(0,0,0,0.04),0_12px_32px_-12px_rgba(11,61,44,0.18)] ${className}`}>
-      <p className="text-[2rem] font-extrabold leading-none tracking-tight text-[#0b3d2c] tabular-nums">{fcfa(c.collecte)}</p>
-      <p className="mt-1.5 text-[0.95rem] text-stone-500">{c.objectif ? <>collectés sur un objectif de <span className="font-semibold text-stone-800">{fcfa(c.objectif)}</span></> : "collectés à ce jour"}</p>
+      <p className="text-[2.35rem] font-extrabold leading-none tracking-tight text-[#0b3d2c] tabular-nums"><TexteAnime texte={fcfa(c.collecte)} /></p>
+      <p className="mt-2 text-[1.05rem] text-stone-600">{c.objectif ? <>collectés sur un objectif de <span className="font-semibold text-stone-800">{fcfa(c.objectif)}</span></> : "collectés à ce jour"}</p>
       {pct != null && (
         <div className="mt-5">
           <div className="h-2 overflow-hidden rounded-full bg-[#eef1ee]">
-            <div className="etire h-full rounded-full bg-[#009e60]" style={{ width: `${Math.max(pct, 2)}%` }} />
+            <div className="jauge-cagnotte h-full rounded-full bg-gradient-to-r from-[#009e60] to-[#2fb47a]" style={{ width: `${Math.max(pct, 2)}%` }} />
           </div>
-          <p className="mt-2 text-sm font-semibold text-[#009e60]">{pct} % de l’objectif</p>
+          <p className="mt-2 text-base font-semibold text-[#009e60]">{pct} % de l’objectif</p>
         </div>
       )}
       <dl className="mt-5 grid grid-cols-2 divide-x divide-black/[0.06] rounded-2xl bg-[#f6f7f5] py-3 text-center">
-        <div><dt className="text-xs text-stone-500">Participants</dt><dd className="text-lg font-bold tabular-nums text-stone-900">{c.donateurs_nb}</dd></div>
-        <div><dt className="text-xs text-stone-500">{terminee ? "Statut" : joursRestants != null ? "Jours restants" : "Ouverte depuis"}</dt><dd className="text-lg font-bold tabular-nums text-stone-900">{terminee ? "Terminée" : joursRestants != null ? joursRestants : new Date(c.cree_le).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</dd></div>
+        <div><dt className="text-sm text-stone-500">Participants</dt><dd className="text-xl font-bold tabular-nums text-stone-900">{c.donateurs_nb}</dd></div>
+        <div><dt className="text-sm text-stone-500">{terminee ? "Statut" : joursRestants != null ? "Jours restants" : "Ouverte depuis"}</dt><dd className="text-xl font-bold tabular-nums text-stone-900">{terminee ? "Terminée" : joursRestants != null ? joursRestants : new Date(c.cree_le).toLocaleDateString("fr-FR", { day: "numeric", month: "short" })}</dd></div>
       </dl>
-      {c.montant_suggere ? <p className="mt-4 text-center text-sm text-stone-600">Participation suggérée : <span className="font-semibold text-stone-900">{fcfa(c.montant_suggere)}</span></p> : null}
-      <Link href={participer} aria-disabled={terminee} className={`mt-5 block rounded-full py-4 text-center text-base font-bold text-white transition ${terminee ? "pointer-events-none bg-stone-300" : "bg-[#f77f00] hover:bg-[#e07200] shadow-[0_8px_20px_-8px_rgba(247,127,0,0.6)]"}`}>
+      {c.montant_suggere ? <p className="mt-4 text-center text-base text-stone-600">Participation suggérée : <span className="font-semibold text-stone-900">{fcfa(c.montant_suggere)}</span></p> : null}
+      <Link href={participer} aria-disabled={terminee} className={`mt-5 block rounded-full py-4 text-center text-lg font-bold text-white transition ${terminee ? "pointer-events-none bg-stone-300" : "bouton-vivant bg-[#f77f00] hover:bg-[#e07200] shadow-[0_8px_20px_-8px_rgba(247,127,0,0.6)]"}`}>
         {terminee ? "Cagnotte terminée" : "Participer"}
       </Link>
       <div className="mt-3"><Partage texte={texteWhatsApp} lien={lien} large /></div>
-      <ul className="mt-6 space-y-3 border-t border-black/[0.06] pt-5 text-sm text-stone-600">
+      <ul className="mt-6 space-y-3 border-t border-black/[0.06] pt-5 text-[0.95rem] text-stone-600">
         <li className="flex gap-3"><Smartphone size={18} className="mt-0.5 shrink-0 text-[#009e60]" /> Wave, Orange Money, MTN MoMo ou Moov Money</li>
         <li className="flex gap-3"><HandCoins size={18} className="mt-0.5 shrink-0 text-[#009e60]" /> L’argent est versé à la cagnotte gérée par {c.tresorier ?? "l’organisateur"}</li>
         <li className="flex gap-3"><ReceiptText size={18} className="mt-0.5 shrink-0 text-[#009e60]" /> Chaque participation est enregistrée, avec un reçu</li>
@@ -123,9 +125,9 @@ export default async function PageCagnotte({ params }: { params: Promise<{ slug:
       <div className="mx-auto max-w-6xl px-4 pt-6 sm:px-6 lg:pt-10">
         {/* Titre */}
         <div className="page-entre max-w-3xl">
-          {c.cause && <p className="text-xs font-bold uppercase tracking-[0.16em] text-[#f77f00]">{c.cause}</p>}
-          <h1 className="mt-2 text-[2rem] font-extrabold leading-[1.1] tracking-tight text-[#0b2a20] sm:text-[2.6rem]">{c.nom}</h1>
-          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-sm text-stone-600">
+          {c.cause && <p className="text-sm font-bold uppercase tracking-[0.16em] text-[#f77f00]">{c.cause}</p>}
+          <h1 className="mt-2 text-[2.3rem] font-extrabold leading-[1.08] tracking-tight text-[#0b2a20] sm:text-[3rem]">{c.nom}</h1>
+          <div className="mt-4 flex flex-wrap items-center gap-x-5 gap-y-2 text-base text-stone-600">
             {c.tresorier && (
               <span className="flex items-center gap-2">
                 <span className="grid h-8 w-8 place-items-center rounded-full bg-[#0b3d2c] text-xs font-bold text-white">{initiale(c.tresorier)}</span>
@@ -143,7 +145,7 @@ export default async function PageCagnotte({ params }: { params: Promise<{ slug:
             <figure className="page-entre overflow-hidden rounded-[22px] bg-[#eef1ee]" style={{ animationDelay: "60ms" }}>
               {c.photo
                 // eslint-disable-next-line @next/next/no-img-element
-                ? <img src={c.photo} alt={c.nom} className="aspect-[16/10] w-full object-cover" />
+                ? <img src={c.photo} alt={c.nom} className="photo-cinema aspect-[16/10] w-full object-cover" />
                 : (
                   <div className="relative grid aspect-[16/10] w-full place-items-center bg-[#0b3d2c]">
                     <div className="motif absolute inset-0 opacity-25" />
@@ -154,18 +156,18 @@ export default async function PageCagnotte({ params }: { params: Promise<{ slug:
             </figure>
 
             {/* Carte de participation : sur téléphone, juste sous la photo */}
-            <div className="mt-6 lg:hidden"><Carte /></div>
+            <div className="page-entre mt-6 lg:hidden" style={{ animationDelay: "160ms" }}><Carte /></div>
 
             {histoire && (
-              <section className="mt-10">
-                <h2 className="text-lg font-bold tracking-tight text-[#0b2a20]">À propos de cette cagnotte</h2>
-                <p className="mt-3 whitespace-pre-line text-[1.05rem] leading-[1.75] text-stone-700">{histoire}</p>
+              <section className="page-entre mt-10" style={{ animationDelay: "240ms" }}>
+                <h2 className="text-xl font-bold tracking-tight text-[#0b2a20]">À propos de cette cagnotte</h2>
+                <p className="mt-3 whitespace-pre-line text-[1.18rem] leading-[1.75] text-stone-800">{histoire}</p>
               </section>
             )}
 
-            <section className="mt-10">
+            <section className="page-entre mt-10" style={{ animationDelay: "320ms" }}>
               <div className="flex items-baseline justify-between">
-                <h2 className="text-lg font-bold tracking-tight text-[#0b2a20]">Participants</h2>
+                <h2 className="text-xl font-bold tracking-tight text-[#0b2a20]">Participants</h2>
                 <span className="flex items-center gap-1.5 text-sm text-stone-500"><Users size={15} /> {c.donateurs_nb}</span>
               </div>
               {c.donateurs.length === 0 ? (
@@ -173,13 +175,13 @@ export default async function PageCagnotte({ params }: { params: Promise<{ slug:
               ) : (
                 <ul className="mt-3 divide-y divide-black/[0.06] rounded-[22px] border border-black/[0.06] bg-white">
                   {c.donateurs.map((d, k) => (
-                    <li key={k} className="flex items-center gap-4 px-5 py-4">
+                    <li key={k} className="apparait flex items-center gap-4 px-5 py-4" style={{ animationDelay: `${400 + k * 70}ms` }}>
                       <span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#e8f3ee] text-sm font-bold text-[#0b3d2c]">{initiale(d.nom)}</span>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate font-semibold text-stone-900">{d.nom}</p>
-                        <p className="text-xs text-stone-500">{new Date(d.le).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</p>
+                        <p className="truncate text-[1.05rem] font-semibold text-stone-900">{d.nom}</p>
+                        <p className="text-sm text-stone-500">{new Date(d.le).toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</p>
                       </div>
-                      {d.montant != null && <p className="font-semibold tabular-nums text-stone-900">{fcfa(d.montant)}</p>}
+                      {d.montant != null && <p className="text-[1.05rem] font-semibold tabular-nums text-stone-900">{fcfa(d.montant)}</p>}
                     </li>
                   ))}
                 </ul>
@@ -187,7 +189,7 @@ export default async function PageCagnotte({ params }: { params: Promise<{ slug:
             </section>
 
             <section className="mt-10 rounded-[22px] bg-[#f1f4f2] p-6">
-              <h2 className="text-lg font-bold tracking-tight text-[#0b2a20]">Comment participer</h2>
+              <h2 className="text-xl font-bold tracking-tight text-[#0b2a20]">Comment participer</h2>
               <ol className="mt-4 grid gap-4 sm:grid-cols-3">
                 {[
                   ["Touchez « Participer »", "Indiquez votre nom et votre numéro : votre espace Cotiz est créé en une minute."],
@@ -197,7 +199,7 @@ export default async function PageCagnotte({ params }: { params: Promise<{ slug:
                   <li key={t}>
                     <span className="grid h-8 w-8 place-items-center rounded-full bg-[#0b3d2c] text-sm font-bold text-white">{k + 1}</span>
                     <p className="mt-2 font-semibold text-stone-900">{t}</p>
-                    <p className="mt-0.5 text-sm leading-relaxed text-stone-600">{d}</p>
+                    <p className="mt-0.5 text-[0.95rem] leading-relaxed text-stone-600">{d}</p>
                   </li>
                 ))}
               </ol>
@@ -206,7 +208,7 @@ export default async function PageCagnotte({ params }: { params: Promise<{ slug:
 
           {/* Colonne de droite (ordinateur) : carte fixe */}
           <aside className="hidden lg:block">
-            <div className="sticky top-24"><Carte /></div>
+            <div className="page-entre sticky top-24" style={{ animationDelay: "140ms" }}><Carte /></div>
           </aside>
         </div>
       </div>
@@ -227,14 +229,14 @@ export default async function PageCagnotte({ params }: { params: Promise<{ slug:
       </footer>
 
       {/* Barre d'action (téléphone) */}
-      <div className="fixed inset-x-0 bottom-0 z-30 border-t border-black/[0.06] bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
+      <div className="barre-monte fixed inset-x-0 bottom-0 z-30 border-t border-black/[0.06] bg-white/95 px-4 py-3 backdrop-blur lg:hidden">
         <div className="mx-auto flex max-w-xl items-center gap-3">
           <div className="min-w-0 flex-1">
-            <p className="truncate text-base font-extrabold tabular-nums text-[#0b3d2c]">{fcfa(c.collecte)}</p>
-            <p className="text-xs text-stone-500">{pct != null ? `${pct} % de l’objectif` : `${c.donateurs_nb} participant${c.donateurs_nb > 1 ? "s" : ""}`}</p>
+            <p className="truncate text-lg font-extrabold tabular-nums text-[#0b3d2c]"><TexteAnime texte={fcfa(c.collecte)} /></p>
+            <p className="text-sm text-stone-500">{pct != null ? `${pct} % de l’objectif` : `${c.donateurs_nb} participant${c.donateurs_nb > 1 ? "s" : ""}`}</p>
           </div>
           <Partage texte={texteWhatsApp} lien={lien} />
-          <Link href={participer} aria-disabled={terminee} className={`rounded-full px-6 py-3.5 text-[0.95rem] font-bold text-white ${terminee ? "pointer-events-none bg-stone-300" : "bg-[#f77f00]"}`}>{terminee ? "Terminée" : "Participer"}</Link>
+          <Link href={participer} aria-disabled={terminee} className={`rounded-full px-6 py-3.5 text-base font-bold text-white ${terminee ? "pointer-events-none bg-stone-300" : "bg-[#f77f00]"}`}>{terminee ? "Terminée" : "Participer"}</Link>
         </div>
       </div>
     </main>

@@ -84,7 +84,7 @@ export function CagnottePublique({ groupId, nom }: { groupId: string; nom: strin
     if (!prete) { setEnvoi(false); return setMsg("Impossible de préparer cette photo. Essaie une autre image."); }
     envoyer(prete, "jpg", "image/jpeg", true);
   };
-  const texte = `🙏 ${nom}\n\n${message || "Je vous invite à participer à cette cagnotte."}\n\nParticipe ici (Wave, Orange Money, MTN, Moov) 👇\n${lien}`;
+  const texte = `*${nom}*\n${message ? message.split("\n").find((l) => l.trim().length > 20)?.slice(0, 140) ?? "" : "Chaque geste compte 🙏"}\n\nParticipez ici :\n${lien}`;
 
   return (
     <div className="space-y-3">

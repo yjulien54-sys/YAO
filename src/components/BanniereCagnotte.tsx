@@ -15,7 +15,7 @@ export function BanniereCagnotte({ groupId, nom, gestionnaire }: { groupId: stri
   if (!gestionnaire) return null;
   const lien = etat?.actif && etat.slug ? `${window.location.origin}/c/${etat.slug}` : null;
   if (lien) {
-    const texte = `🙏 ${nom}\n\nParticipe ici (Wave, Orange Money, MTN, Moov) 👇\n${lien}`;
+    const texte = `*${nom}*\nChaque geste compte 🙏\n\nParticipez ici :\n${lien}`;
     return (
       <div className="carte flex items-center gap-3 bg-gradient-to-r from-emerald-50 to-white p-3.5 ring-1 ring-emerald-200">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-600 text-white"><Globe size={20} /></span>
