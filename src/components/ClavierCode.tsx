@@ -48,6 +48,7 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
   const [indispo, setIndispo] = useState(false);
   const [bioActive, setBioActive] = useState(() => aEmpreinte(uid));
   const [ordre, setOrdre] = useState<string[]>(melanger);
+  const [veutEmpreinte, setVeutEmpreinte] = useState(false);
 
   useEffect(() => {
     empreinteDisponible().then(setBioDispo);
@@ -139,7 +140,7 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
       if (r.ok) {
         vibrer("ok");
         // Appui sur « Empreinte » alors qu'elle n'est pas activée : on la propose après le code
-        if (activerApres && !sansEmpreinte && bioDispo && !bioActive) return setMode("empreinte");
+        if ((activerApres || veutEmpreinte) && !sansEmpreinte && bioDispo && !bioActive) return setMode("empreinte");
         return onOk();
       }
       if (r.attente) {
@@ -219,7 +220,7 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
     ancien: ["Ton code actuel", "Tape d’abord ton code secret actuel."],
     creation: [changement || reinit ? "Nouveau code" : "Crée ton code secret", info || "4 chiffres pour ouvrir Cotiz. Ce n’est pas le code de ton téléphone."],
     confirmation: ["Confirme ton code", "Tape le même code une deuxième fois."],
-    saisie: ["Entre ton code Cotiz", activerApres && !bioActive ? "Tape ton code une fois pour activer l’empreinte." : "Ton code secret à 4 chiffres pour accéder à tes groupes."],
+    saisie: ["Entre ton code Cotiz", (activerApres || veutEmpreinte) && !bioActive ? "Tape ton code une fois pour activer l’empreinte." : "Ton code secret à 4 chiffres pour accéder à tes groupes."],
     oubli: ["Code oublié ?", "Confirme ton identité pour créer un nouveau code."],
     naissance: ["Ta date de naissance", "Elle te permettra de récupérer ton code si tu l’oublies. Elle ne pourra plus être changée."],
     empreinte: ["Activer l’empreinte ?", "Entre aussi avec ton doigt. Ton code Cotiz reste valable."],
@@ -316,16 +317,10 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
               {ordre.slice(0, 9).map((t) => (
                 <Touche key={t} onClick={() => touche(t)} disabled={attente > 0}>{t}</Touche>
               ))}
-              {mode === "saisie" && !sansEmpreinte && bioActive && bioDispo ? (
-                <Touche onClick={parEmpreinte} label="Entrer avec l’empreinte" discret><Fingerprint size={28} strokeWidth={1.8} className="text-emerald-700" /></Touche>
+              {mode === "saisie" && !sansEmpreinte && bioDispo ? (
+                <Touche onClick={bioActive ? parEmpreinte : () => { vibrer("touche"); setVeutEmpreinte(true); setErreur(""); }} label="Entrer avec l’empreinte" discret><Fingerprint size={28} strokeWidth={1.8} className="text-emerald-700" /></Touche>
               ) : (
-                // Logo Cotiz sur le clavier
-                <span className="mx-auto grid h-[66px] w-[66px] place-items-center" aria-hidden="true">
-                  <span className="relative">
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/icons/logo.svg" alt="" width={46} height={46} className="h-[46px] w-[46px] rounded-[14px] shadow-[0_4px_12px_-4px_rgba(0,158,96,0.5)]" />
-                  </span>
-                </span>
+                <span />
               )}
               <Touche onClick={() => touche(ordre[9])} disabled={attente > 0}>{ordre[9]}</Touche>
               <Touche onClick={() => { vibrer("touche"); setCode((c) => c.slice(0, -1)); }} label="Effacer" discret><Delete size={24} strokeWidth={1.8} /></Touche>
