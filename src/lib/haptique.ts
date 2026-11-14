@@ -5,7 +5,7 @@
  *   quand on bascule un interrupteur « switch » : on en bascule un, invisible, à chaque touche.
  */
 type Type = "touche" | "ok" | "erreur";
-const MOTIFS: Record<Type, number | number[]> = { touche: 25, ok: [20, 40, 30], erreur: [60, 50, 60, 50, 60] };
+const MOTIFS: Record<Type, number | number[]> = { touche: 45, ok: [20, 40, 30], erreur: [60, 50, 60, 50, 60] };
 
 let label: HTMLLabelElement | null = null;
 function interrupteurIOS() {

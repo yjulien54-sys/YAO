@@ -233,8 +233,13 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
         {!integre && <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-stone-200" />}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700">
-              {mode === "oubli" ? <ShieldCheck size={22} strokeWidth={1.9} /> : mode === "naissance" ? <CalendarDays size={22} strokeWidth={1.9} /> : mode === "empreinte" ? <Fingerprint size={22} strokeWidth={1.9} /> : <Lock size={21} strokeWidth={2} />}
+            {/* Logo Cotiz avec une pastille orange (cadenas, empreinte…) */}
+            <span className="relative shrink-0">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/icons/logo.svg" alt="Cotiz" width={48} height={48} className="h-12 w-12 rounded-[14px] shadow-[0_6px_16px_-6px_rgba(0,158,96,0.55)]" />
+              <span className="absolute -bottom-1.5 -right-1.5 grid h-6 w-6 place-items-center rounded-full bg-[#f77f00] text-white ring-[3px] ring-white">
+                {mode === "oubli" ? <ShieldCheck size={13} strokeWidth={2.4} /> : mode === "naissance" ? <CalendarDays size={13} strokeWidth={2.4} /> : mode === "empreinte" ? <Fingerprint size={13} strokeWidth={2.4} /> : <Lock size={12} strokeWidth={2.6} />}
+              </span>
             </span>
             <div>
               <p className="text-lg font-extrabold leading-tight">{titre}</p>
@@ -304,14 +309,23 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
             </p>
 
             {/* Clavier */}
-            <div className="mx-auto mt-2 grid max-w-[312px] grid-cols-3 gap-x-5 gap-y-3 rounded-[28px] bg-gradient-to-b from-[#effaf4] to-[#f6fbf8] p-4 ring-1 ring-[#009e60]/10">
+            <div className="relative mx-auto mt-2 grid max-w-[312px] grid-cols-3 gap-x-5 gap-y-3 overflow-hidden rounded-[28px] bg-gradient-to-b from-[#effaf4] to-[#f6fbf8] p-4 pt-5 ring-1 ring-[#009e60]/10">
+              {/* Touche d'orange Cotiz : fine bande en haut et halo discret */}
+              <span className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#009e60] via-[#f5c400] to-[#f77f00]" />
+              <span className="pointer-events-none absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-[#f77f00]/10 blur-2xl" />
               {ordre.slice(0, 9).map((t) => (
                 <Touche key={t} onClick={() => touche(t)} disabled={attente > 0}>{t}</Touche>
               ))}
               {mode === "saisie" && !sansEmpreinte && bioActive && bioDispo ? (
                 <Touche onClick={parEmpreinte} label="Entrer avec l’empreinte" discret><Fingerprint size={28} strokeWidth={1.8} className="text-emerald-700" /></Touche>
               ) : (
-                <span />
+                // Logo Cotiz sur le clavier
+                <span className="mx-auto grid h-[66px] w-[66px] place-items-center" aria-hidden="true">
+                  <span className="relative">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src="/icons/logo.svg" alt="" width={46} height={46} className="h-[46px] w-[46px] rounded-[14px] shadow-[0_4px_12px_-4px_rgba(0,158,96,0.5)]" />
+                  </span>
+                </span>
               )}
               <Touche onClick={() => touche(ordre[9])} disabled={attente > 0}>{ordre[9]}</Touche>
               <Touche onClick={() => { vibrer("touche"); setCode((c) => c.slice(0, -1)); }} label="Effacer" discret><Delete size={24} strokeWidth={1.8} /></Touche>
