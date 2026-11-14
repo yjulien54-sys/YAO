@@ -2277,6 +2277,10 @@ do $$
 begin
   if exists (select 1 from information_schema.schemata where schema_name = 'storage') then
     insert into storage.buckets (id, name, public) values ('cagnottes', 'cagnottes', true) on conflict (id) do update set public = true;
+    -- lecture des photos (nécessaire pour l'envoi depuis l'application)
+    drop policy if exists "cagnottes: tout le monde voit" on storage.objects;
+    create policy "cagnottes: tout le monde voit" on storage.objects for select to anon, authenticated
+      using (bucket_id = 'cagnottes');
     drop policy if exists "cagnottes: responsable ajoute" on storage.objects;
     create policy "cagnottes: responsable ajoute" on storage.objects for insert to authenticated
       with check (bucket_id = 'cagnottes' and public.can_manage(((storage.foldername(name))[1])::uuid));
