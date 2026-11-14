@@ -13,6 +13,11 @@ export function phraseMotif(texte: string | null | undefined, max = 110): string
   return utile.length > max ? utile.slice(0, max - 2).replace(/\s+\S*$/, "") + "…" : utile;
 }
 
+/** Lien de partage « neuf » : un petit numéro qui change chaque heure oblige WhatsApp à refaire l'aperçu (affiche et montant à jour) */
+export function lienFrais(lien: string): string {
+  return `${lien}${lien.includes("?") ? "&" : "?"}v=${Math.floor(Date.now() / 3_600_000).toString(36)}`;
+}
+
 /** Le même message WhatsApp partout (page publique, bannière, réglages, bouton Partager) */
 export function messageCagnotte(o: { nom: string; cause?: string | null; message?: string | null; lien: string; collecte?: string | null }): string {
   const lignes = [`*${o.nom}*`];
@@ -21,6 +26,6 @@ export function messageCagnotte(o: { nom: string; cause?: string | null; message
   if (phrase) lignes.push(phrase);
   lignes.push("");
   lignes.push(o.collecte ? `${o.collecte}. Chaque geste compte 🙏` : "Chaque geste compte 🙏");
-  lignes.push("", "Participez ici :", o.lien);
+  lignes.push("", "Participez ici :", lienFrais(o.lien));
   return lignes.join("\n");
 }
