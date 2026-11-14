@@ -70,7 +70,7 @@ body { font-variant-numeric: tabular-nums; }
 
 /* Écran de bienvenue : animations */
 @keyframes apparait { from { opacity: 0; transform: translateY(18px); } to { opacity: 1; transform: none; } }
-.apparait { animation: apparait 700ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.apparait { animation: apparait 700ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
 @keyframes pop { 0% { opacity: 0; transform: scale(0.4); } 70% { transform: scale(1.12); } 100% { opacity: 1; transform: scale(1); } }
 .pop { animation: pop 450ms cubic-bezier(0.22, 1, 0.36, 1) both; }
 @keyframes notif-entre { 0% { opacity: 0; transform: translateY(-14px) scale(0.96); } 12% { opacity: 1; transform: none; } 85% { opacity: 1; transform: none; } 100% { opacity: 0; transform: translateY(-6px); } }
@@ -163,17 +163,19 @@ body:not(:has(.zone-admin)) .text-stone-600 { color: #4a4440; }
 body:not(:has(.zone-admin)) input::placeholder,
 body:not(:has(.zone-admin)) textarea::placeholder { color: #8a837c; font-weight: 500; }
 
-/* ===== Mouvements (admin + application) ===== */
+/* ===== Mouvements (admin + application) =====
+   « backwards » et pas « both » : une fois l'animation finie, plus aucune transformation ne reste
+   (sinon les fenêtres en position fixe se placeraient mal). */
 @keyframes trace { from { stroke-dashoffset: 1; } to { stroke-dashoffset: 0; } }
 .trace { stroke-dasharray: 1; stroke-dashoffset: 1; animation: trace 1.3s cubic-bezier(0.65, 0, 0.35, 1) forwards; }
 @keyframes fondu { from { opacity: 0; } to { opacity: 1; } }
 .fondu { animation: fondu 900ms ease both; }
 @keyframes pousse { from { transform: scaleY(0); } to { transform: scaleY(1); } }
-.pousse { transform-origin: bottom; animation: pousse 900ms cubic-bezier(0.34, 1.4, 0.64, 1) both; }
+.pousse { transform-origin: bottom; animation: pousse 900ms cubic-bezier(0.34, 1.4, 0.64, 1) backwards; }
 @keyframes etire { from { transform: scaleX(0); } to { transform: scaleX(1); } }
-.etire { transform-origin: left; animation: etire 1s cubic-bezier(0.22, 1, 0.36, 1) both; }
+.etire { transform-origin: left; animation: etire 1s cubic-bezier(0.22, 1, 0.36, 1) backwards; }
 @keyframes monte { from { opacity: 0; transform: translateY(16px) scale(0.98); } to { opacity: 1; transform: none; } }
-.cascade > * { animation: monte 600ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.cascade > * { animation: monte 600ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
 .cascade > *:nth-child(2) { animation-delay: 70ms; }
 .cascade > *:nth-child(3) { animation-delay: 140ms; }
 .cascade > *:nth-child(4) { animation-delay: 210ms; }
@@ -182,7 +184,7 @@ body:not(:has(.zone-admin)) textarea::placeholder { color: #8a837c; font-weight:
 .carte-vivante { transition: transform 250ms ease, box-shadow 250ms ease; }
 .carte-vivante:hover { transform: translateY(-3px); box-shadow: 0 14px 30px -14px rgba(0, 82, 52, 0.28); }
 @keyframes page-entre { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
-.page-entre { animation: page-entre 420ms cubic-bezier(0.22, 1, 0.36, 1) both; }
+.page-entre { animation: page-entre 420ms cubic-bezier(0.22, 1, 0.36, 1) backwards; }
 @keyframes balaie { 0%, 60% { transform: translateX(-120%) skewX(-20deg); } 100% { transform: translateX(260%) skewX(-20deg); } }
 .balaie { background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent); width: 40%; animation: balaie 4.5s ease-in-out 0.8s infinite; }
 @keyframes pulse-doux { 0%, 100% { opacity: 0.55; transform: scale(1); } 50% { opacity: 1; transform: scale(1.35); } }

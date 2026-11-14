@@ -1,8 +1,8 @@
 "use client";
 
 /** Écran du trésorier : rendre sa collecte publique (photo, message, jauge) et partager le lien sur WhatsApp */
-import { useCallback, useEffect, useState } from "react";
-import { Camera, ExternalLink, Eye, Globe, Loader2 } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Camera, Check, ExternalLink, Eye, Globe, Loader2, Move, X, ZoomIn } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 
 type Etat = { slug: string | null; actif: boolean; photo: string | null; montants: boolean; message: string | null; fin: string | null; vues: number };
@@ -15,6 +15,7 @@ export function CagnottePublique({ groupId, nom }: { groupId: string; nom: strin
   const [photo, setPhoto] = useState<string | null>(null);
   const [envoi, setEnvoi] = useState(false);
   const [msg, setMsg] = useState("");
+  const [recadrage, setRecadrage] = useState<{ bitmap: ImageBitmap; url: string } | null>(null);
 
   const charger = useCallback(async () => {
     const { data, error } = await supabase.rpc("cagnotte_etat", { g: groupId });
@@ -36,18 +37,10 @@ export function CagnottePublique({ groupId, nom }: { groupId: string; nom: strin
     setMsg(actif ? "Ta cagnotte est en ligne : partage le lien sur WhatsApp !" : "La page publique est retirée.");
     setEtat({ ...etat, slug: data as string, actif, photo: nouvellePhoto, montants, message, fin: fin || null });
   };
-  const choisirPhoto = async (f: File | undefined) => {
-    if (!f) return;
-    if (f.size > 30 * 1024 * 1024) return setMsg("Photo trop lourde (30 Mo maximum).");
-    setEnvoi(true); setMsg("Photo en cours d’amélioration…");
-    // Photo réduite (1600 px max) et embellie automatiquement : lumière, couleurs, netteté
-    const prete = await preparerPhoto(f).catch(() => null);
-    const fichier: Blob = prete ?? f;
-    const ext = prete ? "jpg" : (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
-    if (!prete && !/^(jpe?g|png|webp)$/.test(ext)) { setEnvoi(false); return setMsg("Ce format de photo n’est pas lu par ce navigateur. Choisis une photo JPG ou PNG (ou fais une capture d’écran de la photo)."); }
-    if (!prete && f.size > 4 * 1024 * 1024) { setEnvoi(false); return setMsg("Photo trop lourde pour ce téléphone : choisis une photo plus petite."); }
+  /** Envoi de la photo prête vers le stockage, puis enregistrement sur la cagnotte */
+  const envoyer = async (fichier: Blob, ext: string, type: string, embellie: boolean) => {
     const chemin = `${groupId}/couverture-${Date.now()}.${ext}`;
-    const { error } = await supabase.storage.from("cagnottes").upload(chemin, fichier, { upsert: false, contentType: prete ? "image/jpeg" : f.type || "image/jpeg", cacheControl: "31536000" });
+    const { error } = await supabase.storage.from("cagnottes").upload(chemin, fichier, { upsert: false, contentType: type, cacheControl: "31536000" });
     if (error) { setEnvoi(false); return setMsg("Erreur photo : " + (error.message.includes("row-level") || error.message.includes("policy") ? "colle la dernière version de COLLER-DANS-SUPABASE.sql dans Supabase (mise à jour n°37)." : error.message)); }
     const url = supabase.storage.from("cagnottes").getPublicUrl(chemin).data.publicUrl;
     setPhoto(url);
@@ -56,13 +49,51 @@ export function CagnottePublique({ groupId, nom }: { groupId: string; nom: strin
     setEnvoi(false);
     if (e2) return setMsg("Erreur : " + e2.message);
     setEtat({ ...etat, photo: url });
-    setMsg(prete ? "Photo ajoutée et embellie ✓" : "Photo ajoutée ✓");
+    setMsg(embellie ? "Photo cadrée, embellie et enregistrée ✓" : "Photo enregistrée ✓");
+  };
+  /** 1. On choisit la photo → écran de recadrage (déplacer, zoomer, valider) */
+  const choisirPhoto = async (f: File | undefined) => {
+    if (!f) return;
+    if (f.size > 30 * 1024 * 1024) return setMsg("Photo trop lourde (30 Mo maximum).");
+    setMsg("");
+    const bitmap = await createImageBitmap(f, { imageOrientation: "from-image" } as ImageBitmapOptions).catch(() => null);
+    if (bitmap) {
+      // Aperçu léger pour l'écran de recadrage (lisible même si le format d'origine ne l'est pas, ex. HEIC sur iPhone)
+      const e = Math.min(1, 1400 / Math.max(bitmap.width, bitmap.height));
+      const c = document.createElement("canvas");
+      c.width = Math.round(bitmap.width * e); c.height = Math.round(bitmap.height * e);
+      c.getContext("2d")?.drawImage(bitmap, 0, 0, c.width, c.height);
+      const apercu = await new Promise<Blob | null>((ok) => c.toBlob(ok, "image/jpeg", 0.85));
+      if (apercu) return setRecadrage({ bitmap, url: URL.createObjectURL(apercu) });
+    }
+    // Photo illisible par ce navigateur : on envoie l'original s'il est d'un format courant
+    const ext = (f.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
+    if (!/^(jpe?g|png|webp)$/.test(ext)) return setMsg("Ce format de photo n’est pas lu par ce navigateur. Choisis une photo JPG ou PNG (ou fais une capture d’écran de la photo).");
+    if (f.size > 4 * 1024 * 1024) return setMsg("Photo trop lourde pour ce téléphone : choisis une photo plus petite.");
+    setEnvoi(true);
+    envoyer(f, ext, f.type || "image/jpeg", false);
+  };
+  /** 2. Cadre validé → photo découpée, embellie, envoyée */
+  const validerCadre = async (cadre: Cadre) => {
+    if (!recadrage) return;
+    setEnvoi(true); setMsg("Photo en cours d’amélioration…");
+    const prete = await preparerPhoto(recadrage.bitmap, cadre).catch(() => null);
+    URL.revokeObjectURL(recadrage.url);
+    recadrage.bitmap.close?.();
+    setRecadrage(null);
+    if (!prete) { setEnvoi(false); return setMsg("Impossible de préparer cette photo. Essaie une autre image."); }
+    envoyer(prete, "jpg", "image/jpeg", true);
   };
   const texte = `🙏 ${nom}\n\n${message || "Je vous invite à participer à cette cagnotte."}\n\nParticipe ici (Wave, Orange Money, MTN, Moov) 👇\n${lien}`;
 
   return (
     <div className="space-y-3">
-      <div className="relative overflow-hidden rounded-2xl bg-stone-100" style={{ aspectRatio: "16 / 8" }}>
+      {recadrage && (
+        <Recadreur url={recadrage.url} largeur={recadrage.bitmap.width} hauteur={recadrage.bitmap.height}
+          annuler={() => { URL.revokeObjectURL(recadrage.url); recadrage.bitmap.close?.(); setRecadrage(null); }}
+          valider={validerCadre} />
+      )}
+      <div className="relative overflow-hidden rounded-2xl bg-stone-100" style={{ aspectRatio: "16 / 10" }}>
         {photo
           // eslint-disable-next-line @next/next/no-img-element
           ? <img src={photo} alt="" className="absolute inset-0 h-full w-full object-cover" />
@@ -101,21 +132,23 @@ export function CagnottePublique({ groupId, nom }: { groupId: string; nom: strin
 
 /**
  * Prépare une photo de couverture, gratuitement, sur le téléphone :
- * 1. réduit à 1600 px maximum (page rapide, aperçu WhatsApp qui s'affiche) ;
+ * 1. découpe le cadre choisi par l'organisateur et le réduit à 1600 px (page rapide, aperçu WhatsApp) ;
  * 2. embellit automatiquement : lumière corrigée (photos trop sombres ou trop claires),
  *    balance des blancs douce, contraste et couleurs un peu plus vifs, légère netteté.
  */
-async function preparerPhoto(f: File): Promise<Blob> {
-  const bitmap = await createImageBitmap(f, { imageOrientation: "from-image" } as ImageBitmapOptions);
-  const echelle = Math.min(1, 1600 / Math.max(bitmap.width, bitmap.height));
-  const w = Math.max(1, Math.round(bitmap.width * echelle)), h = Math.max(1, Math.round(bitmap.height * echelle));
+type Cadre = { sx: number; sy: number; sw: number; sh: number };
+/** Format de la photo de couverture (comme sur la page publique) */
+const RATIO = 16 / 10;
+
+export async function preparerPhoto(source: ImageBitmap, cadre: Cadre): Promise<Blob> {
+  const echelle = Math.min(1, 1600 / cadre.sw);
+  const w = Math.max(1, Math.round(cadre.sw * echelle)), h = Math.max(1, Math.round(cadre.sh * echelle));
   const c = document.createElement("canvas");
   c.width = w; c.height = h;
   const ctx = c.getContext("2d", { willReadFrequently: true });
   if (!ctx) throw new Error("canvas");
   ctx.imageSmoothingQuality = "high";
-  ctx.drawImage(bitmap, 0, 0, w, h);
-  bitmap.close?.();
+  ctx.drawImage(source, cadre.sx, cadre.sy, cadre.sw, cadre.sh, 0, 0, w, h);
   const img = ctx.getImageData(0, 0, w, h);
   const d = img.data;
   // Mesures (1 pixel sur 16) : histogramme de chaque couleur et de la luminosité
@@ -168,4 +201,91 @@ async function preparerPhoto(f: File): Promise<Blob> {
     ctx.putImageData(a, 0, 0);
   }
   return await new Promise<Blob>((ok, ko) => c.toBlob((x) => (x ? ok(x) : ko(new Error("jpeg"))), "image/jpeg", 0.85));
+}
+
+/**
+ * Recadrage de la photo : on la déplace avec le doigt (ou la souris), on zoome
+ * (curseur, molette ou deux doigts), puis on valide. Le cadre a le format de la page publique.
+ */
+export function Recadreur({ url, largeur, hauteur, annuler, valider }: { url: string; largeur: number; hauteur: number; annuler: () => void; valider: (c: Cadre) => void }) {
+  const zone = useRef<HTMLDivElement>(null);
+  const [W, setW] = useState(0);
+  const [zoom, setZoom] = useState(1);
+  const [pos, setPos] = useState({ x: 0, y: 0 });
+  const pointeurs = useRef(new Map<number, { x: number; y: number }>());
+  const depart = useRef<{ x: number; y: number; pos: { x: number; y: number }; dist: number; zoom: number } | null>(null);
+  useEffect(() => {
+    const maj = () => setW(zone.current?.clientWidth ?? 0);
+    maj(); window.addEventListener("resize", maj);
+    return () => window.removeEventListener("resize", maj);
+  }, []);
+  const H = W / RATIO;
+  const base = W ? Math.max(W / largeur, H / hauteur) : 1; // la photo couvre toujours tout le cadre
+  const s = base * zoom;
+  const limiter = useCallback((p: { x: number; y: number }, z = zoom) => {
+    const sc = base * z;
+    return { x: Math.min(0, Math.max(W - largeur * sc, p.x)), y: Math.min(0, Math.max(H - hauteur * sc, p.y)) };
+  }, [W, H, base, largeur, hauteur, zoom]);
+  // Au départ : photo centrée
+  useEffect(() => { if (W) setPos(limiter({ x: (W - largeur * base) / 2, y: (H - hauteur * base) / 2 }, 1)); }, [W]); // eslint-disable-line react-hooks/exhaustive-deps
+  const zoomer = (z: number, cx = W / 2, cy = H / 2) => {
+    const nz = Math.min(4, Math.max(1, z));
+    // le point sous le doigt reste au même endroit
+    const px = (cx - pos.x) / s, py = (cy - pos.y) / s;
+    setZoom(nz);
+    setPos(limiter({ x: cx - px * base * nz, y: cy - py * base * nz }, nz));
+  };
+  const bas = (e: React.PointerEvent) => {
+    (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+    pointeurs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const pts = [...pointeurs.current.values()];
+    const dist = pts.length > 1 ? Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) : 0;
+    depart.current = { x: e.clientX, y: e.clientY, pos, dist, zoom };
+  };
+  const bouge = (e: React.PointerEvent) => {
+    if (!pointeurs.current.has(e.pointerId) || !depart.current) return;
+    pointeurs.current.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    const pts = [...pointeurs.current.values()];
+    if (pts.length > 1 && depart.current.dist) {
+      const r = zone.current!.getBoundingClientRect();
+      const d = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+      zoomer(depart.current.zoom * (d / depart.current.dist), (pts[0].x + pts[1].x) / 2 - r.left, (pts[0].y + pts[1].y) / 2 - r.top);
+    } else {
+      setPos(limiter({ x: depart.current.pos.x + e.clientX - depart.current.x, y: depart.current.pos.y + e.clientY - depart.current.y }));
+    }
+  };
+  const haut = (e: React.PointerEvent) => { pointeurs.current.delete(e.pointerId); depart.current = pointeurs.current.size ? { ...depart.current!, pos, zoom, dist: 0 } : null; };
+  const ok = () => valider({ sx: -pos.x / s, sy: -pos.y / s, sw: W / s, sh: H / s });
+  return (
+    <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 sm:items-center sm:p-4">
+      <div className="w-full max-w-xl overflow-hidden rounded-t-3xl bg-white sm:rounded-3xl">
+        <div className="flex items-center justify-between px-5 pb-2 pt-4">
+          <p className="font-bold">Cadrer la photo</p>
+          <button onClick={annuler} className="grid h-9 w-9 place-items-center rounded-full bg-stone-100" aria-label="Annuler"><X size={18} /></button>
+        </div>
+        <p className="flex items-center gap-1.5 px-5 pb-3 text-sm text-stone-600"><Move size={15} /> Fais glisser la photo, et zoome pour choisir ce qui sera visible.</p>
+        <div ref={zone} className="relative mx-5 touch-none select-none overflow-hidden rounded-2xl bg-stone-900" style={{ height: H || undefined, aspectRatio: W ? undefined : "16 / 10" }}
+          onPointerDown={bas} onPointerMove={bouge} onPointerUp={haut} onPointerCancel={haut}
+          onWheel={(e) => { const r = zone.current!.getBoundingClientRect(); zoomer(zoom * (e.deltaY < 0 ? 1.08 : 0.93), e.clientX - r.left, e.clientY - r.top); }}>
+          {W > 0 && (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={url} alt="" draggable={false} className="pointer-events-none absolute left-0 top-0 max-w-none cursor-grab"
+              style={{ width: largeur * s, height: hauteur * s, transform: `translate(${pos.x}px, ${pos.y}px)` }} />
+          )}
+          {/* repères (règle des tiers) */}
+          <div className="pointer-events-none absolute inset-0 grid grid-cols-3 grid-rows-3">
+            {Array.from({ length: 9 }, (_, k) => <span key={k} className="border border-white/25" />)}
+          </div>
+        </div>
+        <div className="flex items-center gap-3 px-5 py-4">
+          <ZoomIn size={18} className="shrink-0 text-stone-500" />
+          <input type="range" min={1} max={4} step={0.01} value={zoom} onChange={(e) => zoomer(Number(e.target.value))} className="flex-1 accent-emerald-700" aria-label="Zoom" />
+        </div>
+        <div className="flex gap-2 px-5 pb-5">
+          <button onClick={annuler} className="flex-1 rounded-xl border border-stone-200 py-3 text-sm font-bold text-stone-700">Annuler</button>
+          <button onClick={ok} className="flex flex-[2] items-center justify-center gap-1.5 rounded-xl bg-emerald-700 py-3 text-sm font-extrabold text-white"><Check size={17} /> Valider ce cadrage</button>
+        </div>
+      </div>
+    </div>
+  );
 }
