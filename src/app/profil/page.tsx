@@ -2,8 +2,10 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
-import { ChevronRight, Download, Fingerprint, Headset, FileText, HelpCircle, KeyRound, Landmark, LogOut, Pencil, Share2, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
-import { aEmpreinte, activerEmpreinte, desactiverEmpreinte, empreinteDisponible, etatCode, type Etat } from "@/lib/verrou";
+import { CalendarDays, ChevronRight, Globe, Download, Fingerprint, Headset, FileText, HelpCircle, KeyRound, Landmark, LogOut, Pencil, Share2, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
+import { aEmpreinte, activerEmpreinte, desactiverEmpreinte, empreinteDisponible, enregistrerNaissance, etatCode, type Etat } from "@/lib/verrou";
+import { DateNaissance } from "@/components/DateNaissance";
+import { supabase } from "@/lib/supabase";
 import { ClavierCode } from "@/components/ClavierCode";
 import { dateLongue } from "@/lib/format";
 import { BottomNav } from "@/components/BottomNav";
@@ -37,6 +39,7 @@ export default function ProfilPage() {
   const { user, userId, groups, loaded, logout, updateProfile } = useStore();
   const [etatC, setEtatC] = useState<Etat | null>(null);
   const [changerCode, setChangerCode] = useState(false);
+  const [naissance, setNaissance] = useState("");
   const [msgCode, setMsgCode] = useState("");
   const [bioDispo, setBioDispo] = useState(false);
   const [bioActive, setBioActive] = useState(false);
@@ -124,6 +127,29 @@ export default function ProfilPage() {
               detail={etatC?.modifieLe ? `Dernière modification : ${dateLongue(etatC.modifieLe)}` : "Le code à 4 chiffres demandé à l’ouverture de Cotiz"}
               onClick={() => setChangerCode(true)}
             />
+            {etatC && etatC.naissance === false && (
+              <div className="space-y-2 p-4">
+                <p className="flex items-center gap-2 text-sm font-bold"><CalendarDays size={18} className="text-emerald-700" /> Ajouter ma date de naissance</p>
+                <p className="text-xs text-stone-500">Elle est demandée, avec ton code, pour te connecter sur un autre téléphone ou un ordinateur.</p>
+                <DateNaissance value={naissance} onChange={setNaissance} />
+                <Button className="w-full" disabled={!naissance} onClick={async () => {
+                  await enregistrerNaissance(naissance);
+                  setEtatC({ ...etatC, naissance: true });
+                  setMsgCode("Date de naissance enregistrée.");
+                }}>Enregistrer</Button>
+              </div>
+            )}
+            {process.env.NEXT_PUBLIC_GOOGLE === "on" && (
+              <Ligne
+                icon={Globe}
+                label="Lier mon compte Google"
+                detail="Pour te connecter aussi avec Google, sur n’importe quel appareil"
+                onClick={async () => {
+                  const { error } = await supabase.auth.linkIdentity({ provider: "google", options: { redirectTo: `${window.location.origin}/profil` } });
+                  if (error) setMsgCode("Google n’a pas pu être lié : " + error.message);
+                }}
+              />
+            )}
             {bioDispo && (
               <Ligne
                 icon={Fingerprint}

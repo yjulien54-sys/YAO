@@ -181,6 +181,18 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       }
       // 2. Mise à jour en arrière-plan
       const { data: prof } = await supabase.from("profiles").select("name, phone").eq("id", uid).maybeSingle();
+      // Compte réuni dans un autre (même numéro, connexion faite sur un autre appareil) : on déconnecte cet appareil
+      const { data: fusionne } = await supabase.rpc("mon_compte_fusionne");
+      if (fusionne === true) {
+        try { sessionStorage.setItem("cotiz:compte-reuni", "1"); } catch {}
+        await supabase.auth.signOut({ scope: "local" }).catch(() => {});
+        ecrireCache(null);
+        setUser(null);
+        setUserId(null);
+        setGroups([]);
+        setReady(true);
+        return;
+      }
       if (prof) {
         setUserId(uid);
         setUser(prof);

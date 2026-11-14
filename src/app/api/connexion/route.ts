@@ -32,6 +32,10 @@ export async function POST(req: Request) {
   const r = data as { ok: boolean; id?: string; raison?: string; restants?: number };
   if (!r.ok || !r.id) return NextResponse.json({ ok: false, raison: r.raison ?? "faux", restants: r.restants }, { status: 401 });
 
+  // Un numéro = un seul compte : les autres comptes créés avec ce numéro (autre appareil…) sont réunis dans celui-ci
+  const { error: ef } = await admin.rpc("fusionner_comptes_numero", { cible: r.id });
+  if (ef && ef.code !== "PGRST202") console.error("fusionner_comptes_numero", ef.code, ef.message);
+
   // Le compte n'a pas d'adresse e-mail (compte créé dans l'application) : on lui en donne une interne,
   // jamais utilisée pour envoyer du courrier, qui permet d'ouvrir une session à distance.
   const { data: u, error: e1 } = await admin.auth.admin.getUserById(r.id);
