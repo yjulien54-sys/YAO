@@ -209,7 +209,6 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
 
   function touche(t: string) {
     if (occupe || attente > 0 || code.length >= 4) return;
-    vibrer("touche");
     setErreur("");
     const c = code + t;
     setCode(c);
@@ -318,12 +317,12 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
                 <Touche key={t} onClick={() => touche(t)} disabled={attente > 0}>{t}</Touche>
               ))}
               {mode === "saisie" && !sansEmpreinte && bioDispo ? (
-                <Touche onClick={bioActive ? parEmpreinte : () => { vibrer("touche"); setVeutEmpreinte(true); setErreur(""); }} label="Entrer avec l’empreinte" discret><Fingerprint size={28} strokeWidth={1.8} className="text-emerald-700" /></Touche>
+                <Touche onClick={bioActive ? parEmpreinte : () => { setVeutEmpreinte(true); setErreur(""); }} label="Entrer avec l’empreinte" discret><Fingerprint size={28} strokeWidth={1.8} className="text-emerald-700" /></Touche>
               ) : (
                 <span />
               )}
               <Touche onClick={() => touche(ordre[9])} disabled={attente > 0}>{ordre[9]}</Touche>
-              <Touche onClick={() => { vibrer("touche"); setCode((c) => c.slice(0, -1)); }} label="Effacer" discret><Delete size={24} strokeWidth={1.8} /></Touche>
+              <Touche onClick={() => setCode((c) => c.slice(0, -1))} label="Effacer" discret><Delete size={24} strokeWidth={1.8} /></Touche>
             </div>
 
             <p className="mt-2.5 flex items-center justify-center gap-1.5 text-xs font-medium text-stone-500"><Shuffle size={13} strokeWidth={2} className="text-[#009e60]" /> Les chiffres changent de place à chaque fois, pour ta sécurité</p>
@@ -344,6 +343,8 @@ function Touche({ children, onClick, disabled, label, discret }: { children: Rea
       aria-label={label}
       disabled={disabled}
       onPointerDown={(e) => { e.preventDefault(); if (!disabled) onClick(); }}
+      // Vibration au moment où le doigt se lève : c'est là que le téléphone l'autorise (Android et iPhone)
+      onPointerUp={() => { if (!disabled) vibrer("touche"); }}
       onClick={(e) => { if (e.detail === 0) onClick(); }}
       className={`mx-auto grid h-[66px] w-[66px] select-none [touch-action:manipulation] place-items-center rounded-full text-[1.85rem] font-extrabold tabular-nums leading-none antialiased transition duration-100 active:scale-90 disabled:opacity-30 ${discret ? "text-[#0b3d2c] active:bg-white" : "border-2 border-[#009e60]/15 bg-white text-[#0b3d2c] shadow-[0_3px_0_rgba(0,158,96,0.18),0_6px_14px_-8px_rgba(11,61,44,0.35)] active:translate-y-[2px] active:border-[#009e60] active:bg-[#009e60] active:text-white active:shadow-none"}`}
     >
