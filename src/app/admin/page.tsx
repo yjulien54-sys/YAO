@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { PlanningPro } from "@/components/admin/PlanningPro";
+import { BoutonMicro, RedacteurIA, useDictee } from "@/components/admin/RedacteurIA";
 import { Jauge, Montre, Anneau, Pyramide, Courbe, Colonnes, TexteAnime, Anneaux, Calendrier, Vague, Horloge24, Radar, Gaufre, VERT, ORANGE, VIOLET } from "@/components/admin/Graphiques";
 import { DateNaissance } from "@/components/DateNaissance";
 import {
@@ -1853,6 +1854,8 @@ function CarteRequete({ r, moi, recharger, ouvrirUtilisateur, setMsg, modeIA = f
   const [fil, setFil] = useState<MsgRequete[] | null>(null); // null : SQL n°33 pas encore faite
   const [texte, setTexte] = useState("");
   const [occupe, setOccupe] = useState(false);
+  // Dictée directe dans la zone de réponse
+  const dicteeReponse = useDictee((t) => setTexte((x) => (x ? `${x} ${t}` : t)));
   useEffect(() => { db.rpc("admin_requete_messages", { r: r.id }).then(({ data, error }) => setFil(error ? null : ((data as MsgRequete[]) ?? []))); }, [r.id, r.maj_le]);
   const [l, c] = STATUT_REQ[r.statut];
   const aMoi = (r.agent_email ?? "").toLowerCase() === moi.toLowerCase();
@@ -1941,8 +1944,13 @@ function CarteRequete({ r, moi, recharger, ouvrirUtilisateur, setMsg, modeIA = f
           {r.statut === "nouvelle" && (
             <button disabled={occupe} onClick={() => agir(() => db.rpc("admin_requete_prendre", { r: r.id }), "Requête prise en charge.")} className="w-full rounded-xl bg-sky-600 py-2.5 text-sm font-bold text-white disabled:opacity-50">Je m’en occupe</button>
           )}
-          <textarea value={texte} onChange={(e) => setTexte(e.target.value)} rows={2} placeholder="Écrire au client (il peut te répondre dans ce même fil)…" className={`${champ} resize-y`}
-            onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && texte.trim()) envoyer(false); }} />
+          <RedacteurIA nom={r.nom} motif={r.motif} messages={messages.map((m) => ({ auteur: m.auteur, texte: m.texte }))} onTexte={setTexte} />
+          <div className="flex items-start gap-2">
+            <textarea value={texte} onChange={(e) => setTexte(e.target.value)} rows={texte.length > 160 ? 7 : 2} placeholder="Écrire au client (il peut vous répondre dans ce même fil)…" className={`${champ} flex-1 resize-y`}
+              onKeyDown={(e) => { if (e.key === "Enter" && (e.ctrlKey || e.metaKey) && texte.trim()) envoyer(false); }} />
+            <BoutonMicro dictee={dicteeReponse} petit />
+          </div>
+          {dicteeReponse.ecoute && <p className="text-xs font-semibold text-red-600">● Dictée en cours… touchez le micro pour arrêter.</p>}
           <div className="flex flex-wrap gap-2">
             <button disabled={occupe || !texte.trim()} onClick={() => envoyer(false)} className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-xl bg-emerald-700 py-2.5 text-sm font-bold text-white disabled:opacity-40"><Send size={14} /> Envoyer</button>
             <button disabled={occupe || !texte.trim()} onClick={() => envoyer(true)} className="rounded-xl border border-emerald-200 bg-emerald-50 px-3 py-2.5 text-sm font-bold text-emerald-800 disabled:opacity-40">Envoyer et fermer</button>

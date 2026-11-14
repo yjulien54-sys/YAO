@@ -70,19 +70,46 @@ const SENSIBLE_SAUF_QUESTION: [RegExp, string][] = [
 
 const MERCI = /^(merci|ok|okay|d.?accord|c.?est bon|c.?est regle|resolu|super|parfait|top|cool|thank)/;
 
-const TRANSMIS = "Je transmets ta demande à un conseiller du service client : il va te répondre ici très bientôt. Si c’est à propos d’un paiement, prépare le nom du groupe, le montant, la date et la référence de la transaction (jamais ton code secret).";
+const TRANSMIS = "Je transmets votre demande à un conseiller du service client, qui vous répondra ici dans les meilleurs délais. S’il s’agit d’un paiement, merci de préparer le nom du groupe, le montant, la date et la référence de la transaction (ne communiquez jamais votre code secret).";
+
+/** Mise en forme professionnelle : salutation + message + formule de politesse */
+const SIGNATURE = "Nous restons à votre disposition.\nCordialement,\nLe service client Cotiz";
+export function formel(corps: string, nom?: string | null, premier = true): string {
+  const prenom = (nom ?? "").trim().split(/\s+/)[0];
+  const salut = premier ? `Bonjour${prenom ? ` ${prenom.charAt(0).toUpperCase()}${prenom.slice(1)}` : ""},\n\n` : "";
+  return `${salut}${corps}\n\n${SIGNATURE}`;
+}
 
 /**
  * @param messages du plus ancien au plus récent ; le dernier est celui du client
  */
-export function repondreGratuit(motif: string, messages: { auteur: string; texte: string }[]): DecisionIA {
+export function repondreGratuit(motif: string, messages: { auteur: string; texte: string }[], nom?: string | null): DecisionIA {
+  const d = decider(motif, messages);
+  const premier = !messages.some((m) => m.auteur === "ia" || m.auteur === "agent");
+  return { ...d, reponse: formel(d.reponse, nom, premier) };
+}
+
+/** Explication du guide la plus proche d'un texte (ou null si rien de sûr) — utilisée pour aider les agents à rédiger */
+export function trouverExplication(texte: string): string | null {
+  const cles = motsCles(texte);
+  let meilleur = { score: 0, i: -1 };
+  SAVOIR.forEach((f, i) => {
+    const q = motsCles(f.q), r = motsCles(f.r);
+    let score = 0;
+    cles.forEach((m) => { const fam = m.startsWith("#"); if (q.has(m)) score += fam ? 2 : 3; else if (r.has(m)) score += fam ? 0.5 : 1; });
+    if (score > meilleur.score) meilleur = { score, i };
+  });
+  return meilleur.i >= 0 && meilleur.score >= 5 ? SAVOIR[meilleur.i].r : null;
+}
+
+function decider(motif: string, messages: { auteur: string; texte: string }[]): DecisionIA {
   const dernier = messages[messages.length - 1]?.texte ?? "";
   const brut = sansAccents(dernier).trim();
   const dejaRepondu = messages.some((m) => m.auteur === "ia");
 
   // Le client remercie après une réponse : on clôt
   if (dejaRepondu && MERCI.test(brut) && brut.length < 80) {
-    return { reponse: "Avec plaisir ! N’hésite pas à revenir ici si tu as une autre question. Bonne journée avec Cotiz 🙏", transmettre: false, raison: "", resoudre: true };
+    return { reponse: "Avec plaisir. N’hésitez pas à revenir vers nous ici si vous avez une autre question. Excellente journée avec Cotiz.", transmettre: false, raison: "", resoudre: true };
   }
   const nbIA = messages.filter((m) => m.auteur === "ia").length;
   if (nbIA >= MAX_REPONSES_GRATUIT) return { reponse: TRANSMIS, transmettre: true, raison: "Plusieurs questions : à reprendre par un agent", resoudre: false };
@@ -94,7 +121,7 @@ export function repondreGratuit(motif: string, messages: { auteur: string; texte
   // « Supprime mon compte », « valide mon paiement »… : Cotiz IA n'agit jamais à la place du client
   const action = !pratique && ACTION_INTERDITE.test(brut);
   if (/arnaque|probleme grave/.test(sansAccents(motif))) return { reponse: TRANSMIS, transmettre: true, raison: "arnaque ou problème grave", resoudre: false };
-  if (/suggestion/.test(sansAccents(motif))) return { reponse: "Merci pour ton idée ! Je la transmets à l’équipe Cotiz qui lit toutes les suggestions.", transmettre: true, raison: "suggestion à lire par l’équipe", resoudre: false };
+  if (/suggestion/.test(sansAccents(motif))) return { reponse: "Merci pour votre suggestion. Je la transmets à l’équipe Cotiz, qui lit attentivement chaque proposition.", transmettre: true, raison: "suggestion à lire par l’équipe", resoudre: false };
 
   // Recherche de la question fréquente la plus proche
   const cles = motsCles(dernier);
@@ -112,15 +139,15 @@ export function repondreGratuit(motif: string, messages: { auteur: string; texte
   const trouve = meilleur.i >= 0 && meilleur.score >= 5;
   if (action) {
     // Elle explique comment le client peut le faire lui-même ; sinon un conseiller regarde
-    const intro = "Je ne peux pas faire cette action à ta place : par sécurité, Cotiz IA ne supprime rien, ne valide aucun paiement et ne modifie aucune donnée.";
-    if (trouve) return { reponse: `${intro} Voici comment tu peux le faire toi-même :\n\n${SAVOIR[meilleur.i].r}\n\nSi tu as besoin d’un conseiller, écris-le-moi.`, transmettre: false, raison: "", resoudre: false };
+    const intro = "Par mesure de sécurité, Cotiz IA ne peut pas effectuer cette action à votre place : elle ne supprime rien, ne valide aucun paiement et ne modifie aucune donnée.";
+    if (trouve) return { reponse: `${intro} Voici comment procéder vous-même :\n\n${SAVOIR[meilleur.i].r}\n\nSi vous avez besoin d’un conseiller, écrivez simplement « conseiller ».`, transmettre: false, raison: "", resoudre: false };
     return { reponse: `${intro} ${TRANSMIS}`, transmettre: true, raison: "Le client demande une action sur son compte ou ses paiements", resoudre: false };
   }
   if (!trouve) return { reponse: TRANSMIS, transmettre: true, raison: dejaRepondu ? "Autre question après la réponse automatique" : "Question hors des réponses automatiques", resoudre: false };
 
   const f = SAVOIR[meilleur.i];
   return {
-    reponse: `${f.r}\n\nEst-ce que ça répond à ta question ? Si oui, écris « merci ». Tu peux aussi me poser une autre question, ou écrire « conseiller » pour parler à une personne.`,
+    reponse: `${f.r}\n\nCette réponse vous aide-t-elle ? Vous pouvez me poser une autre question, ou écrire « conseiller » pour être mis en relation avec une personne de notre équipe.`,
     transmettre: false, raison: "", resoudre: false,
   };
 }
