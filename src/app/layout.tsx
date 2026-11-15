@@ -10,16 +10,35 @@ import "./globals.css";
 
 export const metadata: Metadata = {
   metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://tontine-et-cotise.vercel.app"),
-  title: "Cotiz — Tontines & cotisations simplifiées",
+  title: { default: "Cotiz — Application de tontine, association et collecte en Côte d’Ivoire", template: "%s" },
+  keywords: ["Cotiz", "tontine", "tontine en ligne", "application tontine", "cotisation", "association", "collecte", "cagnotte", "Côte d’Ivoire", "Abidjan", "Wave", "Orange Money", "MTN MoMo", "Moov Money", "épargne"],
+  applicationName: "Cotiz",
+  // Code de vérification Google Search Console (à mettre dans Vercel : NEXT_PUBLIC_GOOGLE_VERIFICATION)
+  verification: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION ? { google: process.env.NEXT_PUBLIC_GOOGLE_VERIFICATION } : undefined,
   openGraph: {
     title: "Cotiz — Tontines, associations et collectes, sans palabres",
     description: "Tout le monde voit qui a payé. Paiement Wave, Orange Money, MTN, Moov. Rappels WhatsApp automatiques.",
     siteName: "Cotiz", locale: "fr_FR", type: "website",
   },
   description:
-    "Gérez vos tontines, associations et collectes en toute transparence. Paiement Wave, Orange Money, MTN, Moov et relances WhatsApp automatiques.",
+    "Cotiz : l’application ivoirienne pour gérer vos tontines, cotisations d’association et collectes (funérailles, mariages…). Tout le monde voit qui a payé. Paiement Wave, Orange Money, MTN, Moov et rappels WhatsApp. Gratuit.",
   icons: { icon: "/icons/logo.svg", apple: "/icons/apple-touch-icon.png" },
   appleWebApp: { capable: true, title: "Cotiz", statusBarStyle: "default" },
+};
+
+const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tontine-et-cotise.vercel.app";
+const DONNEES_GOOGLE = {
+  "@context": "https://schema.org",
+  "@graph": [
+    { "@type": "Organization", "@id": `${SITE}/#cotiz`, name: "Cotiz", url: SITE, logo: `${SITE}/icons/icon-512.png`, areaServed: "CI", description: "Application de tontine, cotisation et collecte en Côte d’Ivoire." },
+    { "@type": "WebSite", "@id": `${SITE}/#site`, name: "Cotiz", url: SITE, inLanguage: "fr-CI", publisher: { "@id": `${SITE}/#cotiz` } },
+    {
+      "@type": "SoftwareApplication", name: "Cotiz", applicationCategory: "FinanceApplication", operatingSystem: "Android, Web",
+      url: SITE, inLanguage: "fr", offers: { "@type": "Offer", price: "0", priceCurrency: "XOF" },
+      description: "Gérez tontines, associations et collectes : chacun voit qui a payé, paiement Wave, Orange Money, MTN, Moov, rappels WhatsApp.",
+      publisher: { "@id": `${SITE}/#cotiz` },
+    },
+  ],
 };
 
 export const viewport: Viewport = {
@@ -32,6 +51,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="fr">
       <body className="antialiased">
+        {/* Fiche d'identité de Cotiz pour Google (nom, logo, type d'application) */}
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(DONNEES_GOOGLE) }} />
         <StoreProvider>
           <NotificationsProvider>
             {children}
