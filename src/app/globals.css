@@ -224,3 +224,11 @@ button { transition-property: transform, background-color, border-color, color, 
 @keyframes respire { 0%, 100% { box-shadow: 0 8px 20px -8px rgba(247,127,0,0.6), 0 0 0 0 rgba(247,127,0,0.35); } 50% { box-shadow: 0 8px 20px -8px rgba(247,127,0,0.6), 0 0 0 10px rgba(247,127,0,0); } }
 .bouton-vivant { animation: respire 2.6s ease-in-out 2s infinite; }
 @media (prefers-reduced-motion: reduce) { .photo-cinema, .jauge-cagnotte, .barre-monte, .bouton-vivant { animation: none !important; } }
+
+/* Impression / PDF (liste des paiements…) : page blanche, sans les menus */
+@media print {
+  @page { margin: 12mm; }
+  body { background: #fff !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  nav, aside { display: none !important; }
+  tr { break-inside: avoid; }
+}

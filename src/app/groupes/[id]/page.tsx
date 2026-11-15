@@ -19,7 +19,7 @@ import { ActionRapide } from "@/components/ActionRapide";
 import { Reglement } from "@/components/Reglement";
 import { CaissePenalites } from "@/components/CaissePenalites";
 import { CaisseGroupe } from "@/components/CaisseGroupe";
-import { AlertTriangle, ArrowUpRight, CalendarDays, ChevronsRight, FileText, Flag, History, Users, MessageCircle, Phone, Settings, Check, CheckCircle2, Clock, Gift, PartyPopper, Smartphone, ShieldCheck, Trash2, LogOut, UserPlus, X } from "lucide-react";
+import { AlertTriangle, ArrowUpRight, Download, CalendarDays, ChevronsRight, FileText, Flag, History, Users, MessageCircle, Phone, Settings, Check, CheckCircle2, Clock, Gift, PartyPopper, Smartphone, ShieldCheck, Trash2, LogOut, UserPlus, X } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 import type { Member } from "@/lib/types";
 
@@ -452,6 +452,18 @@ export default function GroupeDetail() {
 
         <CaissePenalites g={g} tresorier={isTreasurer} />
 
+
+        {/* Liste des paiements à télécharger / partager (trésorier et co-gestionnaires) */}
+        {dr.gestionnaire && (
+          <Link href={`/groupes/${g.id}/liste`} className="carte flex items-center gap-3 p-3.5 transition active:scale-[0.99]">
+            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700"><FileText size={20} strokeWidth={2} /></span>
+            <span className="min-w-0 flex-1">
+              <span className="block font-bold text-stone-900">Liste des paiements</span>
+              <span className="block text-xs text-stone-500">WhatsApp, PDF ou Excel</span>
+            </span>
+            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white"><Download size={13} /> Ouvrir</span>
+          </Link>
+        )}
 
         {/* Onglets */}
         <div className="flex gap-1 rounded-xl bg-stone-200/70 p-1 text-sm font-semibold">
