@@ -5,8 +5,6 @@
  * (fixe sur ordinateur, barre en bas sur téléphone).
  */
 import type { Metadata } from "next";
-import { after } from "next/server";
-import { regenererAffiche } from "@/lib/server/regenererAffiche";
 import { LogosOperateurs } from "@/components/LogosOperateurs";
 import { messageCagnotte, phraseMotif } from "@/lib/motif";
 import Link from "next/link";
@@ -42,13 +40,12 @@ export async function generateMetadata({ params }: { params: Promise<{ slug: str
   const titre = `${c.nom} · Cagnotte Cotiz`;
   const phraseDesc = phraseMotif(c.message ?? c.description, 110);
   const desc = `${c.cause ? `Motif : ${c.cause}. ` : ""}${phraseDesc ? `${phraseDesc} ` : ""}${fcfa(c.collecte)} collectés${c.objectif ? ` sur ${fcfa(c.objectif)} (${pct} %)` : ""}, ${c.donateurs_nb} participant${c.donateurs_nb > 1 ? "s" : ""}. Participez par Wave, Orange Money, MTN ou Moov.`.slice(0, 220);
-  // L'affiche : l'image toute prête (rapide pour WhatsApp), sinon dessinée à la demande
-  const image = { url: c.apercu ?? `${site}/c/${slug}/affiche`, width: 1200, height: 630, type: "image/jpeg", alt: titre };
+  // L'image d'aperçu (photo + logo + montant) est fabriquée par opengraph-image.tsx
   return {
     metadataBase: new URL(site),
     title: titre, description: desc,
-    openGraph: { title: titre, description: desc, type: "website", url: `${site}/c/${slug}`, siteName: "Cotiz", images: [image], locale: "fr_FR" },
-    twitter: { card: "summary_large_image", title: titre, description: desc, images: [image.url] },
+    openGraph: { title: titre, description: desc, type: "website", url: `${site}/c/${slug}`, siteName: "Cotiz" },
+    twitter: { card: "summary_large_image", title: titre, description: desc },
   };
 }
 
@@ -73,10 +70,6 @@ function Marque() {
 export default async function PageCagnotte({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
   const c = await lire(slug);
-  // Affiche absente ou vieille de plus de 2 heures (montant changé…) : on la refait après l'affichage de la page
-  if (c && (!c.apercu || !c.apercu_le || Date.now() - new Date(c.apercu_le).getTime() > 2 * 3600_000)) {
-    after(() => regenererAffiche(slug).catch(() => null));
-  }
   if (!c) {
     return (
       <main className="min-h-dvh bg-[#fbfaf7] text-stone-900">

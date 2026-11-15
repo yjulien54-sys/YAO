@@ -20,13 +20,11 @@ export function CagnottePublique({ groupId, nom, cause }: { groupId: string; nom
   const [recadrage, setRecadrage] = useState<{ bitmap: ImageBitmap; url: string } | null>(null);
   // L'affiche toute prête (image partagée sur WhatsApp)
   const [affiche, setAffiche] = useState<string | null>(null);
-  const [fabrication, setFabrication] = useState(false);
+  const fabrication = false;
+  // L'affiche est celle que WhatsApp montre avec le lien (fabriquée par la page de la cagnotte)
   const refaireAffiche = useCallback(async (slug: string | null | undefined) => {
     if (!slug) return;
-    setFabrication(true);
-    const r = await fetch("/api/cagnotte/affiche", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).then((x) => x.json()).catch(() => null) as { lien?: string | null } | null;
-    setFabrication(false);
-    setAffiche(r?.lien ?? `/c/${slug}/affiche?t=${Date.now()}`);
+    setAffiche(`/c/${slug}/opengraph-image?t=${Date.now()}`);
   }, []);
 
   const charger = useCallback(async () => {
