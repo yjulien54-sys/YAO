@@ -12,8 +12,8 @@ export const montantsLisibles = (t: string | null) => (t ?? "").replace(/\d{4,}(
 
 export type Notif = { id: number; type: string; titre: string; texte: string | null; lien: string | null; lue: boolean; le: string };
 
-type Ctx = { liste: Notif[]; nonLues: number; dispo: boolean; marquerLue: (id: number) => Promise<void>; marquerToutLu: () => Promise<void> };
-const NotifCtx = createContext<Ctx>({ liste: [], nonLues: 0, dispo: false, marquerLue: async () => {}, marquerToutLu: async () => {} });
+type Ctx = { liste: Notif[]; nonLues: number; dispo: boolean; marquerLue: (id: number) => Promise<void>; marquerToutLu: () => Promise<void>; supprimer: (ids: number[]) => Promise<void>; toutSupprimer: () => Promise<void> };
+const NotifCtx = createContext<Ctx>({ liste: [], nonLues: 0, dispo: false, marquerLue: async () => {}, marquerToutLu: async () => {}, supprimer: async () => {}, toutSupprimer: async () => {} });
 export const useNotifications = () => useContext(NotifCtx);
 
 /** Notifications de l'application (mise à jour SQL n°13) : liste, compteur et alerte en direct */
@@ -74,10 +74,22 @@ export function NotificationsProvider({ children }: { children: React.ReactNode 
     await supabase.from("notifications").update({ lue: true }).eq("lue", false);
   }, []);
 
+  // Supprimer des notifications (chacun ne peut supprimer que les siennes)
+  const supprimer = useCallback(async (ids: number[]) => {
+    if (!ids.length) return;
+    setListe((l) => l.filter((n) => !ids.includes(n.id)));
+    await supabase.from("notifications").delete().in("id", ids);
+  }, []);
+  const toutSupprimer = useCallback(async () => {
+    if (!userId) return;
+    setListe([]);
+    await supabase.from("notifications").delete().eq("profile_id", userId);
+  }, [userId]);
+
   const nonLues = liste.filter((n) => !n.lue).length;
 
   return (
-    <NotifCtx.Provider value={{ liste, nonLues, dispo, marquerLue, marquerToutLu }}>
+    <NotifCtx.Provider value={{ liste, nonLues, dispo, marquerLue, marquerToutLu, supprimer, toutSupprimer }}>
       {children}
       {alerte && (
         <div className="pointer-events-none fixed inset-x-0 top-3 z-[60] flex justify-center px-3">

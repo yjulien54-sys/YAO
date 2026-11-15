@@ -1,13 +1,15 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, ChevronDown, Clock, Lock, Send, Sparkles, Star } from "lucide-react";
+import { CheckCircle2, ChevronDown, Clock, Copy, Lock, Send, Sparkles, Star, Trash2 } from "lucide-react";
 import { LogoIA } from "./LogoIA";
+import { MenuActions } from "./MenuActions";
+import { copier, useAppuiLong } from "@/lib/appuiLong";
 import { supabase } from "@/lib/supabase";
 import { useStore } from "@/lib/store";
 
 const MOTIFS = ["Un paiement", "Mon compte / mon code", "Un groupe", "Un versement", "Une arnaque / un problème grave", "Une suggestion", "Autre"];
-type Requete = { id: string; numero: number; cree_le: string; motif: string; message: string; statut: "nouvelle" | "en_cours" | "resolue"; reponse: string | null; dernier_auteur?: string | null; note?: number | null; avis?: string | null };
+type Requete = { masquee_client?: boolean; id: string; numero: number; cree_le: string; motif: string; message: string; statut: "nouvelle" | "en_cours" | "resolue"; reponse: string | null; dernier_auteur?: string | null; note?: number | null; avis?: string | null };
 type Msg = { id: string; requete_id: string; cree_le: string; auteur: "client" | "agent" | "ia"; texte: string };
 
 /** Demande à Cotiz IA de lire la conversation et de répondre (sans effet si elle n'est pas configurée) */
@@ -42,11 +44,12 @@ export function RequeteClient({ integre = false }: { integre?: boolean } = {}) {
   const charger = useCallback(async () => {
     if (!userId) return;
     const lire = (cols: string) => supabase.from("requetes_clients").select(cols).order("cree_le", { ascending: false }).limit(20);
-    let { data, error } = await lire("id, numero, cree_le, motif, message, statut, reponse, dernier_auteur, note, avis");
+    let { data, error } = await lire("id, numero, cree_le, motif, message, statut, reponse, dernier_auteur, note, avis, masquee_client");
+    if (error) ({ data, error } = await lire("id, numero, cree_le, motif, message, statut, reponse, dernier_auteur, note, avis"));
     if (error) ({ data, error } = await lire("id, numero, cree_le, motif, message, statut, reponse, dernier_auteur"));
     if (error) ({ data, error } = await lire("id, numero, cree_le, motif, message, statut, reponse"));
     if (error) return setDispo(false); // mise à jour SQL n°18 pas encore faite
-    const l = (data as unknown as Requete[]) ?? [];
+    const l = ((data as unknown as Requete[]) ?? []).filter((r) => !r.masquee_client); // conversations supprimées par le client
     setListe(l);
     if (l.length) {
       const m = await supabase.from("requetes_messages").select("id, requete_id, cree_le, auteur, texte").in("requete_id", l.map((r) => r.id)).order("cree_le");
@@ -127,7 +130,17 @@ export function RequeteClient({ integre = false }: { integre?: boolean } = {}) {
 }
 
 /** Une conversation avec le service client, en bulles, avec réponse dans le même fil */
+/** Retirer une conversation terminée de sa liste (l'équipe la garde) */
+async function supprimerConv(id: string, apres: () => void, erreur: (m: string) => void) {
+  if (!confirm("Supprimer cette conversation de votre liste ?")) return;
+  const { error } = await supabase.rpc("requete_masquer", { r: id });
+  if (error) return erreur(error.message.includes("terminées") ? error.message : "Suppression impossible pour le moment.");
+  apres();
+}
+
 function Conversation({ r, fil, statut: [l, c], nouveau, ouverte, basculer, peutEcrire, envoye, iaEcrit, apresEnvoi }: { r: Requete; fil: Msg[]; statut: [string, string]; nouveau: boolean; ouverte: boolean; basculer: () => void; peutEcrire: boolean; envoye: () => void; iaEcrit: boolean; apresEnvoi: () => void }) {
+  const appuiLong = useAppuiLong();
+  const [menu, setMenu] = useState(false);
   const [texte, setTexte] = useState("");
   const [envoi, setEnvoi] = useState(false);
   const [err, setErr] = useState("");
@@ -144,7 +157,8 @@ function Conversation({ r, fil, statut: [l, c], nouveau, ouverte, basculer, peut
   const heure = (d: string) => new Date(d).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
   return (
     <div className={`overflow-hidden rounded-2xl text-sm ring-1 ${nouveau ? "bg-emerald-50/60 ring-emerald-300" : "bg-stone-50 ring-stone-200/70"}`}>
-      <button type="button" onClick={basculer} className="flex w-full items-center gap-2 p-3 text-left">
+      <button type="button" onClick={basculer} className="flex w-full items-center gap-2 p-3 text-left"
+        {...appuiLong(() => setMenu(true))}>
         <span className="min-w-0 flex-1">
           <span className="flex items-center gap-2">
             <span className="truncate font-semibold">{r.motif}</span>
@@ -183,11 +197,16 @@ function Conversation({ r, fil, statut: [l, c], nouveau, ouverte, basculer, peut
             <>
               <p className="flex items-center justify-center gap-1.5 rounded-xl bg-stone-100 p-2 text-xs text-stone-500"><Lock size={12} /> Conversation fermée par le service client. Pour autre chose, écris un nouveau message ci-dessus.</p>
               {"note" in r && <Avis r={r} envoye={envoye} />}
+              <button type="button" onClick={() => supprimerConv(r.id, envoye, setErr)} className="mx-auto flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-bold text-red-600 hover:bg-red-50"><Trash2 size={13} /> Supprimer cette conversation de ma liste</button>
             </>
           ) : null}
           {err && <p className="text-sm font-medium text-red-600">{err}</p>}
         </div>
       )}
+      {menu && <MenuActions titre={r.motif} apercu={fil[fil.length - 1]?.texte} fermer={() => setMenu(false)} actions={[
+        { label: "Copier la conversation", icone: Copy, onClick: () => copier(fil.map((m) => `${m.auteur === "client" ? "Moi" : m.auteur === "ia" ? "Cotiz IA" : "Conseiller"} : ${m.texte}`).join("\n\n")) },
+        { label: "Supprimer de ma liste", icone: Trash2, danger: true, desactive: r.statut !== "resolue", note: r.statut !== "resolue" ? "Possible quand la conversation est terminée" : undefined, onClick: () => supprimerConv(r.id, envoye, setErr) },
+      ]} />}
     </div>
   );
 }

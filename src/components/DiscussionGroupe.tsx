@@ -5,8 +5,10 @@
  * Chaque message prévient tout le groupe (notification). Mise à jour en temps réel.
  */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { BellRing, MessagesSquare, Send, Trash2 } from "lucide-react";
+import { BellRing, CheckSquare, Copy, MessagesSquare, Send, Trash2 } from "lucide-react";
 import { supabase } from "@/lib/supabase";
+import { copier, useAppuiLong } from "@/lib/appuiLong";
+import { BarreSelection, MenuActions, type Action } from "./MenuActions";
 
 type Msg = { id: number; group_id: string; profile_id: string; auteur: string | null; texte: string; cree_le: string };
 
@@ -33,6 +35,11 @@ export function DiscussionGroupe({ groupId, userId, gestionnaire }: { groupId: s
   const [envoi, setEnvoi] = useState(false);
   const [erreur, setErreur] = useState("");
   const bas = useRef<HTMLDivElement>(null);
+  const appuiLong = useAppuiLong();
+  const [menu, setMenu] = useState<{ apercu: string; titre: string; actions: Action[] } | null>(null);
+  const [selection, setSelection] = useState<number[] | null>(null);
+  const [info, setInfo] = useState("");
+  const flash = (t: string) => { setInfo(t); setTimeout(() => setInfo(""), 2000); };
 
   const charger = useCallback(async () => {
     const { data, error } = await supabase.from("messages_groupe").select("id, group_id, profile_id, auteur, texte, cree_le").eq("group_id", groupId).order("cree_le", { ascending: false }).limit(150);
@@ -63,9 +70,14 @@ export function DiscussionGroupe({ groupId, userId, gestionnaire }: { groupId: s
     charger();
   }
 
-  async function effacer(id: number) {
-    if (!confirm("Effacer ce message pour tout le groupe ?")) return;
-    await supabase.from("messages_groupe").delete().eq("id", id);
+  // Effacer : ses propres messages, ou tous si on est trésorier / co-gestionnaire
+  const peutEffacer = (m: Msg) => m.profile_id === userId || gestionnaire;
+  async function effacer(ids: number[]) {
+    if (!ids.length || !confirm(ids.length > 1 ? `Effacer ces ${ids.length} messages pour tout le groupe ?` : "Effacer ce message pour tout le groupe ?")) return;
+    setMsgs((l) => (Array.isArray(l) ? l.filter((m) => !ids.includes(m.id)) : l));
+    setSelection(null);
+    await supabase.from("messages_groupe").delete().in("id", ids);
+    flash(ids.length > 1 ? "Messages effacés" : "Message effacé");
     charger();
   }
 
@@ -83,6 +95,13 @@ export function DiscussionGroupe({ groupId, userId, gestionnaire }: { groupId: s
         </div>
         {Array.isArray(msgs) && msgs.length > 0 && <span className="relative rounded-full bg-[#f5c400] px-2 py-0.5 text-[0.65rem] font-extrabold text-[#0b3d2c]">{msgs.length} 💬</span>}
       </div>
+      {selection && (
+        <div className="px-2 pt-2">
+          <BarreSelection nombre={selection.length} total={Array.isArray(msgs) ? msgs.filter(peutEffacer).length : 0}
+            toutSelectionner={() => setSelection(Array.isArray(msgs) ? msgs.filter(peutEffacer).map((m) => m.id) : [])}
+            supprimer={() => effacer(selection)} annuler={() => setSelection(null)} />
+        </div>
+      )}
       <div className="max-h-[60vh] min-h-[240px] space-y-2 overflow-y-auto bg-[#f3f1ea] bg-[radial-gradient(rgba(11,61,44,0.06)_1px,transparent_1px)] p-3 [background-size:14px_14px]">
         {msgs === null && <p className="py-10 text-center text-sm text-stone-400">Chargement…</p>}
         {msgs !== null && msgs.length === 0 && (
@@ -101,15 +120,21 @@ export function DiscussionGroupe({ groupId, userId, gestionnaire }: { groupId: s
               {nouveauJour && <p className="my-2 text-center"><span className="rounded-full bg-white/90 px-3 py-1 text-[0.65rem] font-bold uppercase tracking-wide text-stone-500 shadow-sm ring-1 ring-stone-200/70">{jour(m.cree_le)}</span></p>}
             <div className={`apparait group flex items-end gap-2 ${moi ? "justify-end" : "justify-start"}`}>
               {!moi && <span className={`grid h-7 w-7 shrink-0 place-items-center rounded-full text-[0.65rem] font-extrabold ${memeAuteur ? "invisible" : couleur(m.profile_id)}`}>{initiales(m.auteur)}</span>}
-              <div className={`relative max-w-[78%] rounded-2xl px-3 py-2 text-sm shadow-sm ${moi ? "rounded-br-md bg-gradient-to-br from-emerald-600 to-emerald-800 text-white" : "rounded-bl-md bg-white text-stone-800 ring-1 ring-stone-200/60"}`}>
+              {selection && peutEffacer(m) && (
+                <span className={`order-first grid h-5 w-5 shrink-0 place-items-center rounded-full border-2 ${selection.includes(m.id) ? "border-emerald-700 bg-emerald-700 text-white" : "border-stone-300 bg-white"}`}>{selection.includes(m.id) && <span className="text-[0.6rem]">✓</span>}</span>
+              )}
+              <div onClick={selection && peutEffacer(m) ? () => setSelection((s) => (s ? (s.includes(m.id) ? s.filter((x) => x !== m.id) : [...s, m.id]) : s)) : undefined}
+                {...(selection ? {} : appuiLong(() => setMenu({ titre: m.auteur ?? "Message", apercu: m.texte, actions: [
+                  { label: "Copier", icone: Copy, onClick: () => copier(m.texte).then((ok) => flash(ok ? "Copié" : "Impossible de copier")) },
+                  ...(peutEffacer(m) ? [
+                    { label: "Sélectionner", icone: CheckSquare, onClick: () => setSelection([m.id]) },
+                    { label: "Effacer pour tout le groupe", icone: Trash2, danger: true, onClick: () => effacer([m.id]) },
+                  ] : []),
+                ] })))}
+                className={`relative max-w-[78%] cursor-default rounded-2xl px-3 py-2 text-sm shadow-sm transition ${selection?.includes(m.id) ? "ring-4 ring-emerald-300" : ""} ${moi ? "rounded-br-md bg-gradient-to-br from-emerald-600 to-emerald-800 text-white" : "rounded-bl-md bg-white text-stone-800 ring-1 ring-stone-200/60"}`}>
                 {!moi && !memeAuteur && <p className="text-[0.7rem] font-bold text-[#f77f00]">{m.auteur ?? "Membre"}</p>}
                 <p className="whitespace-pre-line break-words">{m.texte}</p>
                 <p className={`mt-0.5 text-right text-[0.6rem] ${moi ? "text-white/70" : "text-stone-400"}`}>{heure(m.cree_le)}</p>
-                {(moi || gestionnaire) && (
-                  <button type="button" onClick={() => effacer(m.id)} aria-label="Effacer le message" className={`absolute -top-2 ${moi ? "-left-2" : "-right-2"} hidden h-6 w-6 place-items-center rounded-full bg-white text-stone-500 shadow ring-1 ring-stone-200 group-hover:grid`}>
-                    <Trash2 size={12} />
-                  </button>
-                )}
               </div>
             </div>
             </div>
@@ -124,6 +149,9 @@ export function DiscussionGroupe({ groupId, userId, gestionnaire }: { groupId: s
         <button disabled={envoi || !texte.trim()} aria-label="Envoyer" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-gradient-to-br from-[#f77f00] to-[#e06a00] text-white shadow-[0_6px_16px_-6px_rgba(247,127,0,0.7)] transition active:scale-90 disabled:from-stone-300 disabled:to-stone-300 disabled:shadow-none"><Send size={18} /></button>
       </form>
       {erreur && <p className="px-3 pb-2 text-xs font-medium text-red-600">{erreur}</p>}
+      {!selection && Array.isArray(msgs) && msgs.length > 0 && <p className="px-3 pb-2 text-[0.7rem] text-stone-400">Restez appuyé sur un message pour le copier ou l’effacer.</p>}
+      {menu && <MenuActions titre={menu.titre} apercu={menu.apercu} actions={menu.actions} fermer={() => setMenu(null)} />}
+      {info && <div className="fixed inset-x-0 bottom-24 z-[80] flex justify-center"><span className="notif-entre rounded-full bg-stone-900 px-4 py-2 text-sm font-semibold text-white shadow-lg">{info}</span></div>}
     </div>
   );
 }

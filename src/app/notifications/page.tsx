@@ -1,6 +1,11 @@
 "use client";
 
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
+import { CheckCheck, CheckSquare, Copy, ExternalLink, MoreVertical, Square, Trash2 } from "lucide-react";
+import { BarreSelection, MenuActions, type Action } from "@/components/MenuActions";
+import { copier, useAppuiLong } from "@/lib/appuiLong";
 import { Bell, CheckCircle2, Clock, Coins, MessageCircle, ShieldCheck, UserPlus, XCircle } from "lucide-react";
 import { BottomNav } from "@/components/BottomNav";
 import { IconBadge } from "@/components/icons";
@@ -31,17 +36,33 @@ function ilYa(iso: string) {
 
 export default function Notifications() {
   const ok = useRequireUser();
-  const { liste, nonLues, dispo, marquerLue, marquerToutLu } = useNotifications();
+  const { liste, nonLues, dispo, marquerLue, marquerToutLu, supprimer, toutSupprimer } = useNotifications();
+  const router = useRouter();
+  const appuiLong = useAppuiLong();
+  const [menu, setMenu] = useState<{ titre?: string; apercu?: string; actions: Action[] } | null>(null);
+  const [selection, setSelection] = useState<number[] | null>(null); // null = pas en mode sélection
+  const [info, setInfo] = useState("");
   if (!ok) return <Loading />;
+
+  const flash = (t: string) => { setInfo(t); setTimeout(() => setInfo(""), 2200); };
+  const basculer = (id: number) => setSelection((s) => (s ? (s.includes(id) ? s.filter((x) => x !== id) : [...s, id]) : [id]));
+  const menuGeneral = () => setMenu({ titre: "Notifications", actions: [
+    { label: "Tout marquer comme lu", icone: CheckCheck, onClick: marquerToutLu, desactive: nonLues === 0 },
+    { label: "Sélectionner", icone: CheckSquare, onClick: () => setSelection([]), desactive: !liste.length },
+    { label: "Tout supprimer", icone: Trash2, danger: true, desactive: !liste.length, onClick: () => { if (confirm(`Supprimer les ${liste.length} notifications ?`)) toutSupprimer().then(() => flash("Notifications supprimées")); } },
+  ] });
 
   return (
     <Page>
       <Header
         back="/groupes"
         title="Notifications"
-        right={nonLues > 0 ? <button onClick={marquerToutLu} className="text-sm font-semibold text-emerald-700">Tout marquer lu</button> : undefined}
+        right={liste.length > 0 ? <button onClick={menuGeneral} aria-label="Options" className="grid h-9 w-9 place-items-center rounded-full text-stone-600 hover:bg-stone-100"><MoreVertical size={19} /></button> : undefined}
       />
       <div className="space-y-3 p-4 pb-28">
+        {selection && <BarreSelection nombre={selection.length} total={liste.length} toutSelectionner={() => setSelection(liste.map((n) => n.id))} annuler={() => setSelection(null)}
+          supprimer={() => { if (confirm(`Supprimer ${selection.length} notification${selection.length > 1 ? "s" : ""} ?`)) { supprimer(selection).then(() => flash("Supprimé")); setSelection(null); } }} />}
+        {liste.length > 0 && !selection && <p className="px-1 text-xs text-stone-400">Astuce : restez appuyé sur une notification pour la copier ou la supprimer.</p>}
         {!dispo && <Card className="text-sm text-stone-500">Les notifications seront bientôt disponibles.</Card>}
         {dispo && liste.length === 0 && (
           <Card className="space-y-2 py-8 text-center">
@@ -64,16 +85,34 @@ export default function Notifications() {
                   {!n.lue && <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full bg-orange-500" aria-label="Non lue" />}
                 </>
               );
-              const cls = `flex items-start gap-3 px-4 py-3 transition hover:bg-stone-50 ${n.lue ? "" : "bg-emerald-50/40"}`;
+              const choisie = !!selection?.includes(n.id);
+              const cls = `flex items-start gap-3 px-4 py-3 transition hover:bg-stone-50 ${choisie ? "bg-emerald-100/60" : n.lue ? "" : "bg-emerald-50/40"}`;
+              const actions = appuiLong(() => setMenu({ titre: n.titre, apercu: montantsLisibles(n.texte), actions: [
+                ...(n.lien ? [{ label: "Ouvrir", icone: ExternalLink, onClick: () => { marquerLue(n.id); router.push(n.lien!); } }] : []),
+                { label: "Copier le texte", icone: Copy, onClick: () => copier(`${n.titre}\n${montantsLisibles(n.texte)}`).then((ok) => flash(ok ? "Copié" : "Impossible de copier")) },
+                ...(!n.lue ? [{ label: "Marquer comme lue", icone: CheckCheck, onClick: () => marquerLue(n.id) }] : []),
+                { label: "Sélectionner", icone: CheckSquare, onClick: () => setSelection([n.id]) },
+                { label: "Supprimer", icone: Trash2, danger: true, onClick: () => supprimer([n.id]).then(() => flash("Supprimé")) },
+              ] }));
+              if (selection) {
+                return (
+                  <button key={n.id} type="button" onClick={() => basculer(n.id)} className={`${cls} w-full text-left`}>
+                    {choisie ? <CheckSquare size={20} className="mt-2 shrink-0 text-emerald-700" /> : <Square size={20} className="mt-2 shrink-0 text-stone-300" />}
+                    {contenu}
+                  </button>
+                );
+              }
               return n.lien ? (
-                <Link key={n.id} href={n.lien} onClick={() => marquerLue(n.id)} className={cls}>{contenu}</Link>
+                <Link key={n.id} href={n.lien} onClick={() => marquerLue(n.id)} className={cls} {...actions}>{contenu}</Link>
               ) : (
-                <button key={n.id} type="button" onClick={() => marquerLue(n.id)} className={`${cls} w-full text-left`}>{contenu}</button>
+                <button key={n.id} type="button" onClick={() => marquerLue(n.id)} className={`${cls} w-full text-left`} {...actions}>{contenu}</button>
               );
             })}
           </Card>
         )}
       </div>
+      {menu && <MenuActions titre={menu.titre} apercu={menu.apercu} actions={menu.actions} fermer={() => setMenu(null)} />}
+      {info && <div className="fixed inset-x-0 bottom-24 z-[80] flex justify-center"><span className="notif-entre rounded-full bg-stone-900 px-4 py-2 text-sm font-semibold text-white shadow-lg">{info}</span></div>}
       <BottomNav />
     </Page>
   );

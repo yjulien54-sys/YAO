@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { DiscussionGroupe } from "@/components/DiscussionGroupe";
+import { MenuActions, type Action } from "@/components/MenuActions";
+import { copier, useAppuiLong } from "@/lib/appuiLong";
 import { BanniereCagnotte, lienPartageCagnotte, useCagnotte } from "@/components/BanniereCagnotte";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -11,7 +13,7 @@ import { NATURE_LABEL, ROLE_LABEL, TYPE_LABEL, amountDue, droits, impayes, arrea
 import { PayoutModal } from "@/components/PayoutModal";
 import { METHOD_LABEL, MODE_PAIEMENT, lienWaveValide } from "@/lib/payments";
 import { useMe, useStore } from "@/lib/store";
-import { invitation, waLink } from "@/lib/whatsapp";
+import { invitation, partageRecu, waLink } from "@/lib/whatsapp";
 import { supabase } from "@/lib/supabase";
 import { MessageModal } from "@/components/MessageModal";
 import { Invitation } from "@/components/Invitation";
@@ -20,7 +22,7 @@ import { ActionRapide } from "@/components/ActionRapide";
 import { Reglement } from "@/components/Reglement";
 import { CaissePenalites } from "@/components/CaissePenalites";
 import { CaisseGroupe } from "@/components/CaisseGroupe";
-import { AlertTriangle, ArrowUpRight, Download, CalendarDays, ChevronsRight, FileText, Flag, History, Users, MessageCircle, Phone, Settings, Check, CheckCircle2, Clock, Gift, PartyPopper, Smartphone, ShieldCheck, Trash2, LogOut, UserPlus, X } from "lucide-react";
+import { Copy, Receipt, Share2, AlertTriangle, ArrowUpRight, Download, CalendarDays, ChevronsRight, FileText, Flag, History, Users, MessageCircle, Phone, Settings, Check, CheckCircle2, Clock, Gift, PartyPopper, Smartphone, ShieldCheck, Trash2, LogOut, UserPlus, X } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 import type { Member } from "@/lib/types";
 
@@ -34,6 +36,8 @@ export default function GroupeDetail() {
   const g = getGroup(id);
   const me = useMe(g);
   const [tab, setTab] = useState<Tab>("membres");
+  const appuiLong = useAppuiLong();
+  const [menuHisto, setMenuHisto] = useState<{ titre: string; apercu: string; actions: Action[] } | null>(null);
   // Arrivée depuis une notification de message : on ouvre directement la discussion
   useEffect(() => {
     if (new URLSearchParams(window.location.search).get("onglet") === "discussion") {
@@ -615,7 +619,11 @@ export default function GroupeDetail() {
           <Card className="divide-y divide-stone-100 !p-0">
             {g.payments.length === 0 && <p className="p-4 text-center text-sm text-stone-500">Aucun paiement pour l’instant.</p>}
             {[...g.payouts].reverse().map((v) => (
-              <div key={v.id} className="flex items-center gap-3 bg-amber-50/50 px-4 py-3">
+              <div key={v.id} className="flex items-center gap-3 bg-amber-50/50 px-4 py-3"
+                {...appuiLong(() => setMenuHisto({ titre: `${NATURE_LABEL[v.nature ?? "versement"]} ${v.beneficiaryName}`, apercu: `${fcfa(v.amount)} · ${dateLongue(v.date)} · ${METHOD_LABEL[v.method]}`, actions: [
+                  { label: "Copier les détails", icone: Copy, onClick: () => { copier(`${g.name} · ${NATURE_LABEL[v.nature ?? "versement"]} ${v.beneficiaryName} : ${fcfa(v.amount)} (${METHOD_LABEL[v.method]}, ${dateLongue(v.date)})`); flash("Copié"); } },
+                  { label: "Supprimer", icone: Trash2, danger: true, desactive: true, note: "Impossible : chaque versement reste visible par tout le groupe", onClick: () => {} },
+                ] }))}>
                 <IconBadge icon={ArrowUpRight} ton="ambre" taille="sm" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold">{NATURE_LABEL[v.nature ?? "versement"]} {v.beneficiaryName}</p>
@@ -629,7 +637,13 @@ export default function GroupeDetail() {
             {[...g.payments].reverse().map((p) => {
               const m = [...g.members, ...g.anciens].find((x) => x.id === p.memberId);
               return (
-                <Link key={p.id} href={`/groupes/${g.id}/recu/${p.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50">
+                <Link key={p.id} href={`/groupes/${g.id}/recu/${p.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-stone-50"
+                  {...appuiLong(() => setMenuHisto({ titre: m?.name ?? "Ancien membre", apercu: `${fcfa(p.amount + p.penalty)} · ${dateLongue(p.date)} · ${METHOD_LABEL[p.method]}`, actions: [
+                    { label: "Voir le reçu", icone: Receipt, onClick: () => router.push(`/groupes/${g.id}/recu/${p.id}`) },
+                    ...(m ? [{ label: "Partager le reçu sur WhatsApp", icone: Share2, onClick: () => window.open(partageRecu(g, m, p), "_blank", "noopener") }] : []),
+                    { label: "Copier les détails", icone: Copy, onClick: () => { copier(`${g.name} · ${m?.name ?? "Ancien membre"} a payé ${fcfa(p.amount + p.penalty)}${g.type !== "collecte" ? ` (tour ${p.round})` : ""} · ${METHOD_LABEL[p.method]} · ${dateLongue(p.date)} · Réf ${p.reference}`); flash("Copié"); } },
+                    { label: "Supprimer", icone: Trash2, danger: true, desactive: true, note: "Impossible : un paiement est une preuve pour tout le groupe", onClick: () => {} },
+                  ] }))}>
                   <Avatar name={m?.name ?? "?"} size={36} />
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{m?.name ?? "Ancien membre"}</p>
@@ -646,6 +660,8 @@ export default function GroupeDetail() {
             })}
           </Card>
         )}
+
+        {menuHisto && <MenuActions titre={menuHisto.titre} apercu={menuHisto.apercu} actions={menuHisto.actions} fermer={() => setMenuHisto(null)} />}
 
         {tab === "tours" && g.type === "tontine" && (
           <Card className="divide-y divide-stone-100 !p-0">
