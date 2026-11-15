@@ -2,7 +2,7 @@
 
 /** Écran du trésorier : rendre sa collecte publique (photo, message, jauge) et partager le lien sur WhatsApp */
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Camera, Check, ExternalLink, Eye, Globe, Loader2, Move, X, ZoomIn } from "lucide-react";
+import { Camera, Check, ExternalLink, Eye, Globe, Loader2, Move, Share2, X, ZoomIn } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { messageCagnotte } from "@/lib/motif";
 
@@ -18,6 +18,16 @@ export function CagnottePublique({ groupId, nom, cause }: { groupId: string; nom
   const [envoi, setEnvoi] = useState(false);
   const [msg, setMsg] = useState("");
   const [recadrage, setRecadrage] = useState<{ bitmap: ImageBitmap; url: string } | null>(null);
+  // L'affiche toute prête (image partagée sur WhatsApp)
+  const [affiche, setAffiche] = useState<string | null>(null);
+  const [fabrication, setFabrication] = useState(false);
+  const refaireAffiche = useCallback(async (slug: string | null | undefined) => {
+    if (!slug) return;
+    setFabrication(true);
+    const r = await fetch("/api/cagnotte/affiche", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ slug }) }).then((x) => x.json()).catch(() => null) as { lien?: string | null } | null;
+    setFabrication(false);
+    setAffiche(r?.lien ?? `/c/${slug}/affiche?t=${Date.now()}`);
+  }, []);
 
   const charger = useCallback(async () => {
     const { data, error } = await supabase.rpc("cagnotte_etat", { g: groupId });
@@ -26,6 +36,7 @@ export function CagnottePublique({ groupId, nom, cause }: { groupId: string; nom
     setEtat(e); setMessage(e?.message ?? ""); setMontants(e?.montants ?? true); setFin(e?.fin ?? ""); setPhoto(e?.photo ?? null);
   }, [groupId]);
   useEffect(() => { charger(); }, [charger]);
+  useEffect(() => { if (etat?.actif && etat.slug && !affiche) refaireAffiche(etat.slug); }, [etat, affiche, refaireAffiche]);
 
   if (etat === undefined) return null;
   if (etat === null) return <p className="rounded-2xl bg-amber-50 p-3 text-sm text-amber-900">Pour publier ta cagnotte sur une belle page à partager, l’administrateur Cotiz doit faire la mise à jour n°37.</p>;
@@ -40,6 +51,7 @@ export function CagnottePublique({ groupId, nom, cause }: { groupId: string; nom
     if (error) return setMsg("Erreur : " + error.message);
     setMsg(actif ? "Ta cagnotte est en ligne : partage le lien sur WhatsApp !" : "La page publique est retirée.");
     setEtat({ ...etat, slug: data as string, actif, photo: nouvellePhoto, montants, message, fin: fin || null });
+    if (actif) refaireAffiche(data as string);
   };
   /** Envoi de la photo prête vers le stockage, puis enregistrement sur la cagnotte */
   const envoyer = async (fichier: Blob, ext: string, type: string, embellie: boolean) => {
@@ -53,6 +65,7 @@ export function CagnottePublique({ groupId, nom, cause }: { groupId: string; nom
     setEnvoi(false);
     if (e2) return setMsg("Erreur : " + e2.message);
     setEtat({ ...etat, photo: url });
+    if (etat.actif) refaireAffiche(etat.slug);
     setMsg(embellie ? "Photo cadrée, embellie et enregistrée ✓" : "Photo enregistrée ✓");
   };
   /** 1. On choisit la photo → écran de recadrage (déplacer, zoomer, valider) */
@@ -89,6 +102,18 @@ export function CagnottePublique({ groupId, nom, cause }: { groupId: string; nom
     envoyer(prete, "jpg", "image/jpeg", true);
   };
   const texte = messageCagnotte({ nom, cause: motif, message, lien });
+  /** Partager l'affiche elle-même (image + texte + lien) : idéal pour un statut ou un groupe WhatsApp */
+  const partagerAffiche = async () => {
+    if (!affiche) return;
+    try {
+      const blob = await fetch(affiche).then((r) => r.blob());
+      const fichier = new File([blob], "affiche-cagnotte-cotiz.jpg", { type: blob.type || "image/jpeg" });
+      if (navigator.canShare?.({ files: [fichier] })) return await navigator.share({ files: [fichier], text: texte });
+      const a = document.createElement("a");
+      a.href = URL.createObjectURL(blob); a.download = fichier.name; a.click();
+      setMsg("Affiche téléchargée : envoyez-la sur WhatsApp avec le lien.");
+    } catch { /* partage annulé */ }
+  };
 
   return (
     <div className="space-y-3">
@@ -120,6 +145,24 @@ export function CagnottePublique({ groupId, nom, cause }: { groupId: string; nom
       {etat.actif && lien ? (
         <div className="space-y-2 rounded-2xl bg-emerald-50 p-3 ring-1 ring-emerald-200">
           <p className="flex items-center gap-1.5 text-sm font-bold text-emerald-800"><Globe size={15} /> En ligne · <Eye size={14} /> {etat.vues} vue{etat.vues > 1 ? "s" : ""}</p>
+          {/* L'affiche qui apparaît sur WhatsApp */}
+          <div className="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-emerald-100">
+            <div className="relative bg-stone-100" style={{ aspectRatio: "1200 / 630" }}>
+              {affiche && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={affiche} alt="Affiche de la cagnotte" className={`absolute inset-0 h-full w-full object-cover transition-opacity duration-500 ${fabrication ? "opacity-40" : "opacity-100"}`} />
+              )}
+              {(fabrication || !affiche) && (
+                <div className="absolute inset-0 grid place-items-center">
+                  <span className="inline-flex items-center gap-2 rounded-full bg-white/90 px-3 py-1.5 text-xs font-bold text-emerald-800 shadow"><Loader2 size={14} className="animate-spin" /> Fabrication de l’affiche…</span>
+                </div>
+              )}
+            </div>
+            <div className="flex items-center gap-2 p-2.5">
+              <p className="min-w-0 flex-1 text-xs text-stone-600"><b className="text-stone-900">Votre affiche WhatsApp</b><br />Elle apparaît avec le lien, et se met à jour toute seule.</p>
+              <button type="button" onClick={partagerAffiche} disabled={!affiche || fabrication} className="inline-flex shrink-0 items-center gap-1.5 rounded-full bg-gradient-to-r from-[#f77f00] to-[#e06a00] px-3.5 py-2 text-xs font-bold text-white shadow-[0_6px_14px_-6px_rgba(247,127,0,0.7)] disabled:opacity-50"><Share2 size={14} /> Partager l’affiche</button>
+            </div>
+          </div>
           <p className="truncate rounded-lg bg-white px-2.5 py-2 text-xs text-stone-600 ring-1 ring-emerald-100">{lien}</p>
           <div className="grid grid-cols-3 gap-2">
             <a href={`https://wa.me/?text=${encodeURIComponent(texte)}`} target="_blank" rel="noopener" className="rounded-xl bg-[#1fa855] py-2.5 text-center text-sm font-bold text-white">WhatsApp</a>

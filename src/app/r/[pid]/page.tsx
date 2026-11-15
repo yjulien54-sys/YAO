@@ -24,7 +24,7 @@ export async function generateMetadata({ params }: { params: Promise<{ pid: stri
   const r = await lire((await params).pid);
   if (!r) return { title: "Reçu Cotiz" };
   const titre = `Reçu Cotiz · ${r.membre} · ${fcfa(r.montant + r.penalite)}`;
-  return { title: titre, description: `Paiement confirmé · ${r.groupe}`, openGraph: { title: titre, description: `Paiement confirmé · ${r.groupe}`, siteName: "Cotiz" }, robots: { index: false } };
+  return { title: titre, description: `Paiement confirmé · ${r.groupe}`, openGraph: { title: titre, description: `Paiement confirmé · ${r.groupe}`, siteName: "Cotiz", images: [{ url: "/opengraph-image", width: 1200, height: 630, type: "image/jpeg" }] }, robots: { index: false } };
 }
 
 export default async function RecuPublic({ params }: { params: Promise<{ pid: string }> }) {

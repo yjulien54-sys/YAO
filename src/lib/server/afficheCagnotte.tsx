@@ -1,34 +1,22 @@
+/* eslint-disable @next/next/no-img-element */
 /**
- * Image d'aperçu de la cagnotte (celle que WhatsApp, Facebook… affichent quand on partage le lien).
- * Générée automatiquement pour chaque cagnotte : photo, logo Cotiz, titre, montant et jauge,
- * avec une bande de motifs aux couleurs de Cotiz.
+ * Affiche de la cagnotte (l'image que WhatsApp, Facebook… montrent quand on partage le lien).
+ * Photo, logo Cotiz, motif, titre, montant, jauge et logos des opérateurs, aux couleurs de Cotiz.
+ * Renvoie un JPEG léger (environ 100 Ko) : WhatsApp refuse les images trop lourdes.
  */
 import { ImageResponse } from "next/og";
 import sharp from "sharp";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
-import { createClient } from "@supabase/supabase-js";
 import { phraseMotif } from "@/lib/motif";
 
-export const runtime = "nodejs";
-export const alt = "Cagnotte Cotiz";
-export const size = { width: 1200, height: 630 };
-// JPEG léger (moins de 300 Ko) : au-delà, WhatsApp n'affiche pas l'aperçu
-export const contentType = "image/jpeg";
+export type InfosAffiche = { nom: string; cause: string | null; message: string | null; description: string | null; photo: string | null; objectif: number | null; collecte: number; donateurs_nb: number; tresorier: string | null };
 
-type Infos = { nom: string; cause: string | null; message: string | null; description: string | null; photo: string | null; objectif: number | null; collecte: number; donateurs_nb: number; tresorier: string | null };
-
-const fcfa = (n: number) => `${Math.round(n).toLocaleString("fr-FR").replace(/[  ]/g, " ")} F CFA`;
+const fcfa = (n: number) => `${Math.round(n).toLocaleString("fr-FR").replace(/[\u202f\u00a0]/g, " ")} F CFA`;
 const VERT = "#009e60", ORANGE = "#f77f00", OR = "#f5c400";
+const size = { width: 1200, height: 630 };
 
-export default async function Image({ params }: { params: Promise<{ slug: string }> }) {
-  const { slug } = await params;
-  let c: Infos | null = null;
-  if (/^[a-z0-9-]{3,60}$/.test(slug)) {
-    const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
-    const { data } = await sb.rpc("cagnotte_publique", { s: slug, compter: false });
-    c = (data as Infos | null) ?? null;
-  }
+export async function dessinerAffiche(c: InfosAffiche | null): Promise<{ data: Buffer; type: "image/jpeg" | "image/png" }> {
   // Fichiers locaux : si l'un manque, l'image se fabrique quand même (police par défaut, sans logo)
   const lire = (chemin: string) => readFile(join(process.cwd(), chemin)).catch(() => null);
   const [icone, gras, moyen] = await Promise.all([lire("public/icons/icon-192.png"), lire("public/polices/PlusJakartaSans-ExtraBold.ttf"), lire("public/polices/PlusJakartaSans-Medium.ttf")]);
@@ -112,9 +100,8 @@ export default async function Image({ params }: { params: Promise<{ slug: string
   );
   const brut = Buffer.from(await png.arrayBuffer());
   try {
-    const jpeg = await sharp(brut).jpeg({ quality: 78, mozjpeg: true, chromaSubsampling: "4:2:0" }).toBuffer();
-    return new Response(new Uint8Array(jpeg), { headers: { "Content-Type": "image/jpeg", "Cache-Control": "public, max-age=600, s-maxage=600" } });
+    return { data: await sharp(brut).jpeg({ quality: 80, mozjpeg: true, chromaSubsampling: "4:2:0" }).toBuffer(), type: "image/jpeg" };
   } catch {
-    return new Response(new Uint8Array(brut), { headers: { "Content-Type": "image/png", "Cache-Control": "public, max-age=600" } });
+    return { data: brut, type: "image/png" };
   }
 }
