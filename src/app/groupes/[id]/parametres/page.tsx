@@ -1,6 +1,7 @@
 "use client";
 
 import { useParams, useRouter } from "next/navigation";
+import { ChoixStyleAffiche } from "@/components/ChoixStyleAffiche";
 import { CagnottePublique } from "@/components/CagnottePublique";
 import { useEffect, useState } from "react";
 import { ArrowDown, ArrowUp, Gift, HandHeart, Settings2, ShieldCheck, Trash2, UserCog, Users } from "lucide-react";
@@ -115,6 +116,11 @@ export default function Parametres() {
             <p className="text-sm text-stone-600">Une belle page avec photo, jauge et participants : envoie-la sur WhatsApp, même à ceux qui n’ont pas Cotiz.</p>
             <CagnottePublique groupId={g.id} nom={g.name} cause={g.donCause} />
           </Card></div>
+        )}
+
+        {/* Style des affiches (lien du groupe et de la cagnotte) */}
+        {d.gestionnaire && (
+          <Card><ChoixStyleAffiche groupId={g.id} theme={g.theme} /></Card>
         )}
 
         {/* Informations */}

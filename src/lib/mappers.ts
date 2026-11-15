@@ -86,6 +86,7 @@ export const mapGroup = (r: any): Group => {
     tiragePar: r.tirage_par ?? undefined,
     penaltyDestination: r.penalty_destination ?? "beneficiaire",
     donCause: r.don_cause ?? undefined,
+    theme: r.public_theme ?? null,
     engagements: (r.engagements ?? []).map((e: any) => ({
       profileId: e.profile_id,
       nom: e.nom,

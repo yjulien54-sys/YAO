@@ -93,6 +93,7 @@ export interface Group {
   engagements: Engagement[]; // règlements acceptés
   penaltyDestination: PenaltyDestination; // à quoi servent les pénalités
   donCause?: string; // cause soutenue si les pénalités deviennent des dons
+  theme?: number | null; // style des affiches choisi par le trésorier (null = automatique)
   createdAt: string;
 }
 

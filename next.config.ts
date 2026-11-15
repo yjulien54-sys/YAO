@@ -8,6 +8,7 @@ const nextConfig: NextConfig = {
     "/c/[slug]/affiche": ["./public/polices/*.ttf", "./public/icons/icon-192.png", "./public/operateurs/*.png"],
     "/c/[slug]": ["./public/polices/*.ttf", "./public/icons/icon-192.png", "./public/operateurs/*.png"],
     "/api/cagnotte/affiche": ["./public/polices/*.ttf", "./public/icons/icon-192.png", "./public/operateurs/*.png"],
+    "/groupes/[id]/affiche": ["./public/polices/*.ttf", "./public/icons/icon-192.png", "./public/operateurs/*.png"],
     "/opengraph-image": ["./public/polices/*.ttf", "./public/icons/icon-192.png", "./public/operateurs/*.png"],
   },
 };
