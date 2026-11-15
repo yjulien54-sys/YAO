@@ -15,6 +15,6 @@ export function invitation(g: Group, qui: { cle?: string | null; par?: string | 
 }
 
 export function partageRecu(g: Group, m: Member, p: Payment) {
-  const texte = `✅ *Reçu Cotiz*\n\n${g.name}\n${m.name} a payé *${fcfa(p.amount + p.penalty)}*${g.type !== "collecte" ? ` (tour ${p.round})` : ""}\nRéf : ${p.reference}\n\n${origin()}/groupes/${g.id}/recu/${p.id}`;
+  const texte = `✅ *Reçu Cotiz*\n\n${g.name}\n${m.name} a payé *${fcfa(p.amount + p.penalty)}*${g.type !== "collecte" ? ` (tour ${p.round})` : ""}\nRéf : ${p.reference}\n\n${origin()}/r/${p.id}`;
   return waLink(texte);
 }

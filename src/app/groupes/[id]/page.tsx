@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DiscussionGroupe } from "@/components/DiscussionGroupe";
 import { BanniereCagnotte, lienPartageCagnotte, useCagnotte } from "@/components/BanniereCagnotte";
 import { useParams, useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
@@ -23,7 +24,7 @@ import { AlertTriangle, ArrowUpRight, Download, CalendarDays, ChevronsRight, Fil
 import { IconBadge } from "@/components/icons";
 import type { Member } from "@/lib/types";
 
-type Tab = "membres" | "historique" | "tours";
+type Tab = "membres" | "historique" | "tours" | "discussion";
 
 export default function GroupeDetail() {
   const ok = useRequireUser();
@@ -33,6 +34,13 @@ export default function GroupeDetail() {
   const g = getGroup(id);
   const me = useMe(g);
   const [tab, setTab] = useState<Tab>("membres");
+  // Arrivée depuis une notification de message : on ouvre directement la discussion
+  useEffect(() => {
+    if (new URLSearchParams(window.location.search).get("onglet") === "discussion") {
+      setTab("discussion");
+      setTimeout(() => document.getElementById("onglets")?.scrollIntoView({ behavior: "smooth", block: "start" }), 400);
+    }
+  }, []);
   const [newName, setNewName] = useState("");
   const [newPhone, setNewPhone] = useState("");
   const [newParts, setNewParts] = useState(1);
@@ -453,26 +461,24 @@ export default function GroupeDetail() {
         <CaissePenalites g={g} tresorier={isTreasurer} />
 
 
-        {/* Liste des paiements à télécharger / partager (trésorier et co-gestionnaires) */}
-        {dr.gestionnaire && (
-          <Link href={`/groupes/${g.id}/liste`} className="carte flex items-center gap-3 p-3.5 transition active:scale-[0.99]">
-            <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-emerald-50 text-emerald-700"><FileText size={20} strokeWidth={2} /></span>
-            <span className="min-w-0 flex-1">
-              <span className="block font-bold text-stone-900">Liste des paiements</span>
-              <span className="block text-xs text-stone-500">WhatsApp, PDF ou Excel</span>
-            </span>
-            <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-emerald-700 px-3 py-1.5 text-xs font-bold text-white"><Download size={13} /> Ouvrir</span>
-          </Link>
-        )}
-
         {/* Onglets */}
-        <div className="flex gap-1 rounded-xl bg-stone-200/70 p-1 text-sm font-semibold">
-          {(["membres", "historique", ...(g.type === "tontine" ? ["tours"] : [])] as Tab[]).map((t) => (
-            <button key={t} onClick={() => setTab(t)} className={`flex-1 rounded-lg py-2 capitalize transition ${tab === t ? "bg-white text-stone-900 shadow-sm" : "text-stone-500"}`}>
-              {t === "membres" ? `Membres (${g.members.length})` : t}
+        {/* Petit bouton : liste des paiements à télécharger / partager (trésorier et co-gestionnaires) */}
+        {dr.gestionnaire && (
+          <div className="-mb-2 flex justify-end">
+            <Link href={`/groupes/${g.id}/liste`} className="inline-flex items-center gap-1 rounded-full bg-white px-3 py-1.5 text-xs font-bold text-emerald-800 shadow-sm ring-1 ring-stone-200">
+              <Download size={13} /> Liste des paiements
+            </Link>
+          </div>
+        )}
+        <div id="onglets" className="flex scroll-mt-20 gap-0.5 rounded-xl bg-stone-200/70 p-1 text-xs font-semibold sm:gap-1 sm:text-sm">
+          {(["membres", "historique", ...(g.type === "tontine" ? ["tours"] : []), "discussion"] as Tab[]).map((t) => (
+            <button key={t} onClick={() => setTab(t)} className={`flex-auto whitespace-nowrap rounded-lg px-1.5 py-2 capitalize transition ${tab === t ? "bg-white text-stone-900 shadow-sm" : "text-stone-500"}`}>
+              {t === "membres" ? <>Membres<span className="hidden sm:inline"> ({g.members.length})</span></> : t === "discussion" ? <><span className="hidden sm:inline">💬 </span>Discussion</> : t}
             </button>
           ))}
         </div>
+
+        {tab === "discussion" && <DiscussionGroupe groupId={g.id} userId={userId} gestionnaire={dr.gestionnaire} />}
 
         {tab === "membres" && (
           <Card className="divide-y divide-stone-100 !p-0">

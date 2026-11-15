@@ -123,7 +123,7 @@ export function Bienvenue() {
   }, []);
   const montant = useCompteur(visible ? 400000 : 0, 1600, 1900);
   const nom = user?.name ?? "";
-  const actif = ready && !!user && !!userId && !PAGES_PUBLIQUES.includes(path) && !path.startsWith("/c/");
+  const actif = ready && !!user && !!userId && !PAGES_PUBLIQUES.includes(path) && !path.startsWith("/c/") && !path.startsWith("/r/");
 
   useEffect(() => {
     if (!actif) return;

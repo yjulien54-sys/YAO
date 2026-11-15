@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useSearchParams } from "next/navigation";
-import { Suspense } from "react";
-import { Header, Loading, Logo, Page, WhatsAppIcon, btnClass, useRequireUser } from "@/components/ui";
+import { useParams, useRouter, useSearchParams } from "next/navigation";
+import { Suspense, useEffect } from "react";
+import { Header, Loading, Logo, Page, WhatsAppIcon, btnClass } from "@/components/ui";
 import { dateLongue, fcfa } from "@/lib/format";
 import { METHOD_LABEL } from "@/lib/payments";
 import { useStore } from "@/lib/store";
@@ -20,17 +20,21 @@ export default function RecuPage() {
 }
 
 function Recu() {
-  const ok = useRequireUser();
   const { id, pid } = useParams<{ id: string; pid: string }>();
+  const router = useRouter();
   const sp = useSearchParams();
   const nouveau = sp.get("nouveau") === "1";
   const nbTours = Number(sp.get("n") ?? "1");
-  const { getGroup, loaded } = useStore();
+  const { getGroup, loaded, ready, user } = useStore();
   const g = getGroup(id);
   const p = g?.payments.find((x) => x.id === pid);
   const m = g ? [...g.members, ...g.anciens].find((x) => x.id === p?.memberId) : undefined;
 
-  if (!ok || !loaded) return <Loading />;
+  // Pas connecté, ou pas dans ce groupe (reçu reçu sur WhatsApp) : on montre le reçu public
+  const versPublic = (ready && !user) || (loaded && !!user && (!g || !p));
+  useEffect(() => { if (versPublic) router.replace(`/r/${pid}`); }, [versPublic, router, pid]);
+
+  if (!ready || !user || !loaded || versPublic) return <Loading />;
   if (!g || !p)
     return (
       <Page>

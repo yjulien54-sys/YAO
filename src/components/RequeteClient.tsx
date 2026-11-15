@@ -1,8 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { CheckCircle2, ChevronDown, Clock, Lock, MessageSquareText, Send, Sparkles, Star } from "lucide-react";
-import { IconBadge } from "./icons";
+import { CheckCircle2, ChevronDown, Clock, Lock, Send, Sparkles, Star } from "lucide-react";
 import { supabase } from "@/lib/supabase";
 import { useStore } from "@/lib/store";
 
@@ -80,16 +79,16 @@ export function RequeteClient() {
   return (
     <section id="mes-requetes" className="carte scroll-mt-20 space-y-4 p-4">
       <div className="flex items-center gap-3">
-        <IconBadge icon={MessageSquareText} ton="bleu" />
-        <div>
-          <p className="font-bold">Écrire au service client</p>
-          <p className="text-xs text-stone-500">Un agent te répond ici et tu reçois une notification.</p>
+        <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-sm"><Sparkles size={20} /></span>
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-center gap-2 font-bold">Discuter avec Cotiz IA <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[0.65rem] font-bold text-violet-800">🤖 Assistant automatique</span></p>
+          <p className="text-xs text-stone-500">Il répond tout de suite, 24h/24. Si besoin, un conseiller prend le relais dans la même conversation.</p>
         </div>
       </div>
       {etat === "ok" ? (
         <div className="rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-800">
           <p className="flex items-center gap-2 font-bold"><CheckCircle2 size={18} /> Message envoyé</p>
-          <p className="mt-1">Un agent du service client va te répondre. Tu verras sa réponse juste en dessous.</p>
+          <p className="mt-1">Cotiz IA vous répond juste en dessous. Si votre demande nécessite une vérification, un conseiller prendra le relais.</p>
           <button onClick={() => setEtat("")} className="mt-2 text-xs font-bold underline">Écrire un autre message</button>
         </div>
       ) : (
@@ -156,7 +155,7 @@ function Conversation({ r, fil, statut: [l, c], nouveau, ouverte, basculer, peut
           {fil.map((m) => (
             <div key={m.id} className={`flex ${m.auteur === "client" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${m.auteur === "client" ? "rounded-br-md bg-emerald-700 text-white" : m.auteur === "ia" ? "rounded-bl-md bg-gradient-to-br from-violet-50 to-sky-50 text-stone-800 ring-1 ring-violet-200" : "rounded-bl-md bg-white text-stone-800 ring-1 ring-stone-200"}`}>
-                {m.auteur === "agent" && <p className="text-[0.7rem] font-bold text-emerald-700">Service client</p>}
+                {m.auteur === "agent" && <p className="text-[0.7rem] font-bold text-emerald-700">👤 Conseiller Cotiz</p>}
                 {m.auteur === "ia" && <p className="flex items-center gap-1 text-[0.7rem] font-bold text-violet-700"><Sparkles size={11} /> Cotiz IA <span className="font-normal text-stone-400">· assistant automatique</span></p>}
                 <p className="whitespace-pre-line">{m.texte}</p>
                 <p className={`mt-0.5 text-right text-[0.65rem] ${m.auteur === "client" ? "text-emerald-100" : "text-stone-400"}`}>{heure(m.cree_le)}</p>

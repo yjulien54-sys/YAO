@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { Bell, CheckCircle2, Clock, ShieldCheck, UserPlus, XCircle } from "lucide-react";
+import { Bell, CheckCircle2, Clock, Coins, MessageCircle, ShieldCheck, UserPlus, XCircle } from "lucide-react";
 import { BottomNav } from "@/components/BottomNav";
 import { IconBadge } from "@/components/icons";
 import { Card, Header, Loading, Page, useRequireUser } from "@/components/ui";
@@ -16,6 +16,8 @@ const ICONE: Record<string, [typeof Bell, "vert" | "ambre" | "rouge" | "bleu" | 
   versement_a_valider: [ShieldCheck, "violet"],
   versement_valide: [CheckCircle2, "vert"],
   versement_refuse: [XCircle, "rouge"],
+  paiement_groupe: [Coins, "vert"],
+  message_groupe: [MessageCircle, "bleu"],
 };
 
 function ilYa(iso: string) {

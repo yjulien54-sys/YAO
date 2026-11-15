@@ -10,12 +10,12 @@ const sms = (texte: string) => `sms:+225${SUPPORT_PHONE}?&body=${encodeURICompon
 /** Carte « Service client » : WhatsApp, SMS et appel */
 export function ServiceClient({ sujet = "Bonjour, j’ai besoin d’aide avec Cotiz." }: { sujet?: string }) {
   return (
-    <div className="carte space-y-3 p-4">
+    <div id="conseiller" className="carte scroll-mt-20 space-y-3 p-4">
       <div className="flex items-center gap-3">
         <IconBadge icon={Headset} />
-        <div>
-          <p className="font-bold">Service client Cotiz</p>
-          <p className="text-xs text-stone-500">Une question, un problème ? On t’aide par WhatsApp, SMS ou appel · {SUPPORT_AFFICHE}</p>
+        <div className="min-w-0">
+          <p className="flex flex-wrap items-center gap-2 font-bold">Parler à un conseiller <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[0.65rem] font-bold text-emerald-800">👤 Une vraie personne</span></p>
+          <p className="text-xs text-stone-500">L’équipe Cotiz vous répond par WhatsApp, SMS ou appel · {SUPPORT_AFFICHE}</p>
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2">
