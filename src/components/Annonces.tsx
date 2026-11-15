@@ -7,8 +7,8 @@ import { supabase } from "@/lib/supabase";
 
 type Annonce = { id: string; titre: string; texte?: string | null; lien?: string | null; bouton?: string | null; couleur: "vert" | "orange" | "bleu" | "sombre"; video?: string | null };
 
-// Annonce du nouveau nom, toujours en premier
-const NOUVEAU_NOM: Annonce = { id: "sikaklo", titre: "Cotiz devient Sikaklo", texte: "Nouveau nom, nouveau logo. Rien ne change pour vos groupes, vos paiements et votre code.", couleur: "orange" };
+// Les anciennes annonces enregistrées avec l'ancien nom affichent « Sikaklo »
+const nom = (t?: string | null) => (t ? t.replace(/Cotiz/g, "Sikaklo") : t);
 
 // Annonces par défaut (si la table n'existe pas encore ou est vide)
 const DEFAUT: Annonce[] = [
@@ -29,8 +29,8 @@ const ETIQUETTE: Record<string, string> = { vert: "Sikaklo", orange: "Nouveauté
 
 /** Bandeau d'annonces qui défile (publicités, nouveautés, mises à jour) */
 export function Annonces() {
-  const [liste, setListeBrute] = useState<Annonce[]>([NOUVEAU_NOM, ...DEFAUT]);
-  const setListe = (l: Annonce[]) => setListeBrute([NOUVEAU_NOM, ...l.filter((a) => a.id !== NOUVEAU_NOM.id)]);
+  const [liste, setListeBrute] = useState<Annonce[]>(DEFAUT);
+  const setListe = (l: Annonce[]) => setListeBrute(l.map((a) => ({ ...a, titre: nom(a.titre) ?? "", texte: nom(a.texte), bouton: nom(a.bouton) })));
 
   useEffect(() => {
     try {

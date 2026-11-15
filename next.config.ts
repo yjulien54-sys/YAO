@@ -12,6 +12,10 @@ const nextConfig: NextConfig = {
     "/groupes/[id]/affiche": ["./public/polices/*.ttf", "./public/icons/icon-192.png", "./public/operateurs/*.png"],
     "/opengraph-image": ["./public/polices/*.ttf", "./public/icons/icon-192.png", "./public/operateurs/*.png"],
   },
+  // Ancien lien de téléchargement de l'application Android
+  async redirects() {
+    return [{ source: "/app/cotiz.apk", destination: "/app/sikaklo.apk", permanent: false }];
+  },
 };
 
 export default nextConfig;

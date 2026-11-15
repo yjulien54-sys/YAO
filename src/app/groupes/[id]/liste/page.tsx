@@ -113,7 +113,7 @@ export default function ListePaiements() {
       lignesTxt.push(`💰 *Tour ${g.currentRound} : ${fcfa(totalTour)}* sur ${fcfa(attenduTour)} (${nbPayes}/${actifs.length} ont payé)`);
       lignesTxt.push(`Total encaissé depuis le début : ${fcfa(totalEncaisse)}`);
     }
-    lignesTxt.push("", "_Liste générée avec Cotiz_");
+    lignesTxt.push("", "_Liste générée avec Sikaklo_");
     return lignesTxt.join("\n");
   };
 

@@ -8,7 +8,7 @@ export const metadata: Metadata = {
 
 const ETAPES = [
   "Touche le bouton vert « Télécharger l’application ».",
-  "Ouvre le fichier cotiz.apk une fois téléchargé (dans la notification ou dans « Téléchargements »).",
+  "Ouvre le fichier sikaklo.apk une fois téléchargé (dans la notification ou dans « Téléchargements »).",
   "Si Android le demande, autorise l’installation depuis cette source (Chrome ou Fichiers), puis reviens en arrière.",
   "Touche « Installer », puis « Ouvrir » : Sikaklo apparaît avec son logo vert.",
 ];
@@ -24,8 +24,8 @@ export default function Telecharger() {
         <h1 className="relative mt-5 text-2xl font-extrabold tracking-tight">Sikaklo pour Android</h1>
         <p className="relative mt-1 text-sm text-emerald-50/90">Tontines, associations et collectes · version 1.0.1</p>
         <a
-          href="/app/cotiz.apk"
-          download="cotiz.apk"
+          href="/app/sikaklo.apk"
+          download="sikaklo.apk"
           className="relative mt-6 inline-flex w-full items-center justify-center rounded-2xl bg-white px-4 py-4 text-base font-extrabold text-emerald-800 shadow-lg"
         >
           Télécharger l’application
