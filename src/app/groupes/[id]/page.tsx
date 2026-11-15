@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { DiscussionGroupe } from "@/components/DiscussionGroupe";
+import { marquerDiscussionLue, useNonLus } from "@/lib/nonLus";
 import { MenuActions, type Action } from "@/components/MenuActions";
 import { copier, useAppuiLong } from "@/lib/appuiLong";
 import { BanniereCagnotte, lienPartageCagnotte, useCagnotte } from "@/components/BanniereCagnotte";
@@ -37,6 +38,13 @@ export default function GroupeDetail() {
   const me = useMe(g);
   const [tab, setTab] = useState<Tab>("membres");
   const appuiLong = useAppuiLong();
+  // Nouveaux messages de la discussion (pastille sur l'onglet) ; lus dès qu'on ouvre la discussion
+  const { nonLus, recharger: rechargerNonLus } = useNonLus(userId);
+  const nbNonLus = nonLus[id]?.nb ?? 0;
+  useEffect(() => {
+    if (tab !== "discussion") return;
+    marquerDiscussionLue(id).then(rechargerNonLus);
+  }, [tab, id, nbNonLus, rechargerNonLus]);
   const [menuHisto, setMenuHisto] = useState<{ titre: string; apercu: string; actions: Action[] } | null>(null);
   // Arrivée depuis une notification de message : on ouvre directement la discussion
   useEffect(() => {
@@ -477,12 +485,13 @@ export default function GroupeDetail() {
         <div id="onglets" className="flex scroll-mt-20 gap-0.5 rounded-xl bg-stone-200/70 p-1 text-xs font-semibold sm:gap-1 sm:text-sm">
           {(["membres", "historique", ...(g.type === "tontine" ? ["tours"] : []), "discussion"] as Tab[]).map((t) => (
             <button key={t} onClick={() => setTab(t)} className={`flex-auto whitespace-nowrap rounded-lg px-1.5 py-2 capitalize transition ${tab === t ? "bg-white text-stone-900 shadow-sm" : "text-stone-500"}`}>
-              {t === "membres" ? <>Membres<span className="hidden sm:inline"> ({g.members.length})</span></> : t === "discussion" ? <><span className="hidden sm:inline">💬 </span>Discussion</> : t}
+              {t === "membres" ? <>Membres<span className="hidden sm:inline"> ({g.members.length})</span></> : t === "discussion" ? <span className="inline-flex items-center gap-1"><span className="hidden sm:inline">💬 </span>Discussion{nbNonLus > 0 && tab !== "discussion" && <span className="grid h-[18px] min-w-[18px] place-items-center rounded-full bg-[#f77f00] px-1 text-[0.6rem] font-extrabold text-white">{nbNonLus > 9 ? "9+" : nbNonLus}</span>}</span> : t}
             </button>
           ))}
         </div>
 
-        {tab === "discussion" && <DiscussionGroupe groupId={g.id} userId={userId} gestionnaire={dr.gestionnaire} />}
+        {tab === "discussion" && <DiscussionGroupe groupId={g.id} userId={userId} gestionnaire={dr.gestionnaire}
+          membres={[...new Map(g.members.filter((m) => m.profileId && m.profileId !== userId).map((m) => [m.profileId!, m.name])).entries()].map(([profileId, nom]) => ({ profileId, nom }))} />}
 
         {tab === "membres" && (
           <Card className="divide-y divide-stone-100 !p-0">

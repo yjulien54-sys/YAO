@@ -9,9 +9,10 @@ import { ActionRapide } from "@/components/ActionRapide";
 import { dateCourte, fcfa, prenom } from "@/lib/format";
 import { TYPE_LABEL, amountDue, droits, beneficiary, impayes, memberStatus, dueDate, isLate, roundStats } from "@/lib/logic";
 import { useStore } from "@/lib/store";
+import { useNonLus } from "@/lib/nonLus";
 import { BottomNav } from "@/components/BottomNav";
 import { Annonces } from "@/components/Annonces";
-import { AlertCircle, ChevronRight, ClipboardPaste, Clock, HandCoins, ShieldCheck, UserPlus, Headset, Link2, Plus, Repeat, Users, Wallet } from "lucide-react";
+import { AlertCircle, ChevronRight, MessageCircle, ClipboardPaste, Clock, HandCoins, ShieldCheck, UserPlus, Headset, Link2, Plus, Repeat, Users, Wallet } from "lucide-react";
 import { IconBadge } from "@/components/icons";
 
 const TYPE_ICON = { tontine: Repeat, association: Users, collecte: HandCoins };
@@ -22,6 +23,7 @@ export default function Groupes() {
   const { user, userId, groups, loaded } = useStore();
   const router = useRouter();
   const [rejoindre, setRejoindre] = useState(false);
+  const { nonLus } = useNonLus(userId);
   const [lien, setLien] = useState("");
   const [erreurLien, setErreurLien] = useState("");
   if (!ok || !loaded) return <Loading />;
@@ -286,7 +288,16 @@ export default function Groupes() {
                       </p>
                     )}
                   </div>
-                  <ChevronRight size={18} strokeWidth={1.8} className="shrink-0 text-stone-300" />
+                  {nonLus[g.id]?.nb ? (
+                    // Nouveaux messages dans la discussion du groupe
+                    <span className="relative grid h-10 w-10 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-emerald-500 to-emerald-700 text-white shadow-[0_6px_14px_-6px_rgba(0,158,96,0.7)]" title={`${nonLus[g.id].nb} nouveau${nonLus[g.id].nb > 1 ? "x" : ""} message${nonLus[g.id].nb > 1 ? "s" : ""}`}>
+                      <MessageCircle size={19} strokeWidth={2.2} />
+                      <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-[#f77f00] px-1 text-[0.65rem] font-extrabold text-white ring-2 ring-white">{nonLus[g.id].nb > 9 ? "9+" : nonLus[g.id].nb}</span>
+                      {nonLus[g.id].prives > 0 && <span className="absolute -bottom-1 -right-1 grid h-4 w-4 place-items-center rounded-full bg-white text-[0.55rem] shadow">🔒</span>}
+                    </span>
+                  ) : (
+                    <ChevronRight size={18} strokeWidth={1.8} className="shrink-0 text-stone-300" />
+                  )}
                 </Link>
               );
             })}
