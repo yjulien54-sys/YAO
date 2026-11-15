@@ -56,6 +56,11 @@ const ARTICLES: Article[] = [
           Vos données sont visibles uniquement par les <b>membres des groupes dont vous faites partie</b>. Les autres utilisateurs de Cotiz ne voient rien de vos
           groupes. Nous ne vendons pas vos données et ne les utilisons pas à des fins publicitaires.
         </p>
+        <p>
+          <b>Discussions de groupe :</b> les messages écrits dans la discussion d’un groupe (y compris les messages privés entre membres) peuvent être
+          consultés par le responsable de Cotiz, uniquement pour la sécurité des utilisateurs (arnaques, menaces, litiges) et la modération. Chaque
+          consultation est enregistrée dans un journal. Ces messages ne sont jamais vendus ni utilisés à des fins publicitaires.
+        </p>
         <p>Nos prestataires techniques y ont accès dans la stricte limite de leur mission :</p>
         <ul>
           <li>Supabase (hébergement de la base de données et authentification) ;</li>

@@ -2,11 +2,13 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { PlanningPro } from "@/components/admin/PlanningPro";
+import { DiscussionsGroupes } from "@/components/admin/DiscussionsGroupes";
 import { BoutonMicro, RedacteurIA, useDictee } from "@/components/admin/RedacteurIA";
 import { Jauge, Montre, Anneau, Pyramide, Courbe, Colonnes, TexteAnime, Anneaux, Calendrier, Vague, Horloge24, Radar, Gaufre, VERT, ORANGE, VIOLET } from "@/components/admin/Graphiques";
 import { DateNaissance } from "@/components/DateNaissance";
 import {
   Activity, Ban, BarChart3, UserX, Lightbulb, Sparkles, Bot, Power, BadgeCheck, Coins, CalendarDays, Camera, CheckCircle2, ChevronDown, ChevronLeft, Contact, Download, ExternalLink, FolderOpen, Headset, IdCard, MessageSquareText, Phone, ScrollText, Send, ShieldX, UserCog, ChevronRight, Clock, Copy, Eye, EyeOff, KeyRound, LayoutDashboard, Lock, LogOut, Mail, Megaphone, Plus, RefreshCw, Search, ShieldAlert, ShieldCheck, Trash2, Users, UsersRound, Wallet, X,
+  MessagesSquare,
 } from "lucide-react";
 import { supabaseAdmin as db } from "@/lib/supabaseAdmin";
 import { TRANCHES_DEFAUT, fraisPour, lirePourcent, lireTranches, lireTranchesPenalite, partCotizPenalite, type Tranche, type TranchePenalite } from "@/lib/fraisService";
@@ -126,6 +128,7 @@ const VIDEOS_PUB = [
 
 const ONGLETS = [
   { id: "requetes", label: "Requêtes clients", icon: MessageSquareText, ton: "sky" },
+  { id: "discussions", label: "Discussions des groupes", icon: MessagesSquare, ton: "emerald" },
   { id: "apercu", label: "Vue d’ensemble", icon: LayoutDashboard, ton: "emerald" },
   { id: "stats", label: "Statistiques", icon: BarChart3, ton: "teal" },
   { id: "inscrits", label: "Inscrits", icon: Users, ton: "sky" },
@@ -144,7 +147,7 @@ const ONGLETS = [
   { id: "idees", label: "Idées & projets", icon: Lightbulb, ton: "amber" },
 ] as const;
 type Onglet = (typeof ONGLETS)[number]["id"];
-const RESERVE_FONDATEUR: Onglet[] = ["annonces", "journal", "equipe", "salaires", "revenus", "sante", "idees"];
+const RESERVE_FONDATEUR: Onglet[] = ["annonces", "discussions", "journal", "equipe", "salaires", "revenus", "sante", "idees"];
 type Ton = (typeof ONGLETS)[number]["ton"] | "red";
 
 /** Couleurs par rubrique (pastille d'icône, carte chiffrée) */
@@ -552,6 +555,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
           {onglet === "salaires" && fondateur && <Salaires />}
           {onglet === "revenus" && fondateur && <Revenus />}
           {onglet === "sante" && fondateur && <Sante />}
+          {onglet === "discussions" && fondateur && <DiscussionsGroupes />}
           {onglet === "idees" && fondateur && <Idees />}
           {onglet === "codes" && <Codes liste={demandes} recharger={charger} />}
           {onglet === "annonces" && fondateur && <Annonces liste={annonces} recharger={charger} />}
