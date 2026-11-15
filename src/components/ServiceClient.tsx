@@ -7,7 +7,7 @@ const wa = (texte: string) => `https://wa.me/225${SUPPORT_PHONE}?text=${encodeUR
 const sms = (texte: string) => `sms:+225${SUPPORT_PHONE}?&body=${encodeURIComponent(texte)}`;
 
 /** Carte « Service client » : WhatsApp, SMS et appel */
-export function ServiceClient({ sujet = "Bonjour, j’ai besoin d’aide avec Cotiz." }: { sujet?: string }) {
+export function ServiceClient({ sujet = "Bonjour, j’ai besoin d’aide avec Sikaklo." }: { sujet?: string }) {
   return (
     <div id="conseiller" className="carte scroll-mt-20 space-y-3.5 p-4">
       <div className="flex items-center gap-3">
@@ -17,7 +17,7 @@ export function ServiceClient({ sujet = "Bonjour, j’ai besoin d’aide avec Co
         </span>
         <div className="min-w-0">
           <p className="flex flex-wrap items-center gap-2 font-bold">Parler à un conseiller <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-[0.65rem] font-bold text-emerald-800">👤 Une vraie personne</span></p>
-          <p className="text-xs text-stone-500">L’équipe Cotiz vous répond, idéal pour <span className="surligne-vert font-semibold text-stone-700">un paiement ou un versement</span> · {SUPPORT_AFFICHE}</p>
+          <p className="text-xs text-stone-500">L’équipe Sikaklo vous répond, idéal pour <span className="surligne-vert font-semibold text-stone-700">un paiement ou un versement</span> · {SUPPORT_AFFICHE}</p>
         </div>
       </div>
       <div className="grid grid-cols-3 gap-2">

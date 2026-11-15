@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Cotiz</string>
+    <string name="app_name">Sikaklo</string>
     <string name="launch_url">https://tontine-et-cotise.vercel.app/groupes?source=app</string>
     <string name="asset_statements" translatable="false">
         [{

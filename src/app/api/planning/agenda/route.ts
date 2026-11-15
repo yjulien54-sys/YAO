@@ -34,27 +34,27 @@ export async function GET(req: Request) {
 
   const maintenant = new Date().toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "");
   const lignes = [
-    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Cotiz//Planning//FR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
-    `X-WR-CALNAME:${echapper(`Cotiz · Planning ${agent.nom ?? ""}`.trim())}`, "X-WR-TIMEZONE:Africa/Abidjan",
+    "BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//Sikaklo//Planning//FR", "CALSCALE:GREGORIAN", "METHOD:PUBLISH",
+    `X-WR-CALNAME:${echapper(`Sikaklo · Planning ${agent.nom ?? ""}`.trim())}`, "X-WR-TIMEZONE:Africa/Abidjan",
     "REFRESH-INTERVAL;VALUE=DURATION:PT1H", "X-PUBLISHED-TTL:PT1H",
   ];
   for (const c of creneaux ?? []) {
     const nuit = c.fin.slice(0, 5) <= c.debut.slice(0, 5);
     lignes.push(
       "BEGIN:VEVENT",
-      `UID:${c.id}@cotiz`,
+      `UID:${c.id}@sikaklo`,
       `DTSTAMP:${maintenant}`,
       `DTSTART:${dt(c.jour, c.debut)}`,
       `DTEND:${dt(c.jour, c.fin, nuit)}`,
-      `SUMMARY:${echapper(`Cotiz · Service client${c.note ? ` (${c.note})` : ""}`)}`,
-      `DESCRIPTION:${echapper(`Créneau de travail Cotiz pour ${agent.nom ?? agent.email}${agent.numero ? ` (n°${agent.numero})` : ""}.${c.note ? `\nNote : ${c.note}` : ""}\nAdmin : https://tontine-et-cotise.vercel.app/admin`)}`,
+      `SUMMARY:${echapper(`Sikaklo · Service client${c.note ? ` (${c.note})` : ""}`)}`,
+      `DESCRIPTION:${echapper(`Créneau de travail Sikaklo pour ${agent.nom ?? agent.email}${agent.numero ? ` (n°${agent.numero})` : ""}.${c.note ? `\nNote : ${c.note}` : ""}\nAdmin : https://tontine-et-cotise.vercel.app/admin`)}`,
       `LAST-MODIFIED:${new Date(c.modifie_le ?? c.cree_le).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")}`,
-      "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:Ton service Cotiz commence dans 30 minutes", "TRIGGER:-PT30M", "END:VALARM",
+      "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:Ton service Sikaklo commence dans 30 minutes", "TRIGGER:-PT30M", "END:VALARM",
       "END:VEVENT",
     );
   }
   lignes.push("END:VCALENDAR");
   return new Response(lignes.map(plier).join("\r\n") + "\r\n", {
-    headers: { "Content-Type": "text/calendar; charset=utf-8", "Content-Disposition": 'inline; filename="cotiz-planning.ics"', "Cache-Control": "no-store" },
+    headers: { "Content-Type": "text/calendar; charset=utf-8", "Content-Disposition": 'inline; filename="sikaklo-planning.ics"', "Cache-Control": "no-store" },
   });
 }

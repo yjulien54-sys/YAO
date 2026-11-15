@@ -1,15 +1,15 @@
 /**
- * Cotiz IA — l'agent IA du service client.
+ * Sikaklo IA — l'agent IA du service client.
  *
  * Appelée par l'application juste après qu'un client a écrit (nouvelle requête ou réponse
- * dans une conversation que Cotiz IA suit). L'IA lit la conversation et :
- *   - répond aux questions d'utilisation de Cotiz ;
+ * dans une conversation que Sikaklo IA suit). L'IA lit la conversation et :
+ *   - répond aux questions d'utilisation de Sikaklo ;
  *   - transmet à un agent humain (avec la raison) dès que la demande touche aux données
  *     ou à l'argent, ou qu'elle n'est pas sûre.
  *
  * Variables Vercel :
  *   SUPABASE_SERVICE_ROLE_KEY  obligatoire (gratuite, déjà utilisée pour les paiements)
- *   ANTHROPIC_API_KEY          facultative et payante : avec elle, Cotiz IA « intelligente » (Claude) ;
+ *   ANTHROPIC_API_KEY          facultative et payante : avec elle, Sikaklo IA « intelligente » (Claude) ;
  *                              sans elle, mode GRATUIT (réponses automatiques par mots-clés, 0 F).
  */
 import Anthropic from "@anthropic-ai/sdk";
@@ -25,7 +25,7 @@ export const maxDuration = 60;
 /** Au-delà de ce nombre de réponses de l'IA dans une même conversation, on passe la main à un humain */
 const MAX_REPONSES_IA = 6;
 
-const SYSTEM = `Tu es « Cotiz IA », l'assistant du service client de Cotiz, une application ivoirienne pour gérer les tontines, les cotisations d'associations et les collectes (funérailles, mariages, baptêmes…).
+const SYSTEM = `Tu es « Sikaklo IA », l'assistant du service client de Sikaklo, une application ivoirienne pour gérer les tontines, les cotisations d'associations et les collectes (funérailles, mariages, baptêmes…).
 
 Tu réponds aux clients dans le fil de discussion « Écrire au service client » de l'application.
 
@@ -33,7 +33,7 @@ STYLE : PROFESSIONNEL
 - Vouvoiement toujours. Français correct, clair et courtois, comme un conseiller de banque ou d'opérateur en Côte d'Ivoire. Pas de familiarités, pas de nouchi, pas d'émojis.
 - Premier message de la conversation : commence par « Bonjour » suivi du prénom du client s'il est connu, puis une virgule.
 - Va droit au but : 2 à 6 phrases. Étapes numérotées quand il faut expliquer une manipulation. Pas de markdown (pas de **, pas de #).
-- Termine toujours par : « Nous restons à votre disposition. » puis à la ligne « Cordialement, » puis à la ligne « Le service client Cotiz ».
+- Termine toujours par : « Nous restons à votre disposition. » puis à la ligne « Cordialement, » puis à la ligne « Le service client Sikaklo ».
 - Ne dis jamais « En tant qu'IA ».
 
 GUIDE PAS À PAS DE L'APPLICATION (utilise ces étapes exactes quand on te demande comment faire) :
@@ -42,11 +42,11 @@ ${GUIDES.map((g) => texteGuide(g)).join("\n\n")}
 CE QUE TU SAIS AUSSI (questions fréquentes — n'invente rien en dehors) :
 ${FAQ.map((f) => `- ${f.q} → ${f.r}`).join("\n")}
 - Paiement en ligne (Wave, Orange Money, MTN, Moov via l'application) : des frais de service et de l'opérateur s'ajoutent au montant ; la cotisation va entièrement au groupe et le détail des frais figure sur le reçu. Le paiement manuel au trésorier reste gratuit.
-- Cotiz ne demande JAMAIS le code secret Mobile Money ni le code secret Cotiz : ne le demande jamais, et préviens le client s'il essaie de te le donner.
+- Sikaklo ne demande JAMAIS le code secret Mobile Money ni le code secret Sikaklo : ne le demande jamais, et préviens le client s'il essaie de te le donner.
 - Le service client humain répond aussi par WhatsApp et par téléphone (boutons en haut de la page Aide).
 
 TU EXPLIQUES, TU N'AGIS JAMAIS
-Tu peux tout expliquer sur l'utilisation de Cotiz (s'inscrire, se connecter sur un autre appareil, créer un groupe, inviter, payer, publier une cagnotte, remettre les fonds…). Mais tu ne fais AUCUNE action à la place du client : tu ne supprimes rien (compte, groupe, membre, paiement), tu ne valides ni n'annules aucun paiement, tu ne verses pas d'argent, tu ne changes aucune donnée. Si on te le demande, dis-le gentiment et explique comment la personne (ou son trésorier) peut le faire elle-même dans l'application ; si c'est impossible pour elle, transmets.
+Tu peux tout expliquer sur l'utilisation de Sikaklo (s'inscrire, se connecter sur un autre appareil, créer un groupe, inviter, payer, publier une cagnotte, remettre les fonds…). Mais tu ne fais AUCUNE action à la place du client : tu ne supprimes rien (compte, groupe, membre, paiement), tu ne valides ni n'annules aucun paiement, tu ne verses pas d'argent, tu ne changes aucune donnée. Si on te le demande, dis-le gentiment et explique comment la personne (ou son trésorier) peut le faire elle-même dans l'application ; si c'est impossible pour elle, transmets.
 
 QUAND TRANSMETTRE À UN AGENT HUMAIN (transmettre = true)
 Tu ne peux rien faire sur les comptes ni sur l'argent, et tu ne vois pas les données des groupes. Transmets dès que la demande nécessite une vérification ou une action sur des données, notamment :
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
   const token = req.headers.get("authorization")?.replace(/^Bearer /, "");
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   if (!token) return NextResponse.json({ ok: false, raison: "non connecté" }, { status: 401 });
-  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return NextResponse.json({ ok: false, raison: "Cotiz IA non configurée" });
+  if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return NextResponse.json({ ok: false, raison: "Sikaklo IA non configurée" });
 
   const r = (await req.json().catch(() => null))?.requete;
   if (typeof r !== "string" || !/^[0-9a-f-]{36}$/i.test(r)) return NextResponse.json({ ok: false, raison: "requête invalide" }, { status: 400 });
@@ -94,7 +94,7 @@ export async function POST(req: Request) {
 
   const service = createClient(url, process.env.SUPABASE_SERVICE_ROLE_KEY);
   const { data: reglage } = await service.from("parametres_app").select("valeur").eq("cle", "cotiz_ia_actif").maybeSingle();
-  if (reglage?.valeur === "non") return NextResponse.json({ ok: false, raison: "Cotiz IA éteinte" });
+  if (reglage?.valeur === "non") return NextResponse.json({ ok: false, raison: "Sikaklo IA éteinte" });
 
   const { data: fil } = await client.from("requetes_messages").select("auteur, texte, cree_le").eq("requete_id", r).order("cree_le");
   const messages = (fil as Msg[] | null) ?? [];
@@ -110,12 +110,12 @@ export async function POST(req: Request) {
   if (!process.env.ANTHROPIC_API_KEY) {
     const d = repondreGratuit(q.motif, messages, q.nom);
     const { error } = await service.rpc("ia_requete_ecrire", { r, texte: d.reponse, transmettre: d.transmettre, raison: d.transmettre ? d.raison : null, resoudre: d.resoudre });
-    if (error) console.error("Cotiz IA (gratuit) : écriture impossible", error.message);
+    if (error) console.error("Sikaklo IA (gratuit) : écriture impossible", error.message);
     return NextResponse.json({ ok: !error, transmis: d.transmettre, mode: "gratuit" });
   }
 
   const conversation = messages
-    .map((m) => `${m.auteur === "client" ? "CLIENT" : m.auteur === "ia" ? "COTIZ IA" : "AGENT HUMAIN"} : ${m.texte}`)
+    .map((m) => `${m.auteur === "client" ? "CLIENT" : m.auteur === "ia" ? "SIKAKLO IA" : "AGENT HUMAIN"} : ${m.texte}`)
     .join("\n\n");
 
   try {
@@ -127,7 +127,7 @@ export async function POST(req: Request) {
       fallbacks: "default",
       output_config: { effort: "medium", format: { type: "json_schema", schema: SCHEMA } },
       system: SYSTEM,
-      messages: [{ role: "user", content: `Sujet choisi par le client : ${q.motif}\nPrénom / nom du client : ${q.nom ?? "inconnu"}\n\nConversation (du plus ancien au plus récent) :\n\n${conversation}\n\nÉcris la prochaine réponse de Cotiz IA.` }],
+      messages: [{ role: "user", content: `Sujet choisi par le client : ${q.motif}\nPrénom / nom du client : ${q.nom ?? "inconnu"}\n\nConversation (du plus ancien au plus récent) :\n\n${conversation}\n\nÉcris la prochaine réponse de Sikaklo IA.` }],
     } as Parameters<typeof anthropic.beta.messages.create>[0]) as Anthropic.Beta.BetaMessage;
 
     let d: Decision | null = null;
@@ -137,18 +137,18 @@ export async function POST(req: Request) {
     }
     // Réponse inexploitable : on transmet à un humain plutôt que de laisser le client sans rien
     if (!d || typeof d.reponse !== "string" || !d.reponse.trim()) {
-      d = { reponse: "Je transmets ta demande à un conseiller du service client : il va te répondre ici très bientôt.", transmettre: true, raison: "Cotiz IA n’a pas pu répondre", resoudre: false };
+      d = { reponse: "Je transmets ta demande à un conseiller du service client : il va te répondre ici très bientôt.", transmettre: true, raison: "Sikaklo IA n’a pas pu répondre", resoudre: false };
     }
     const { error } = await service.rpc("ia_requete_ecrire", { r, texte: d.reponse, transmettre: !!d.transmettre, raison: d.transmettre ? (d.raison || "À vérifier par un agent") : null, resoudre: !!d.resoudre && !d.transmettre });
     if (error) {
-      console.error("Cotiz IA : écriture impossible", error.message);
+      console.error("Sikaklo IA : écriture impossible", error.message);
       return NextResponse.json({ ok: false, raison: "écriture impossible" });
     }
     return NextResponse.json({ ok: true, transmis: !!d.transmettre });
   } catch (error) {
-    if (error instanceof Anthropic.RateLimitError) console.error("Cotiz IA : limite atteinte");
-    else if (error instanceof Anthropic.APIError) console.error(`Cotiz IA : erreur ${error.status}`, error.message);
-    else console.error("Cotiz IA : erreur", error);
+    if (error instanceof Anthropic.RateLimitError) console.error("Sikaklo IA : limite atteinte");
+    else if (error instanceof Anthropic.APIError) console.error(`Sikaklo IA : erreur ${error.status}`, error.message);
+    else console.error("Sikaklo IA : erreur", error);
     // Sans réponse de l'IA, la requête reste « nouvelle » : les agents humains la voient
     return NextResponse.json({ ok: false, raison: "IA indisponible" });
   }

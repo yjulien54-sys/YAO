@@ -23,7 +23,7 @@ const melanger = () => {
 type Mode = "creation" | "confirmation" | "saisie" | "ancien" | "oubli" | "empreinte" | "naissance";
 
 /**
- * Panneau du code secret Cotiz.
+ * Panneau du code secret Sikaklo.
  * - defini = false : création du code ; true : saisie du code.
  * - changement : on demande l'ancien code, puis le nouveau deux fois.
  */
@@ -217,12 +217,12 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
 
   const titres: Record<Mode, [string, string]> = {
     ancien: ["Ton code actuel", "Tape d’abord ton code secret actuel."],
-    creation: [changement || reinit ? "Nouveau code" : "Crée ton code secret", info || "4 chiffres pour ouvrir Cotiz. Ce n’est pas le code de ton téléphone."],
+    creation: [changement || reinit ? "Nouveau code" : "Crée ton code secret", info || "4 chiffres pour ouvrir Sikaklo. Ce n’est pas le code de ton téléphone."],
     confirmation: ["Confirme ton code", "Tape le même code une deuxième fois."],
-    saisie: ["Entre ton code Cotiz", (activerApres || veutEmpreinte) && !bioActive ? "Tape ton code une fois pour activer l’empreinte." : "Ton code secret à 4 chiffres pour accéder à tes groupes."],
+    saisie: ["Entre ton code Sikaklo", (activerApres || veutEmpreinte) && !bioActive ? "Tape ton code une fois pour activer l’empreinte." : "Ton code secret à 4 chiffres pour accéder à tes groupes."],
     oubli: ["Code oublié ?", "Confirme ton identité pour créer un nouveau code."],
     naissance: ["Ta date de naissance", "Elle te permettra de récupérer ton code si tu l’oublies. Elle ne pourra plus être changée."],
-    empreinte: ["Activer l’empreinte ?", "Entre aussi avec ton doigt. Ton code Cotiz reste valable."],
+    empreinte: ["Activer l’empreinte ?", "Entre aussi avec ton doigt. Ton code Sikaklo reste valable."],
   };
   const [titre, sous] = titres[mode];
   const fermable = (!!onFermer && !integre && (mode === "saisie" || changement)) || mode === "oubli";
@@ -233,10 +233,10 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
         {!integre && <div className="mx-auto mb-3 h-1.5 w-10 rounded-full bg-stone-200" />}
         <div className="flex items-start justify-between gap-3">
           <div className="flex items-center gap-3">
-            {/* Logo Cotiz avec une pastille orange (cadenas, empreinte…) */}
+            {/* Logo Sikaklo avec une pastille orange (cadenas, empreinte…) */}
             <span className="relative shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icons/logo.svg" alt="Cotiz" width={48} height={48} className="h-12 w-12 rounded-[14px] shadow-[0_6px_16px_-6px_rgba(0,158,96,0.55)]" />
+              <img src="/icons/logo.svg" alt="Sikaklo" width={48} height={48} className="h-12 w-12 rounded-[14px] shadow-[0_6px_16px_-6px_rgba(0,158,96,0.55)]" />
               <span className="absolute -bottom-1.5 -right-1.5 grid h-6 w-6 place-items-center rounded-full bg-[#f77f00] text-white ring-[3px] ring-white">
                 {mode === "oubli" ? <ShieldCheck size={13} strokeWidth={2.4} /> : mode === "naissance" ? <CalendarDays size={13} strokeWidth={2.4} /> : mode === "empreinte" ? <Fingerprint size={13} strokeWidth={2.4} /> : <Lock size={12} strokeWidth={2.6} />}
               </span>
@@ -282,7 +282,7 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
             <button type="submit" disabled={occupe} className="w-full rounded-[14px] bg-emerald-700 py-3.5 text-[0.95rem] font-bold text-white disabled:opacity-60">{occupe ? "Vérification…" : "Valider"}</button>
             {indispo && (
               <a
-                href={waLink(`Bonjour, j’ai oublié mon code secret Cotiz. Mon numéro de compte : ${tel ?? ""}. Pouvez-vous le réinitialiser ?`, SUPPORT_PHONE)}
+                href={waLink(`Bonjour, j’ai oublié mon code secret Sikaklo. Mon numéro de compte : ${tel ?? ""}. Pouvez-vous le réinitialiser ?`, SUPPORT_PHONE)}
                 target="_blank"
                 rel="noreferrer"
                 className="flex w-full items-center justify-center gap-2 rounded-[14px] bg-stone-100 py-3 font-bold text-stone-800"
@@ -310,7 +310,7 @@ export function ClavierCode({ uid, defini, changement, attenteInitiale = 0, acti
 
             {/* Clavier */}
             <div className="relative mx-auto mt-2 grid max-w-[312px] grid-cols-3 gap-x-5 gap-y-3 overflow-hidden rounded-[28px] bg-gradient-to-b from-[#effaf4] to-[#f6fbf8] p-4 pt-5 ring-1 ring-[#009e60]/10">
-              {/* Touche d'orange Cotiz : fine bande en haut et halo discret */}
+              {/* Touche d'orange Sikaklo : fine bande en haut et halo discret */}
               <span className="pointer-events-none absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-[#009e60] via-[#f5c400] to-[#f77f00]" />
               <span className="pointer-events-none absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-[#f77f00]/10 blur-2xl" />
               {ordre.slice(0, 9).map((t) => (

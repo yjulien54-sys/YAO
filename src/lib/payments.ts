@@ -65,7 +65,7 @@ export const fraisTransaction = (total: number, method: PayMethod = "wave") => {
  * Paiement SIMULÉ pour le prototype.
  *
  * En production : appeler une route serveur qui initie le paiement chez un
- * agrégateur agréé (CinetPay, PayDunya…). Cotiz ne détient JAMAIS les fonds :
+ * agrégateur agréé (CinetPay, PayDunya…). Sikaklo ne détient JAMAIS les fonds :
  * l'argent va directement sur le compte marchand du groupe, et le statut est
  * confirmé par le webhook (notify_url) de l'agrégateur.
  */

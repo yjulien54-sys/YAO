@@ -1,4 +1,4 @@
-// Cotiz — service worker minimal : page hors connexion
+// Sikaklo — service worker minimal : page hors connexion
 const CACHE = "cotiz-v1";
 const OFFLINE = "/hors-connexion.html";
 

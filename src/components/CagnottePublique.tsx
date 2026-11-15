@@ -37,7 +37,7 @@ export function CagnottePublique({ groupId, nom, cause }: { groupId: string; nom
   useEffect(() => { if (etat?.actif && etat.slug && !affiche) refaireAffiche(etat.slug); }, [etat, affiche, refaireAffiche]);
 
   if (etat === undefined) return null;
-  if (etat === null) return <p className="rounded-2xl bg-amber-50 p-3 text-sm text-amber-900">Pour publier ta cagnotte sur une belle page à partager, l’administrateur Cotiz doit faire la mise à jour n°37.</p>;
+  if (etat === null) return <p className="rounded-2xl bg-amber-50 p-3 text-sm text-amber-900">Pour publier ta cagnotte sur une belle page à partager, l’administrateur Sikaklo doit faire la mise à jour n°37.</p>;
 
   const lien = etat.slug ? `${window.location.origin}/c/${etat.slug}` : "";
   const enregistrer = async (actif: boolean, nouvellePhoto: string | null = photo) => {
@@ -105,7 +105,7 @@ export function CagnottePublique({ groupId, nom, cause }: { groupId: string; nom
     if (!affiche) return;
     try {
       const blob = await fetch(affiche).then((r) => r.blob());
-      const fichier = new File([blob], "affiche-cagnotte-cotiz.jpg", { type: blob.type || "image/jpeg" });
+      const fichier = new File([blob], "affiche-cagnotte-sikaklo.jpg", { type: blob.type || "image/jpeg" });
       if (navigator.canShare?.({ files: [fichier] })) return await navigator.share({ files: [fichier], text: texte });
       const a = document.createElement("a");
       a.href = URL.createObjectURL(blob); a.download = fichier.name; a.click();

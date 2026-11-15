@@ -1,4 +1,4 @@
-/** Frais de service Cotiz : montant fixe par tranche, ajouté aux paiements EN LIGNE (réglable dans /admin → Revenus). */
+/** Frais de service Sikaklo : montant fixe par tranche, ajouté aux paiements EN LIGNE (réglable dans /admin → Revenus). */
 export type Tranche = { max: number | null; frais: number };
 
 export const TRANCHES_DEFAUT: Tranche[] = [
@@ -39,13 +39,13 @@ export function fraisOperateurPour(montant: number, fournisseur: string | null |
   return 0;
 }
 
-/** Part des pénalités qui revient à Cotiz (0 à 100 %) */
+/** Part des pénalités qui revient à Sikaklo (0 à 100 %) */
 export function lirePartPenalite(valeur?: string | null): number {
   const n = Number(valeur ?? "0");
   return Number.isFinite(n) ? Math.min(100, Math.max(0, Math.round(n))) : 0;
 }
 
-/** Part de Cotiz sur les pénalités, par tranche de montant de pénalité */
+/** Part de Sikaklo sur les pénalités, par tranche de montant de pénalité */
 export type TranchePenalite = { max: number | null; part: number };
 
 export function lireTranchesPenalite(valeur?: string | null, partUnique?: string | null): TranchePenalite[] {
@@ -58,7 +58,7 @@ export function lireTranchesPenalite(valeur?: string | null, partUnique?: string
   return [{ max: null, part: lirePartPenalite(partUnique ?? "50") }];
 }
 
-/** Montant revenant à Cotiz sur une pénalité */
+/** Montant revenant à Sikaklo sur une pénalité */
 export function partCotizPenalite(penalite: number, tranches: TranchePenalite[]): number {
   if (penalite <= 0) return 0;
   const t = tranches.find((x) => x.max === null || penalite < x.max) ?? tranches[tranches.length - 1];

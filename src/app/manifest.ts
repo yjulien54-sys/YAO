@@ -2,8 +2,8 @@ import type { MetadataRoute } from "next";
 
 export default function manifest(): MetadataRoute.Manifest {
   return {
-    name: "Cotiz — Tontines & cotisations",
-    short_name: "Cotiz",
+    name: "Sikaklo — Tontines & cotisations",
+    short_name: "Sikaklo",
     description: "Tontines, associations et collectes, en toute transparence.",
     start_url: "/groupes",
     display: "standalone",

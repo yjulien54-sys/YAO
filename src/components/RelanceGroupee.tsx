@@ -2,10 +2,10 @@
 
 /**
  * Relancer tous les retardataires d'un coup, directement sur LEUR numéro
- * (même s'ils ne sont pas encore inscrits sur Cotiz : le trésorier a déjà leur numéro).
+ * (même s'ils ne sont pas encore inscrits sur Sikaklo : le trésorier a déjà leur numéro).
  *  - SMS : un seul SMS envoyé à tout le monde en une fois (application Messages du téléphone).
  *  - WhatsApp : la conversation de chaque personne s'ouvre directement avec son message
- *    personnalisé ; on envoie, on revient, et Cotiz passe tout seul à la personne suivante.
+ *    personnalisé ; on envoie, on revient, et Sikaklo passe tout seul à la personne suivante.
  * (L'envoi 100 % automatique sans rien toucher demandera WhatsApp Business, payant.)
  */
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -31,7 +31,7 @@ export function RelanceGroupee({ group, membres, fermer, messageGroupe }: { grou
   const liste = avecNumero.filter((m) => choisis.includes(m.id));
   const prochain = liste.find((m) => !envoyes.includes(m.id));
 
-  // Retour dans Cotiz après WhatsApp : la personne est marquée « relancée »
+  // Retour dans Sikaklo après WhatsApp : la personne est marquée « relancée »
   useEffect(() => {
     const retour = () => {
       if (document.visibilityState !== "visible" || !enCoursRef.current) return;
@@ -65,7 +65,7 @@ export function RelanceGroupee({ group, membres, fermer, messageGroupe }: { grou
             <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#25D366] text-white shadow"><WhatsAppIcon size={22} /></span>
             <div className="min-w-0 flex-1">
               <p className="font-bold">Relancer {liste.length} personne{liste.length > 1 ? "s" : ""}</p>
-              <p className="text-xs text-stone-500">Directement sur leur numéro, même s’ils ne sont pas encore inscrits sur Cotiz.</p>
+              <p className="text-xs text-stone-500">Directement sur leur numéro, même s’ils ne sont pas encore inscrits sur Sikaklo.</p>
             </div>
             <button onClick={fermer} aria-label="Fermer" className="grid h-8 w-8 place-items-center rounded-full bg-stone-100 text-stone-500">✕</button>
           </div>
@@ -120,7 +120,7 @@ export function RelanceGroupee({ group, membres, fermer, messageGroupe }: { grou
               <Users size={15} /> Message au groupe
             </button>
           </div>
-          <p className="flex items-start gap-1.5 text-[0.7rem] leading-snug text-stone-400"><Send size={11} className="mt-0.5 shrink-0" /> WhatsApp s’ouvre directement sur le numéro de chaque personne : touchez Envoyer, revenez dans Cotiz, et la personne suivante est prête.</p>
+          <p className="flex items-start gap-1.5 text-[0.7rem] leading-snug text-stone-400"><Send size={11} className="mt-0.5 shrink-0" /> WhatsApp s’ouvre directement sur le numéro de chaque personne : touchez Envoyer, revenez dans Sikaklo, et la personne suivante est prête.</p>
         </div>
       </div>
     </div>

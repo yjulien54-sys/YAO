@@ -2,15 +2,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 
 export const metadata: Metadata = {
-  title: "Télécharger Cotiz pour Android",
-  description: "Installe l'application Cotiz sur ton téléphone Android.",
+  title: "Télécharger Sikaklo pour Android",
+  description: "Installe l'application Sikaklo sur ton téléphone Android.",
 };
 
 const ETAPES = [
   "Touche le bouton vert « Télécharger l’application ».",
   "Ouvre le fichier cotiz.apk une fois téléchargé (dans la notification ou dans « Téléchargements »).",
   "Si Android le demande, autorise l’installation depuis cette source (Chrome ou Fichiers), puis reviens en arrière.",
-  "Touche « Installer », puis « Ouvrir » : Cotiz apparaît avec son logo vert.",
+  "Touche « Installer », puis « Ouvrir » : Sikaklo apparaît avec son logo vert.",
 ];
 
 export default function Telecharger() {
@@ -21,7 +21,7 @@ export default function Telecharger() {
         <div className="bande-kente absolute inset-x-0 bottom-0" />
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img src="/icons/logo.svg" alt="" width={88} height={88} className="relative mx-auto h-[88px] w-[88px] rounded-[22px] shadow-xl" />
-        <h1 className="relative mt-5 text-2xl font-extrabold tracking-tight">Cotiz pour Android</h1>
+        <h1 className="relative mt-5 text-2xl font-extrabold tracking-tight">Sikaklo pour Android</h1>
         <p className="relative mt-1 text-sm text-emerald-50/90">Tontines, associations et collectes · version 1.0.1</p>
         <a
           href="/app/cotiz.apk"
@@ -52,7 +52,7 @@ export default function Telecharger() {
           </p>
         </div>
         <p className="text-center text-xs text-stone-500">
-          Bientôt sur le Google Play Store. · <Link href="/" className="underline">Ouvrir Cotiz dans le navigateur</Link>
+          Bientôt sur le Google Play Store. · <Link href="/" className="underline">Ouvrir Sikaklo dans le navigateur</Link>
         </p>
       </div>
     </main>

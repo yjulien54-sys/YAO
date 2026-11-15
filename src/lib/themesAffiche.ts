@@ -1,5 +1,5 @@
 /**
- * Les styles d'affiche de Cotiz (lien de cagnotte, invitation dans un groupe…).
+ * Les styles d'affiche de Sikaklo (lien de cagnotte, invitation dans un groupe…).
  * Chaque groupe reçoit automatiquement SON style (toujours le même à chaque partage),
  * calculé à partir de son identifiant. Le trésorier peut en choisir un autre.
  */

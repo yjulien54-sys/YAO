@@ -90,7 +90,7 @@ function BoutonRond({ etat, onAppui, libelle, aria, icone: Icone, principal }: {
 }
 
 const PAGES_PUBLIQUES = ["/", "/cgu", "/confidentialite", "/mentions-legales", "/telecharger", "/suppression-compte", "/admin"];
-const RE_VERROUILLER_MS = GRACE_MS; // l'application se reverrouille après 2 min en dehors de Cotiz
+const RE_VERROUILLER_MS = GRACE_MS; // l'application se reverrouille après 2 min en dehors de Sikaklo
 
 /** Écran d'accueil sécurisé : code secret à 4 chiffres ou empreinte du téléphone */
 export function Bienvenue() {
@@ -141,7 +141,7 @@ export function Bienvenue() {
     setVisible(true);
   }, [actif, userId]);
 
-  // Tant que Cotiz est ouvert et déverrouillé, on note la présence (pour le délai de grâce)
+  // Tant que Sikaklo est ouvert et déverrouillé, on note la présence (pour le délai de grâce)
   useEffect(() => {
     if (!actif || visible || !userId) return;
     noterPresence(userId);
@@ -191,7 +191,7 @@ export function Bienvenue() {
     setTimeout(() => setVisible(false), 550);
   }
 
-  // Bouton « Code » : ouvre le clavier du code Cotiz (création la première fois)
+  // Bouton « Code » : ouvre le clavier du code Sikaklo (création la première fois)
   async function appuiCode(activer = false) {
     if (!userId) return;
     setEtat("lecture");
@@ -247,7 +247,7 @@ export function Bienvenue() {
                   <img src="/icons/logo.svg" alt="" width={44} height={44} className="h-11 w-11" />
                   <span className="logo-brille pointer-events-none absolute inset-0" />
                 </span>
-                Cotiz
+                Sikaklo
               </span>
               <span className="inline-flex items-center gap-1.5 rounded-full bg-white/15 px-3 py-1 text-xs font-semibold ring-1 ring-white/20"><Drapeau /> Côte d’Ivoire</span>
             </div>
@@ -286,8 +286,8 @@ export function Bienvenue() {
               <img src="/icons/logo.svg" alt="" width={44} height={44} className="h-11 w-11" />
               <span className="logo-brille pointer-events-none absolute inset-0" />
             </span>
-            <span aria-label="Cotiz" className="flex">
-              {"Cotiz".split("").map((l, i) => (
+            <span aria-label="Sikaklo" className="flex">
+              {"Sikaklo".split("").map((l, i) => (
                 <span key={i} aria-hidden className="lettre inline-block" style={{ animationDelay: `${450 + i * 70}ms` }}>{l}</span>
               ))}
             </span>

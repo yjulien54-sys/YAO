@@ -57,7 +57,7 @@ export default function ProfilPage() {
   if (!ok || !loaded) return <Loading />;
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const partage = waLink(`Bonjour 👋\n\nJe gère mes tontines avec *Cotiz* : chacun voit qui a payé, les retards sont calculés tout seuls et les relances partent sur WhatsApp en 1 clic. Fini le cahier et les palabres 😄\n\nC’est gratuit 👉 ${origin}\nCrée ton groupe, puis touche « Inviter » pour l’envoyer à tes membres.`);
+  const partage = waLink(`Bonjour 👋\n\nJe gère mes tontines avec *Sikaklo* : chacun voit qui a payé, les retards sont calculés tout seuls et les relances partent sur WhatsApp en 1 clic. Fini le cahier et les palabres 😄\n\nC’est gratuit 👉 ${origin}\nCrée ton groupe, puis touche « Inviter » pour l’envoyer à tes membres.`);
 
   return (
     <Page>
@@ -112,9 +112,9 @@ export default function ProfilPage() {
         <div>
           <h2 className="mb-2 px-1 text-xs font-bold uppercase tracking-wide text-stone-500">Application</h2>
           <Card className="divide-y divide-stone-100 !p-0">
-            <Ligne href="/telecharger" icon={Download} label="Télécharger l’application Android" detail="Installe Cotiz sur ton téléphone" />
-            <Ligne href="/aide#iphone" icon={Smartphone} label="Installer sur iPhone" detail="Ajoute Cotiz sur l’écran d’accueil" />
-            <Ligne href={partage} externe icon={Share2} label="Partager Cotiz" detail="Envoie l’application à tes proches sur WhatsApp" />
+            <Ligne href="/telecharger" icon={Download} label="Télécharger l’application Android" detail="Installe Sikaklo sur ton téléphone" />
+            <Ligne href="/aide#iphone" icon={Smartphone} label="Installer sur iPhone" detail="Ajoute Sikaklo sur l’écran d’accueil" />
+            <Ligne href={partage} externe icon={Share2} label="Partager Sikaklo" detail="Envoie l’application à tes proches sur WhatsApp" />
           </Card>
         </div>
 
@@ -124,7 +124,7 @@ export default function ProfilPage() {
             <Ligne
               icon={KeyRound}
               label={etatC?.defini ? "Changer mon code secret" : "Créer mon code secret"}
-              detail={etatC?.modifieLe ? `Dernière modification : ${dateLongue(etatC.modifieLe)}` : "Le code à 4 chiffres demandé à l’ouverture de Cotiz"}
+              detail={etatC?.modifieLe ? `Dernière modification : ${dateLongue(etatC.modifieLe)}` : "Le code à 4 chiffres demandé à l’ouverture de Sikaklo"}
               onClick={() => setChangerCode(true)}
             />
             {etatC && etatC.naissance === false && (
@@ -199,7 +199,7 @@ export default function ProfilPage() {
             <Ligne href="/suppression-compte" icon={Trash2} label="Supprimer mon compte" />
           </Card>
         </div>
-        <p className="text-center text-xs text-stone-400">Cotiz · version 1.1</p>
+        <p className="text-center text-xs text-stone-400">Sikaklo · version 1.1</p>
       </div>
       {changerCode && userId && (
         <div className="fixed inset-0 z-50 mx-auto max-w-md">

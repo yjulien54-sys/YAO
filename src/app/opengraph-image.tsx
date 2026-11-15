@@ -1,5 +1,5 @@
 /**
- * Affiche générale de Cotiz : l'image qui apparaît quand on partage n'importe quel lien Cotiz
+ * Affiche générale de Sikaklo : l'image qui apparaît quand on partage n'importe quel lien Sikaklo
  * (invitation dans un groupe, lien de l'application…). Fabriquée une seule fois, au déploiement.
  */
 import { ImageResponse } from "next/og";
@@ -7,7 +7,7 @@ import sharp from "sharp";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
-export const alt = "Cotiz : tontines, associations et collectes, sans palabres";
+export const alt = "Sikaklo : tontines, associations et collectes, sans palabres";
 export const size = { width: 1200, height: 630 };
 // JPEG léger : WhatsApp n'affiche pas les images trop lourdes
 export const contentType = "image/jpeg";
@@ -31,7 +31,7 @@ export default async function Image() {
         <div style={{ display: "flex", flexDirection: "column", padding: "64px 0 0 72px", width: 660 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 18 }}>
             {logo && <img src={logo} alt="" width={84} height={84} style={{ borderRadius: 22 }} />}
-            <span style={{ fontSize: 64, fontWeight: 800, letterSpacing: -2 }}>Cotiz</span>
+            <span style={{ fontSize: 64, fontWeight: 800, letterSpacing: -2 }}>Sikaklo</span>
           </div>
           <span style={{ marginTop: 34, fontSize: 52, fontWeight: 800, lineHeight: 1.08, letterSpacing: -1.5 }}>Tontines, associations et collectes,</span>
           <span style={{ display: "flex", marginTop: 6, fontSize: 52, fontWeight: 800, lineHeight: 1.08, letterSpacing: -1.5 }}>

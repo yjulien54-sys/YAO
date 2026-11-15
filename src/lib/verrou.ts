@@ -1,10 +1,10 @@
 /**
- * Code secret de l'application Cotiz (4 chiffres), indépendant du verrouillage du téléphone.
+ * Code secret de l'application Sikaklo (4 chiffres), indépendant du verrouillage du téléphone.
  *
- * - Le code est enregistré dans la base Cotiz, chiffré de façon irréversible (personne ne peut le lire).
+ * - Le code est enregistré dans la base Sikaklo, chiffré de façon irréversible (personne ne peut le lire).
  * - Une copie chiffrée est gardée sur le téléphone pour pouvoir ouvrir l'application sans connexion.
  * - Tant que la mise à jour SQL n°8 n'est pas installée, seul le téléphone garde le code.
- * - Code oublié : l'équipe Cotiz le réinitialise, puis la personne en crée un nouveau.
+ * - Code oublié : l'équipe Sikaklo le réinitialise, puis la personne en crée un nouveau.
  */
 import { supabase } from "./supabase";
 
@@ -19,7 +19,7 @@ export const CLE_SESSION = "cotiz:deverrouille";
 export const ESSAIS_MAX = 5;
 
 /**
- * Délai de grâce : si la personne revient dans Cotiz moins de 2 minutes après l'avoir quitté
+ * Délai de grâce : si la personne revient dans Sikaklo moins de 2 minutes après l'avoir quitté
  * (autre application, lien copié, application fermée puis rouverte…), on ne redemande pas le code.
  * Au-delà, le code est demandé. L'heure de la dernière présence est gardée sur ce téléphone seulement.
  */
@@ -31,7 +31,7 @@ export function noterPresence(uid: string) {
 export function oublierPresence(uid: string) {
   try { localStorage.removeItem(clePresence(uid)); } catch {}
 }
-/** Vrai si Cotiz a été déverrouillé et quitté il y a moins de GRACE_MS */
+/** Vrai si Sikaklo a été déverrouillé et quitté il y a moins de GRACE_MS */
 export function dansLaGrace(uid: string): boolean {
   try {
     const t = Number(localStorage.getItem(clePresence(uid)) ?? 0);
@@ -104,7 +104,7 @@ export async function etatCode(uid: string): Promise<Etat> {
   const { data, error } = await supabase.rpc("code_etat");
   if (!error && data) {
     const d = data as { defini: boolean; modifie_le?: string; attente: number; naissance?: boolean };
-    // Code réinitialisé par l'équipe Cotiz : on efface aussi la copie du téléphone
+    // Code réinitialisé par l'équipe Sikaklo : on efface aussi la copie du téléphone
     if (!d.defini) ecrire(cle(uid), null);
     return { defini: d.defini, modifieLe: d.modifie_le ?? undefined, attente: d.attente ?? 0, serveur: true, naissance: d.naissance };
   }
@@ -160,12 +160,12 @@ export async function empreinteDisponible() {
   }
 }
 
-/** Associe l'empreinte de ce téléphone au compte Cotiz (le téléphone demande le doigt) */
+/** Associe l'empreinte de ce téléphone au compte Sikaklo (le téléphone demande le doigt) */
 export async function activerEmpreinte(uid: string, nom: string, tel: string) {
   const cred = (await navigator.credentials.create({
     publicKey: {
       challenge: crypto.getRandomValues(new Uint8Array(32)),
-      rp: { name: "Cotiz" },
+      rp: { name: "Sikaklo" },
       user: { id: new TextEncoder().encode(uid).slice(0, 64), name: tel || nom, displayName: nom },
       pubKeyCredParams: [
         { type: "public-key", alg: -7 },

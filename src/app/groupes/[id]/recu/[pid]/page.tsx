@@ -43,7 +43,7 @@ function Recu() {
       </Page>
     );
 
-  // Frais payés en plus (service Cotiz + opérateur) : affichés seulement sur le reçu
+  // Frais payés en plus (service Sikaklo + opérateur) : affichés seulement sur le reçu
   const fraisPayes = (p.fraisService ?? 0) + (p.fraisOperateur ?? 0);
   const rows: [string, string][] = [
     ["Groupe", g.name],

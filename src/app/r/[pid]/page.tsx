@@ -22,9 +22,9 @@ async function lire(pid: string): Promise<Recu | null> {
 
 export async function generateMetadata({ params }: { params: Promise<{ pid: string }> }): Promise<Metadata> {
   const r = await lire((await params).pid);
-  if (!r) return { title: "Reçu Cotiz" };
-  const titre = `Reçu Cotiz · ${r.membre} · ${fcfa(r.montant + r.penalite)}`;
-  return { title: titre, description: `Paiement confirmé · ${r.groupe}`, openGraph: { title: titre, description: `Paiement confirmé · ${r.groupe}`, siteName: "Cotiz", images: [{ url: "/opengraph-image", width: 1200, height: 630, type: "image/jpeg" }] }, robots: { index: false } };
+  if (!r) return { title: "Reçu Sikaklo" };
+  const titre = `Reçu Sikaklo · ${r.membre} · ${fcfa(r.montant + r.penalite)}`;
+  return { title: titre, description: `Paiement confirmé · ${r.groupe}`, openGraph: { title: titre, description: `Paiement confirmé · ${r.groupe}`, siteName: "Sikaklo", images: [{ url: "/opengraph-image", width: 1200, height: 630, type: "image/jpeg" }] }, robots: { index: false } };
 }
 
 export default async function RecuPublic({ params }: { params: Promise<{ pid: string }> }) {
@@ -48,7 +48,7 @@ export default async function RecuPublic({ params }: { params: Promise<{ pid: st
       <div className="mx-auto max-w-md space-y-4">
         <Link href="/" className="flex items-center justify-center gap-2 font-extrabold text-[#0b3d2c]">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/logo.svg" alt="" width={36} height={36} className="h-9 w-9 rounded-[11px]" /> Cotiz
+          <img src="/icons/logo.svg" alt="" width={36} height={36} className="h-9 w-9 rounded-[11px]" /> Sikaklo
         </Link>
         {!r ? (
           <div className="rounded-3xl bg-white p-6 text-center shadow-sm ring-1 ring-stone-200">
@@ -74,11 +74,11 @@ export default async function RecuPublic({ params }: { params: Promise<{ pid: st
                   </div>
                 ))}
               </dl>
-              <p className="mt-5 rounded-2xl bg-stone-50 p-3 text-center text-xs text-stone-500">Paiement confirmé par le trésorier du groupe et enregistré dans Cotiz. Ce reçu ne peut pas être modifié.</p>
+              <p className="mt-5 rounded-2xl bg-stone-50 p-3 text-center text-xs text-stone-500">Paiement confirmé par le trésorier du groupe et enregistré dans Sikaklo. Ce reçu ne peut pas être modifié.</p>
             </div>
           </div>
         )}
-        <Link href="/" className="block rounded-full bg-emerald-700 py-3.5 text-center text-sm font-bold text-white">Découvrir Cotiz : tontines et cotisations sans palabres</Link>
+        <Link href="/" className="block rounded-full bg-emerald-700 py-3.5 text-center text-sm font-bold text-white">Découvrir Sikaklo : tontines et cotisations sans palabres</Link>
       </div>
     </main>
   );

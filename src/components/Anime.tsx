@@ -1,6 +1,6 @@
 "use client";
 
-/** Chiffres qui défilent (compteurs animés), partout dans Cotiz */
+/** Chiffres qui défilent (compteurs animés), partout dans Sikaklo */
 import { useEffect, useRef, useState } from "react";
 
 export const calme = () => typeof window !== "undefined" && window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;

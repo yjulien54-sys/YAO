@@ -90,7 +90,7 @@ export async function verifierCinetpay(transactionId: string): Promise<{ statut:
   return { statut, methode: json?.data?.payment_method };
 }
 
-/** Code opérateur CinetPay -> moyen de paiement Cotiz */
+/** Code opérateur CinetPay -> moyen de paiement Sikaklo */
 export function methodeDepuisCinetpay(code?: string): PayMethod | undefined {
   const c = (code ?? "").toUpperCase();
   if (c.includes("WAVE")) return "wave";

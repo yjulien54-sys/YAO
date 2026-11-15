@@ -43,7 +43,7 @@ export default function DettePage() {
   const engagement = m.profileId ? g.engagements.find((e) => e.profileId === m.profileId) : undefined;
   const tresorier = g.members.find((x) => x.role === "tresorier");
   const lien = typeof window !== "undefined" ? `${window.location.origin}/groupes/${g.id}/dette/${m.id}` : "";
-  const message = `Bonjour ${m.name},\n\nSelon l’historique du groupe « ${g.name} » sur Cotiz, ${tours.length} cotisation(s) restent impayées, pour un total de *${fcfa(total)}*.${recus.length ? ` Pour rappel, tu as reçu la caisse le ${dateCourte(recus[0].date)}.` : ""}\n\nMerci de régulariser rapidement. Le détail est ici :\n${lien}`;
+  const message = `Bonjour ${m.name},\n\nSelon l’historique du groupe « ${g.name} » sur Sikaklo, ${tours.length} cotisation(s) restent impayées, pour un total de *${fcfa(total)}*.${recus.length ? ` Pour rappel, tu as reçu la caisse le ${dateCourte(recus[0].date)}.` : ""}\n\nMerci de régulariser rapidement. Le détail est ici :\n${lien}`;
 
   return (
     <Page>
@@ -53,7 +53,7 @@ export default function DettePage() {
       <div className="space-y-4 p-4 print:p-0">
         <article className="carte space-y-4 p-5 text-[0.9375rem] leading-relaxed text-stone-800 print:border-0 print:shadow-none">
           <header className="border-b border-stone-200 pb-3 text-center">
-            <p className="text-xs font-semibold uppercase tracking-widest text-stone-500">Cotiz · {TYPE_LABEL[g.type]}</p>
+            <p className="text-xs font-semibold uppercase tracking-widest text-stone-500">Sikaklo · {TYPE_LABEL[g.type]}</p>
             <h1 className="mt-1 text-xl font-extrabold">Reconnaissance de dette</h1>
             <p className="text-xs text-stone-500">Groupe « {g.name} »</p>
           </header>
@@ -118,7 +118,7 @@ export default function DettePage() {
             {engagement ? (
               <>
                 <p className="text-stone-600">
-                  Règlement accepté dans l’application Cotiz le <b>{dateLongue(engagement.acceptedAt)}</b> par {engagement.nom} ({telAffiche(engagement.telephone)}) :
+                  Règlement accepté dans l’application Sikaklo le <b>{dateLongue(engagement.acceptedAt)}</b> par {engagement.nom} ({telAffiche(engagement.telephone)}) :
                 </p>
                 <p className="mt-1 whitespace-pre-line rounded-xl bg-stone-50 p-3 text-[0.8125rem] text-stone-700 ring-1 ring-stone-200">{engagement.texte}</p>
               </>
@@ -136,7 +136,7 @@ export default function DettePage() {
           </section>
 
           <footer className="border-t border-stone-200 pt-3 text-[0.8125rem] leading-snug text-stone-500">
-            Document généré le {dateLongue(new Date().toISOString())} par Cotiz à partir de l’historique enregistré du groupe. Il récapitule les informations
+            Document généré le {dateLongue(new Date().toISOString())} par Sikaklo à partir de l’historique enregistré du groupe. Il récapitule les informations
             enregistrées et peut servir de preuve ; il ne remplace pas un acte établi par un professionnel du droit.
           </footer>
         </article>

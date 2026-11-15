@@ -49,7 +49,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ error: fournisseur === "wave" ? "Le paiement Wave n’est pas encore activé : choisis un autre moyen." : "Orange Money, MTN et Moov ne sont pas encore activés : choisis Wave." }, { status: 503 });
   }
 
-  // Frais de service Cotiz (réglés dans /admin → Revenus), calculés ici, jamais par le navigateur
+  // Frais de service Sikaklo (réglés dans /admin → Revenus), calculés ici, jamais par le navigateur
   const { data: reglages } = await sb.from("parametres_app").select("cle, valeur").like("cle", "frais_service_%");
   const r = Object.fromEntries((reglages ?? []).map((x: { cle: string; valeur: string | null }) => [x.cle, x.valeur]));
   const fraisService = reglages?.length && r.frais_service_actif !== "non" ? fraisPour(total, lireTranches(r.frais_service_tranches), lirePourcent(r.frais_service_pourcent)) : 0;
@@ -57,7 +57,7 @@ export async function POST(req: Request) {
   // Total arrondi au multiple de 5 F supérieur : les quelques francs d'écart vont aux frais de l'opérateur
   const aPayer = arrondi5(total + fraisService + fraisOperateurPour(total + fraisService, fournisseur));
   const fraisOperateur = aPayer - total - fraisService;
-  // Part de Cotiz sur les pénalités payées en ligne (réglée dans /admin → Mes revenus)
+  // Part de Sikaklo sur les pénalités payées en ligne (réglée dans /admin → Mes revenus)
   const penalites = lignes.reduce((t, l) => t + l.penalty, 0);
   // Offre spéciale en cours (période choisie par le fondateur) : elle remplace la part habituelle
   const offreActive = !!r.frais_service_promo_fin && new Date(r.frais_service_promo_fin).getTime() > Date.now() && r.frais_service_promo_part != null;
@@ -100,7 +100,7 @@ export async function POST(req: Request) {
         transactionId,
         groupId: g.id,
         amount: aPayer,
-        description: `Cotiz ${g.name}`,
+        description: `Sikaklo ${g.name}`,
         successUrl: `${origin}/api/paiements/retour?ref=${transactionId}&g=${g.id}`,
         errorUrl: `${origin}/api/paiements/retour?ref=${transactionId}&g=${g.id}&erreur=1`,
         customerName: membre.name,
@@ -138,7 +138,7 @@ export async function POST(req: Request) {
     const { paymentUrl } = await initierCinetpay({
       transactionId,
       amount: aPayer,
-      description: `Cotiz ${g.name}`,
+      description: `Sikaklo ${g.name}`,
       notifyUrl: `${origin}/api/paiements/notification`,
       returnUrl: `${origin}/api/paiements/retour?tx=${transactionId}&g=${g.id}`,
       customerName: membre.name,

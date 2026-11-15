@@ -1,7 +1,7 @@
 /**
  * Image d'aperçu de la cagnotte (celle que WhatsApp, Facebook… affichent quand on partage le lien).
- * Générée automatiquement pour chaque cagnotte : photo, logo Cotiz, titre, montant et jauge,
- * avec une bande de motifs aux couleurs de Cotiz.
+ * Générée automatiquement pour chaque cagnotte : photo, logo Sikaklo, titre, montant et jauge,
+ * avec une bande de motifs aux couleurs de Sikaklo.
  */
 import { ImageResponse } from "next/og";
 import sharp from "sharp";
@@ -11,7 +11,7 @@ import { createClient } from "@supabase/supabase-js";
 import { phraseMotif } from "@/lib/motif";
 
 export const runtime = "nodejs";
-export const alt = "Cagnotte Cotiz";
+export const alt = "Cagnotte Sikaklo";
 export const size = { width: 1200, height: 630 };
 // JPEG léger (moins de 300 Ko) : au-delà, WhatsApp n'affiche pas l'aperçu
 export const contentType = "image/jpeg";
@@ -36,7 +36,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
     .flatMap((b) => (b ? [`data:image/png;base64,${b.toString("base64")}`] : []));
   const logo = icone ? `data:image/png;base64,${icone.toString("base64")}` : null;
   const pct = c?.objectif ? Math.min(100, Math.round((c.collecte / c.objectif) * 100)) : null;
-  const titre = c?.nom ?? "Cagnotte Cotiz";
+  const titre = c?.nom ?? "Cagnotte Sikaklo";
   // Titre : plus il est long, plus il est petit (3 lignes maximum, jamais sur le montant)
   // Le motif : une phrase courte qui explique pourquoi on collecte (tirée du message du trésorier)
   const motifTexte = phraseMotif(c?.message ?? c?.description, 95);
@@ -57,7 +57,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
             ? <img src={c.photo} alt="" width={560} height={630} style={{ width: 560, height: 630, objectFit: "cover" }} />
             : (
               <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {logo ? <img src={logo} alt="" width={200} height={200} style={{ borderRadius: 48 }} /> : <span style={{ fontSize: 96, fontWeight: 800, color: "white" }}>Cotiz</span>}
+                {logo ? <img src={logo} alt="" width={200} height={200} style={{ borderRadius: 48 }} /> : <span style={{ fontSize: 96, fontWeight: 800, color: "white" }}>Sikaklo</span>}
               </div>
             )}
           <div style={{ position: "absolute", top: 0, right: 0, width: 12, height: "100%", display: "flex", flexDirection: "column" }}>
@@ -70,7 +70,7 @@ export default async function Image({ params }: { params: Promise<{ slug: string
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             {logo && <img src={logo} alt="" width={64} height={64} style={{ borderRadius: 16 }} />}
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <span style={{ fontSize: 38, fontWeight: 800, letterSpacing: -1 }}>Cotiz</span>
+              <span style={{ fontSize: 38, fontWeight: 800, letterSpacing: -1 }}>Sikaklo</span>
               <span style={{ fontSize: 18, color: "#d3eee2", letterSpacing: 3 }}>CAGNOTTE</span>
             </div>
           </div>

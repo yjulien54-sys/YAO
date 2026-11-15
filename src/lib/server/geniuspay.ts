@@ -71,7 +71,7 @@ async function appel(chemin: string, init?: RequestInit) {
   throw new Error(`GeniusPay refuse la clé (${dernier?.status}${msg ? ` : ${msg}` : ""}). ${decrireCle()}, adresses essayées : ${bases.join(" et ")}. Vérifie dans Vercel que GENIUSPAY_API_KEY est la clé actuelle du Dashboard GeniusPay (même mode test/live), puis redéploie.`);
 }
 
-/** Code opérateur Cotiz -> code GeniusPay (laisser vide = le client choisit sur la page GeniusPay) */
+/** Code opérateur Sikaklo -> code GeniusPay (laisser vide = le client choisit sur la page GeniusPay) */
 const OPERATEUR: Partial<Record<PayMethod, string>> = { wave: "wave", orange: "orange_money", mtn: "mtn_money", moov: "moov_money" };
 
 export async function initierGeniuspay(p: {

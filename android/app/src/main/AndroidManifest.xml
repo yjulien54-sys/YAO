@@ -47,7 +47,7 @@
             </intent-filter>
         </activity>
 
-        <!-- Ouverture de Wave depuis Cotiz : lien cotiz://ouvrir?app=wave -->
+        <!-- Ouverture de Wave depuis Sikaklo : lien cotiz://ouvrir?app=wave -->
         <activity
             android:name=".OuvrirAppActivity"
             android:exported="true"

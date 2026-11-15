@@ -303,7 +303,7 @@ export default function GroupeDetail() {
                   )}
                   {d[0].encaisseCotiz ? (
                     <p className="mt-2 flex items-start gap-2 rounded-xl bg-sky-50 px-3 py-2 text-[0.8125rem] font-medium text-sky-900 ring-1 ring-sky-100">
-                      <ShieldCheck size={16} strokeWidth={2} className="mt-0.5 shrink-0" /> Payé sur le compte Cotiz : Cotiz vérifie la réception et confirme. Tu n’as rien à faire, tu seras prévenu.
+                      <ShieldCheck size={16} strokeWidth={2} className="mt-0.5 shrink-0" /> Payé sur le compte Sikaklo : Sikaklo vérifie la réception et confirme. Tu n’as rien à faire, tu seras prévenu.
                     </p>
                   ) : <>
                   <p className="mt-1.5 text-[0.8125rem] text-stone-500">Confirme seulement si tu as reçu <b>{fcfa(sum(d))}</b> au total. S’il manque de l’argent, touche « Pas reçu » et préviens le membre.</p>

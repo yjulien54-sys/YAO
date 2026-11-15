@@ -94,15 +94,15 @@ function Payer() {
   const tresorier = g.members.find((m) => m.role === "tresorier");
   const numeroCaisse = g.paymentPhone || tresorier?.phone || "";
   const jeSuisTresorier = me?.role === "tresorier";
-  // Caisse Cotiz : en Wave, l'argent va sur le compte marchand de Cotiz, qui confirme
+  // Caisse Sikaklo : en Wave, l'argent va sur le compte marchand de Sikaklo, qui confirme
   const viaCotiz = modeManuel && !!caisse?.actif && !!caisse.lien && method === "wave" && !jeSuisTresorier;
   const choix = aPayer.slice(0, Math.min(aPayer.length, 6));
   const tours = choix.slice(0, nb);
   const lignes = tours.map((r) => ({ r, ...roundAmount(g, r) }));
   const total = isCollecte ? Number(montant) || 0 : lignes.reduce((s, l) => s + l.total, 0);
-  // Frais de service Cotiz : seulement pour un paiement en ligne (le paiement manuel au trésorier reste gratuit)
+  // Frais de service Sikaklo : seulement pour un paiement en ligne (le paiement manuel au trésorier reste gratuit)
   const enLigne = !modeManuel && MODE_PAIEMENT !== "simulation";
-  // Tous les frais (service Cotiz + opérateur) s'ajoutent au montant : la caisse reçoit la cotisation entière.
+  // Tous les frais (service Sikaklo + opérateur) s'ajoutent au montant : la caisse reçoit la cotisation entière.
   // Ils ne sont pas détaillés ici, seulement sur le reçu.
   const fraisCotiz = enLigne ? service.frais(total) : 0;
   const totalAPayer = enLigne && total > 0 ? arrondi5(total + fraisCotiz + fraisOperateurPour(total + fraisCotiz, fournisseurPour(method))) : total;
@@ -160,13 +160,13 @@ function Payer() {
             <h2 className="text-xl font-extrabold">Paiement déclaré !</h2>
             <p className="text-sm leading-relaxed text-stone-600">
               {viaCotiz
-                ? <><b>{caisse?.nom ?? "Cotiz"}</b> va vérifier la réception de <b>{fcfa(total)}</b> sur son compte Wave, puis confirmer. Ton trésorier est prévenu. Tu passeras alors en « Payé » et tu recevras ton reçu.</>
+                ? <><b>{caisse?.nom ?? "Sikaklo"}</b> va vérifier la réception de <b>{fcfa(total)}</b> sur son compte Wave, puis confirmer. Ton trésorier est prévenu. Tu passeras alors en « Payé » et tu recevras ton reçu.</>
                 : <>{tresorier ? prenom(tresorier.name) : "Le trésorier"} va vérifier qu’il a bien reçu <b>{fcfa(total)}</b>, puis confirmer.
               Tu passeras alors en « Payé » et tu recevras ton reçu.</>}
             </p>
             {tresorier && !viaCotiz && (
               <a
-                href={waLink(`Bonjour ${prenom(tresorier.name)} 👋\n\nJe viens d’envoyer ${fcfa(total)} par ${op.nom} pour « ${g.name} »${refWave ? ` (réf. ${refWave})` : ""}.\n\nMerci de confirmer dans Cotiz 🙏\n${typeof window !== "undefined" ? window.location.origin : ""}/groupes/${g.id}`, tresorier.phone)}
+                href={waLink(`Bonjour ${prenom(tresorier.name)} 👋\n\nJe viens d’envoyer ${fcfa(total)} par ${op.nom} pour « ${g.name} »${refWave ? ` (réf. ${refWave})` : ""}.\n\nMerci de confirmer dans Sikaklo 🙏\n${typeof window !== "undefined" ? window.location.origin : ""}/groupes/${g.id}`, tresorier.phone)}
                 target="_blank"
                 rel="noreferrer"
                 className={btnClass("whatsapp", "w-full")}
@@ -298,7 +298,7 @@ function Payer() {
                     <p className="text-xs font-semibold uppercase tracking-wide text-stone-500">Payer sur le compte marchand</p>
                     <p className="mt-2 rounded-xl bg-sky-50 px-3 py-2 text-base font-extrabold uppercase tracking-wide text-sky-800 ring-1 ring-sky-200">{caisse?.nom}</p>
                     <p className="mt-2 text-xs leading-snug text-stone-500">
-                      L’argent est gardé en sécurité par Cotiz, puis versé au bénéficiaire après validation. Dans Wave, {/^https:\/\/pay\./.test(caisse?.lien ?? "") ? "le montant est déjà rempli" : <>tape exactement <b>{fcfa(total)}</b></>}, vérifie le nom <b>{caisse?.nom}</b> et valide.
+                      L’argent est gardé en sécurité par Sikaklo, puis versé au bénéficiaire après validation. Dans Wave, {/^https:\/\/pay\./.test(caisse?.lien ?? "") ? "le montant est déjà rempli" : <>tape exactement <b>{fcfa(total)}</b></>}, vérifie le nom <b>{caisse?.nom}</b> et valide.
                     </p>
                   </div>
                   ) : (
@@ -338,7 +338,7 @@ function Payer() {
                   const href = lienBusiness ?? (app.ussd
                       ? `tel:${encodeURIComponent(app.ussd)}`
                       : enApp && method === "wave"
-                        ? "cotiz://ouvrir?app=wave" // application Cotiz : ouverture native de Wave
+                        ? "cotiz://ouvrir?app=wave" // application Sikaklo : ouverture native de Wave
                         : ios && app.ios
                           ? app.ios
                           : app.android);
@@ -381,13 +381,13 @@ function Payer() {
                 </p>
                 {aide && <p className="rounded-xl bg-white px-3 py-2 text-xs font-medium text-stone-700 ring-1 ring-stone-200">{aide}</p>}
                 <p className="text-sm font-bold">2. Reviens ici et confirme</p>
-                <Field label={viaCotiz ? "Référence de la transaction Wave (recommandée)" : "Référence de la transaction (facultatif)"} hint={viaCotiz ? "Dans Wave, ouvre le paiement dans ton historique et copie la référence. Elle permet à Cotiz de retrouver ton paiement plus vite." : "Elle se trouve dans le SMS ou l’historique de ton application. Elle aide le trésorier à vérifier."}>
+                <Field label={viaCotiz ? "Référence de la transaction Wave (recommandée)" : "Référence de la transaction (facultatif)"} hint={viaCotiz ? "Dans Wave, ouvre le paiement dans ton historique et copie la référence. Elle permet à Sikaklo de retrouver ton paiement plus vite." : "Elle se trouve dans le SMS ou l’historique de ton application. Elle aide le trésorier à vérifier."}>
                   <input className={inputClass} value={refWave} onChange={(e) => setRefWave(e.target.value)} placeholder="ex : T_ABC123…" />
                 </Field>
               </Card>
             )}
             {modeManuel ? null : fournisseurPour(method) === "wave" ? (
-              <p className="px-1 text-sm text-stone-600">Tu vas être redirigé vers <b>Wave</b> pour valider le paiement, puis tu reviendras automatiquement sur Cotiz.</p>
+              <p className="px-1 text-sm text-stone-600">Tu vas être redirigé vers <b>Wave</b> pour valider le paiement, puis tu reviendras automatiquement sur Sikaklo.</p>
             ) : (
               <Field label={`Numéro ${op.nom}`}>
                 <input className={inputClass} inputMode="tel" value={phone} onChange={(e) => setPhone(e.target.value)} />

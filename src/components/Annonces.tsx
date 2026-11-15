@@ -7,10 +7,13 @@ import { supabase } from "@/lib/supabase";
 
 type Annonce = { id: string; titre: string; texte?: string | null; lien?: string | null; bouton?: string | null; couleur: "vert" | "orange" | "bleu" | "sombre"; video?: string | null };
 
+// Annonce du nouveau nom, toujours en premier
+const NOUVEAU_NOM: Annonce = { id: "sikaklo", titre: "Cotiz devient Sikaklo", texte: "Nouveau nom, nouveau logo. Rien ne change pour vos groupes, vos paiements et votre code.", couleur: "orange" };
+
 // Annonces par défaut (si la table n'existe pas encore ou est vide)
 const DEFAUT: Annonce[] = [
-  { id: "d1", titre: "Bienvenue sur Cotiz", texte: "Tontines, associations et collectes : tout le monde voit qui a payé.", couleur: "vert" },
-  { id: "d2", titre: "Cotiz sur ton téléphone", texte: "Installe l’application Android en quelques secondes.", lien: "/telecharger", bouton: "Télécharger", couleur: "sombre" },
+  { id: "d1", titre: "Bienvenue sur Sikaklo", texte: "Tontines, associations et collectes : tout le monde voit qui a payé.", couleur: "vert" },
+  { id: "d2", titre: "Sikaklo sur ton téléphone", texte: "Installe l’application Android en quelques secondes.", lien: "/telecharger", bouton: "Télécharger", couleur: "sombre" },
 ];
 
 const FOND = {
@@ -22,11 +25,12 @@ const FOND = {
 
 const DUREE = 5000; // temps de lecture de chaque annonce (ms)
 
-const ETIQUETTE: Record<string, string> = { vert: "Cotiz", orange: "Nouveauté", bleu: "Information", sombre: "Application" };
+const ETIQUETTE: Record<string, string> = { vert: "Sikaklo", orange: "Nouveauté", bleu: "Information", sombre: "Application" };
 
 /** Bandeau d'annonces qui défile (publicités, nouveautés, mises à jour) */
 export function Annonces() {
-  const [liste, setListe] = useState<Annonce[]>(DEFAUT);
+  const [liste, setListeBrute] = useState<Annonce[]>([NOUVEAU_NOM, ...DEFAUT]);
+  const setListe = (l: Annonce[]) => setListeBrute([NOUVEAU_NOM, ...l.filter((a) => a.id !== NOUVEAU_NOM.id)]);
 
   useEffect(() => {
     try {

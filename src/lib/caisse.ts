@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "./supabase";
 import { fraisPour, lirePourcent, lireTranches, type Tranche } from "./fraisService";
 
-/** Réglage « Caisse Cotiz » (mise à jour SQL n°19) : les membres paient par Wave sur le compte marchand de Cotiz */
+/** Réglage « Caisse Sikaklo » (mise à jour SQL n°19) : les membres paient par Wave sur le compte marchand de Sikaklo */
 export type CaisseCotiz = { actif: boolean; lien: string | null; nom: string };
 
 let cache: CaisseCotiz | null = null;
@@ -14,17 +14,17 @@ export function useCaisseCotiz() {
   useEffect(() => {
     if (cache) return;
     supabase.from("parametres_app").select("cle, valeur").then(({ data, error }) => {
-      if (error || !data) return setC((cache = { actif: false, lien: null, nom: "Cotiz" }));
+      if (error || !data) return setC((cache = { actif: false, lien: null, nom: "Sikaklo" }));
       const v = Object.fromEntries(data.map((r: { cle: string; valeur: string | null }) => [r.cle, r.valeur]));
       const lien = v.caisse_cotiz_lien ?? null;
-      setC((cache = { actif: v.caisse_cotiz_actif === "oui" && !!lien, lien, nom: v.caisse_cotiz_nom || "Cotiz" }));
+      setC((cache = { actif: v.caisse_cotiz_actif === "oui" && !!lien, lien, nom: v.caisse_cotiz_nom || "Sikaklo" }));
     });
   }, []);
   return c;
 }
 
 /** Ajoute le montant quand le lien Wave le permet (pay.wave.com) */
-/** Frais de service Cotiz (mise à jour SQL n°23) : affichés au membre avant un paiement en ligne */
+/** Frais de service Sikaklo (mise à jour SQL n°23) : affichés au membre avant un paiement en ligne */
 let cacheFrais: { actif: boolean; tranches: Tranche[]; pourcent: number } | null = null;
 export function useFraisService() {
   const [f, setF] = useState(cacheFrais);

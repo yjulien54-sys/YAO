@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Graphiques de l'admin aux couleurs Cotiz (vert #009E60, orange #F77F00).
+ * Graphiques de l'admin aux couleurs Sikaklo (vert #009E60, orange #F77F00).
  * Tous en SVG, sans bibliothèque : jauge à aiguille, montre, anneau,
  * pyramide (triangle), courbe remplie et colonnes — tous animés à l'ouverture
  * (désactivé si le téléphone demande « réduire les animations »).

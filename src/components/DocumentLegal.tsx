@@ -24,7 +24,7 @@ export function DocumentLegal({ titre, chapeau, maj, version, articles, actuel }
           <Link href="/" className="inline-flex items-center gap-2 text-lg font-extrabold tracking-tight text-stone-900">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons/logo.svg" alt="" width={30} height={30} className="h-[30px] w-[30px] rounded-[9px]" />
-            Cotiz
+            Sikaklo
           </Link>
           <Link href="/" className="inline-flex items-center gap-1.5 rounded-full border border-stone-200 px-3 py-1.5 text-sm font-semibold text-stone-700 hover:bg-stone-50">
             <ArrowLeft size={16} strokeWidth={2} /> Retour

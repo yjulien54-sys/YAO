@@ -1,6 +1,6 @@
 /**
  * Assistant de rédaction pour les AGENTS du service client (espace admin).
- * L'agent dit (à l'écrit ou à la voix) ce qu'il veut répondre ; Cotiz IA rédige un message
+ * L'agent dit (à l'écrit ou à la voix) ce qu'il veut répondre ; Sikaklo IA rédige un message
  * professionnel que l'agent relit, corrige et envoie lui-même. Rien n'est envoyé automatiquement.
  *
  * - Avec ANTHROPIC_API_KEY (payant) : rédaction intelligente par Claude.
@@ -39,11 +39,11 @@ export async function POST(req: Request) {
   if (!token) return NextResponse.json({ ok: false, raison: "non connecté" }, { status: 401 });
   const moi = createClient(url, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { global: { headers: { Authorization: `Bearer ${token}` } } });
   const { error: pasAdmin } = await moi.rpc("verifier_admin");
-  if (pasAdmin) return NextResponse.json({ ok: false, raison: "réservé à l’équipe Cotiz" }, { status: 403 });
+  if (pasAdmin) return NextResponse.json({ ok: false, raison: "réservé à l’équipe Sikaklo" }, { status: 403 });
 
   const corps = await req.json().catch(() => null) as { consigne?: string; nom?: string | null; motif?: string; messages?: Msg[] } | null;
   const consigne = String(corps?.consigne ?? "").slice(0, 2000).trim();
-  if (!consigne) return NextResponse.json({ ok: false, raison: "Dites à Cotiz IA ce que vous voulez répondre." }, { status: 400 });
+  if (!consigne) return NextResponse.json({ ok: false, raison: "Dites à Sikaklo IA ce que vous voulez répondre." }, { status: 400 });
   const nom = corps?.nom ?? null;
   const messages = (corps?.messages ?? []).slice(-12).map((m) => ({ auteur: String(m.auteur), texte: String(m.texte).slice(0, 1500) }));
   const premier = !messages.some((m) => m.auteur === "agent" || m.auteur === "ia");
@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: true, texte, mode: "gratuit" });
   }
 
-  const system = `Tu aides un agent du service client de Cotiz (application ivoirienne de tontines, associations et collectes) à rédiger sa réponse à un client.
+  const system = `Tu aides un agent du service client de Sikaklo (application ivoirienne de tontines, associations et collectes) à rédiger sa réponse à un client.
 L'agent te donne une consigne (parfois dictée à la voix, donc mal ponctuée). Rédige le message final à envoyer au client.
 
 RÈGLES
@@ -62,7 +62,7 @@ RÈGLES
 - ${premier ? "Commence par « Bonjour » et le prénom du client s'il est connu." : "Pas de nouvelle salutation (la conversation est déjà engagée)."}
 - Respecte fidèlement la consigne de l'agent : n'ajoute aucune promesse, aucun délai, aucun montant qu'il n'a pas donné.
 - Si une manipulation dans l'application est utile, utilise les étapes exactes du guide ci-dessous.
-- Termine par « Nous restons à votre disposition. » puis « Cordialement, » puis « Le service client Cotiz », chacun sur sa ligne.
+- Termine par « Nous restons à votre disposition. » puis « Cordialement, » puis « Le service client Sikaklo », chacun sur sa ligne.
 - Réponds uniquement avec le texte du message, rien d'autre.
 
 GUIDE DE L'APPLICATION
@@ -71,7 +71,7 @@ ${GUIDES.map((g) => texteGuide(g)).join("\n\n")}
 QUESTIONS FRÉQUENTES
 ${FAQ.map((f) => `- ${f.q} → ${f.r}`).join("\n")}`;
 
-  const fil = messages.map((m) => `${m.auteur === "client" ? "CLIENT" : m.auteur === "ia" ? "COTIZ IA" : "AGENT"} : ${m.texte}`).join("\n\n");
+  const fil = messages.map((m) => `${m.auteur === "client" ? "CLIENT" : m.auteur === "ia" ? "SIKAKLO IA" : "AGENT"} : ${m.texte}`).join("\n\n");
   try {
     const anthropic = new Anthropic();
     const response = await anthropic.beta.messages.create({
@@ -87,7 +87,7 @@ ${FAQ.map((f) => `- ${f.q} → ${f.r}`).join("\n")}`;
     if (!texte || response.stop_reason === "refusal") throw new Error("vide");
     return NextResponse.json({ ok: true, texte, mode: "claude" });
   } catch (e) {
-    console.error("Brouillon Cotiz IA", e instanceof Anthropic.APIError ? e.status : "", (e as Error).message);
+    console.error("Brouillon Sikaklo IA", e instanceof Anthropic.APIError ? e.status : "", (e as Error).message);
     // Repli gratuit pour ne jamais bloquer l'agent
     const explication = trouverExplication(consigne);
     return NextResponse.json({ ok: true, texte: formel(`${mettreEnForme(consigne)}${explication ? `\n\n${explication}` : ""}`, nom, premier), mode: "gratuit" });

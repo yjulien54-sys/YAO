@@ -9,7 +9,7 @@ import { LogoIA } from "@/components/LogoIA";
 import { Header, Page } from "@/components/ui";
 import { FAQ } from "@/lib/faq";
 
-export const metadata: Metadata = { title: "Aide — Cotiz" };
+export const metadata: Metadata = { title: "Aide — Sikaklo" };
 
 /** Questions fréquentes rangées par thème (pour ne pas tout afficher d'un coup) */
 const THEMES: { titre: string; icone: typeof Users; ton: string; mots: RegExp }[] = [
@@ -36,10 +36,10 @@ export default function Aide() {
         <section className="relative overflow-hidden rounded-[26px] bg-gradient-to-br from-[#0b3d2c] via-[#0f5a3f] to-[#009e60] p-5 text-white shadow-[0_18px_40px_-22px_rgba(11,61,44,0.7)]">
           <div className="motif absolute inset-0 opacity-[0.12]" />
           <div className="balaie pointer-events-none absolute inset-y-0 left-0" />
-          <p className="relative text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">Aide Cotiz</p>
+          <p className="relative text-xs font-bold uppercase tracking-[0.16em] text-emerald-200">Aide Sikaklo</p>
           <h1 className="relative mt-1 text-2xl font-extrabold leading-tight">Comment pouvons-nous vous aider ?</h1>
           <p className="relative mt-1.5 text-sm text-emerald-50/90">
-            Cotiz IA répond <span className="rounded bg-[#f5c400] px-1.5 py-0.5 font-bold text-[#0b3d2c]">en quelques secondes</span>. Un conseiller prend le relais pour tout ce qui touche à votre argent.
+            Sikaklo IA répond <span className="rounded bg-[#f5c400] px-1.5 py-0.5 font-bold text-[#0b3d2c]">en quelques secondes</span>. Un conseiller prend le relais pour tout ce qui touche à votre argent.
           </p>
           <div className="bande-kente absolute inset-x-0 bottom-0 h-1.5" />
         </section>
@@ -49,7 +49,7 @@ export default function Aide() {
           <a href="#cotiz-ia" className="carte-vivante group relative overflow-hidden rounded-3xl bg-gradient-to-br from-violet-600 via-violet-700 to-indigo-700 p-4 text-white shadow-[0_14px_30px_-18px_rgba(76,29,149,0.8)]">
             <span className="pointer-events-none absolute -right-8 -top-8 h-24 w-24 rounded-full bg-white/10" />
             <LogoIA taille={46} className="drop-shadow-lg" />
-            <p className="mt-3 text-lg font-extrabold leading-none">Cotiz IA</p>
+            <p className="mt-3 text-lg font-extrabold leading-none">Sikaklo IA</p>
             <p className="mt-1 text-xs leading-snug text-violet-100">Assistant automatique, répond tout de suite</p>
             <span className="mt-2.5 inline-flex items-center gap-1 rounded-full bg-white/15 px-2 py-0.5 text-[0.65rem] font-bold ring-1 ring-white/20">🤖 24h/24</span>
           </a>
@@ -62,9 +62,9 @@ export default function Aide() {
           </a>
         </section>
 
-        {/* Cotiz IA */}
+        {/* Sikaklo IA */}
         <Depliable id="cotiz-ia" ouvert icone={<LogoIA taille={44} />}
-          titre="Discuter avec Cotiz IA"
+          titre="Discuter avec Sikaklo IA"
           badge={<span className="rounded-full bg-violet-100 px-2 py-0.5 text-[0.65rem] font-bold text-violet-800">🤖 Assistant automatique</span>}
           sousTitre={<span>Réponse <span className="surligne font-semibold text-stone-700">immédiate</span>, avec les étapes pas à pas. Un conseiller prend le relais si besoin.</span>}>
           <RequeteClient integre />

@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Planning de l'équipe Cotiz : grille personnes × jours, créneaux en couleur qu'on glisse
+ * Planning de l'équipe Sikaklo : grille personnes × jours, créneaux en couleur qu'on glisse
  * d'un jour ou d'une personne à l'autre, durée de 7 h par défaut (la fin se calcule seule),
  * échange de créneaux, remplissage automatique d'une semaine, et lien d'agenda pour le téléphone.
  */
@@ -108,7 +108,7 @@ export function PlanningPro({ fondateur, equipe, moi }: { fondateur: boolean; eq
         <div className="balaie pointer-events-none absolute inset-y-0 left-0" />
         <div className="relative flex flex-wrap items-center gap-4">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="/icons/logo.svg" alt="Cotiz" width={52} height={52} className="h-14 w-14 rounded-2xl shadow-lg ring-2 ring-white/30" />
+          <img src="/icons/logo.svg" alt="Sikaklo" width={52} height={52} className="h-14 w-14 rounded-2xl shadow-lg ring-2 ring-white/30" />
           <div className="min-w-0 flex-1">
             <p className="text-xs font-bold uppercase tracking-[0.18em] text-emerald-100">Planning de l’équipe</p>
             <p className="text-2xl font-extrabold">Semaine du {jours[0].toLocaleDateString("fr-FR", { day: "numeric", month: "long" })} au {jours[6].toLocaleDateString("fr-FR", { day: "numeric", month: "long" })}</p>
@@ -351,7 +351,7 @@ function RemplissageAuto({ agents, jours, fermer, executer }: { agents: Agent[];
           <div className="balaie pointer-events-none absolute inset-y-0 left-0" />
           <button onClick={fermer} className="absolute right-3 top-3 grid h-9 w-9 place-items-center rounded-full bg-white/20" aria-label="Fermer"><X size={18} /></button>
           <p className="flex items-center gap-2 text-2xl font-extrabold"><Sparkles size={22} /> Remplir la semaine automatiquement</p>
-          <p className="text-sm text-white/90">Choisis les personnes et les horaires : Cotiz fait tourner le matin, le soir et les repos.</p>
+          <p className="text-sm text-white/90">Choisis les personnes et les horaires : Sikaklo fait tourner le matin, le soir et les repos.</p>
         </div>
         <div className="space-y-5 p-5">
           <div>
@@ -441,7 +441,7 @@ function AgendaTelephone({ fondateur, agents, moi }: { fondateur: boolean; agent
         <div className="motif pointer-events-none absolute inset-0 opacity-15" />
         <div className="relative">
           <p className="flex items-center gap-2 text-lg font-extrabold"><Smartphone size={20} /> Mon planning sur mon téléphone</p>
-          <p className="mt-1 text-sm text-sky-100">Ajoute ton planning une seule fois : tes horaires Cotiz apparaissent dans ton agenda, avec un rappel 30 minutes avant, et se mettent à jour tout seuls.</p>
+          <p className="mt-1 text-sm text-sky-100">Ajoute ton planning une seule fois : tes horaires Sikaklo apparaissent dans ton agenda, avec un rappel 30 minutes avant, et se mettent à jour tout seuls.</p>
           {lien && (
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
               <a href={google(lien)} target="_blank" rel="noopener" className="rounded-xl bg-white px-3 py-2.5 text-center text-sm font-extrabold text-indigo-700">Google Agenda</a>
@@ -460,7 +460,7 @@ function AgendaTelephone({ fondateur, agents, moi }: { fondateur: boolean; agent
             {agents.filter((a) => a.email.toLowerCase() !== moi.toLowerCase()).map((a) => (
               <div key={a.email} className="flex flex-wrap items-center gap-2 py-2.5 text-sm">
                 <span className="min-w-0 flex-1 truncate font-semibold">{a.numero ? `${a.numero} · ` : ""}{a.nom ?? a.email}</span>
-                <button onClick={async () => { const j = liens[a.email] ?? await lienDe(a.email); if (!j) return; const tel = (a.telephone ?? "").replace(/\D/g, ""); const t = `Bonjour ${a.nom ?? ""}, voici ton planning Cotiz à ajouter dans l’agenda de ton téléphone :\n\nAndroid (Google Agenda) : ${google(j)}\n\niPhone : ${iphone(j)}\n\nTes horaires se mettront à jour tout seuls. Ce lien est personnel, ne le partage pas.`; window.open(`https://wa.me/${tel.length === 10 ? "225" + tel : tel}?text=${encodeURIComponent(t)}`, "_blank"); }} className="rounded-lg bg-[#1fa855] px-3 py-1.5 text-xs font-bold text-white">WhatsApp</button>
+                <button onClick={async () => { const j = liens[a.email] ?? await lienDe(a.email); if (!j) return; const tel = (a.telephone ?? "").replace(/\D/g, ""); const t = `Bonjour ${a.nom ?? ""}, voici ton planning Sikaklo à ajouter dans l’agenda de ton téléphone :\n\nAndroid (Google Agenda) : ${google(j)}\n\niPhone : ${iphone(j)}\n\nTes horaires se mettront à jour tout seuls. Ce lien est personnel, ne le partage pas.`; window.open(`https://wa.me/${tel.length === 10 ? "225" + tel : tel}?text=${encodeURIComponent(t)}`, "_blank"); }} className="rounded-lg bg-[#1fa855] px-3 py-1.5 text-xs font-bold text-white">WhatsApp</button>
                 <button onClick={async () => { const j = liens[a.email] ?? await lienDe(a.email); if (j) copier(url(j), a.email); }} className="rounded-lg border border-stone-200 px-3 py-1.5 text-xs font-bold text-stone-700">{copie === a.email ? "Copié ✓" : "Copier"}</button>
                 <button onClick={() => lienDe(a.email, true)} className="text-xs text-stone-400 underline">Nouveau lien</button>
               </div>

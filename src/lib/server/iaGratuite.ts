@@ -1,14 +1,14 @@
 /**
- * Cotiz IA — mode GRATUIT (sans clé payante).
+ * Sikaklo IA — mode GRATUIT (sans clé payante).
  * Pas d'intelligence artificielle externe : on compare le message du client aux
- * questions fréquentes de Cotiz (mots-clés). Si la réponse est sûre, on l'envoie ;
+ * questions fréquentes de Sikaklo (mots-clés). Si la réponse est sûre, on l'envoie ;
  * si la demande touche aux données ou à l'argent, ou si on n'est pas sûr, on
  * transmet au personnel. Coût : 0 F.
  */
 import { FAQ } from "@/lib/faq";
 import { GUIDES, texteGuide } from "@/lib/guideCotiz";
 
-/** Tout ce que Cotiz IA sait expliquer : le guide pas à pas + les questions fréquentes */
+/** Tout ce que Sikaklo IA sait expliquer : le guide pas à pas + les questions fréquentes */
 const SAVOIR: { q: string; r: string }[] = [
   ...GUIDES.map((g) => ({ q: `${g.titre} ${g.questions.join(" ")}`, r: texteGuide(g) })),
   ...FAQ,
@@ -46,10 +46,10 @@ const mots = (t: string) => sansAccents(t).split(/[^a-z0-9]+/).filter((m) => m.l
 /** Mots exacts + familles de mots (préfixées « # ») */
 const motsCles = (t: string) => { const l = mots(t); return new Set([...l, ...l.map((m) => "#" + famille(m))]); };
 
-/** « Comment faire… ? » : une demande d'explication (Cotiz IA peut répondre) et non une action à faire */
+/** « Comment faire… ? » : une demande d'explication (Sikaklo IA peut répondre) et non une action à faire */
 const QUESTION_PRATIQUE = /^(comment|ou |ou est|ou se|c.?est quoi|qu.?est.?ce|est.?ce que je peux|je peux|on peut|peut.?on|je veux savoir|explique|aide.?moi a)/;
 
-/** Le client demande à Cotiz IA de FAIRE une action à sa place : elle explique, mais ne fait rien */
+/** Le client demande à Sikaklo IA de FAIRE une action à sa place : elle explique, mais ne fait rien */
 const ACTION_INTERDITE = /(supprime|efface|retire|enleve|exclu|valide|confirme|annule|rembourse|change|modifie|debloque|verse|transfere)[sz]?(-moi|-le|-la| moi| le| la| mon| ma| mes| son| sa| ce| cette| un| une)/;
 
 /** Demandes qu'un robot ne doit jamais traiter seul (même formulées comme une question) */
@@ -73,7 +73,7 @@ const MERCI = /^(merci|ok|okay|d.?accord|c.?est bon|c.?est regle|resolu|super|pa
 const TRANSMIS = "Je transmets votre demande à un conseiller du service client, qui vous répondra ici dans les meilleurs délais. S’il s’agit d’un paiement, merci de préparer le nom du groupe, le montant, la date et la référence de la transaction (ne communiquez jamais votre code secret).";
 
 /** Mise en forme professionnelle : salutation + message + formule de politesse */
-const SIGNATURE = "Nous restons à votre disposition.\nCordialement,\nLe service client Cotiz";
+const SIGNATURE = "Nous restons à votre disposition.\nCordialement,\nLe service client Sikaklo";
 export function formel(corps: string, nom?: string | null, premier = true): string {
   const prenom = (nom ?? "").trim().split(/\s+/)[0];
   const salut = premier ? `Bonjour${prenom ? ` ${prenom.charAt(0).toUpperCase()}${prenom.slice(1)}` : ""},\n\n` : "";
@@ -109,7 +109,7 @@ function decider(motif: string, messages: { auteur: string; texte: string }[]): 
 
   // Le client remercie après une réponse : on clôt
   if (dejaRepondu && MERCI.test(brut) && brut.length < 80) {
-    return { reponse: "Avec plaisir. N’hésitez pas à revenir vers nous ici si vous avez une autre question. Excellente journée avec Cotiz.", transmettre: false, raison: "", resoudre: true };
+    return { reponse: "Avec plaisir. N’hésitez pas à revenir vers nous ici si vous avez une autre question. Excellente journée avec Sikaklo.", transmettre: false, raison: "", resoudre: true };
   }
   const nbIA = messages.filter((m) => m.auteur === "ia").length;
   if (nbIA >= MAX_REPONSES_GRATUIT) return { reponse: TRANSMIS, transmettre: true, raison: "Plusieurs questions : à reprendre par un agent", resoudre: false };
@@ -118,10 +118,10 @@ function decider(motif: string, messages: { auteur: string; texte: string }[]): 
   const pratique = QUESTION_PRATIQUE.test(brut);
   for (const [motif_, raison] of SENSIBLE) if (motif_.test(texteComplet)) return { reponse: TRANSMIS, transmettre: true, raison, resoudre: false };
   if (!pratique) for (const [motif_, raison] of SENSIBLE_SAUF_QUESTION) if (motif_.test(texteComplet)) return { reponse: TRANSMIS, transmettre: true, raison, resoudre: false };
-  // « Supprime mon compte », « valide mon paiement »… : Cotiz IA n'agit jamais à la place du client
+  // « Supprime mon compte », « valide mon paiement »… : Sikaklo IA n'agit jamais à la place du client
   const action = !pratique && ACTION_INTERDITE.test(brut);
   if (/arnaque|probleme grave/.test(sansAccents(motif))) return { reponse: TRANSMIS, transmettre: true, raison: "arnaque ou problème grave", resoudre: false };
-  if (/suggestion/.test(sansAccents(motif))) return { reponse: "Merci pour votre suggestion. Je la transmets à l’équipe Cotiz, qui lit attentivement chaque proposition.", transmettre: true, raison: "suggestion à lire par l’équipe", resoudre: false };
+  if (/suggestion/.test(sansAccents(motif))) return { reponse: "Merci pour votre suggestion. Je la transmets à l’équipe Sikaklo, qui lit attentivement chaque proposition.", transmettre: true, raison: "suggestion à lire par l’équipe", resoudre: false };
 
   // Recherche de la question fréquente la plus proche
   const cles = motsCles(dernier);
@@ -139,7 +139,7 @@ function decider(motif: string, messages: { auteur: string; texte: string }[]): 
   const trouve = meilleur.i >= 0 && meilleur.score >= 5;
   if (action) {
     // Elle explique comment le client peut le faire lui-même ; sinon un conseiller regarde
-    const intro = "Par mesure de sécurité, Cotiz IA ne peut pas effectuer cette action à votre place : elle ne supprime rien, ne valide aucun paiement et ne modifie aucune donnée.";
+    const intro = "Par mesure de sécurité, Sikaklo IA ne peut pas effectuer cette action à votre place : elle ne supprime rien, ne valide aucun paiement et ne modifie aucune donnée.";
     if (trouve) return { reponse: `${intro} Voici comment procéder vous-même :\n\n${SAVOIR[meilleur.i].r}\n\nSi vous avez besoin d’un conseiller, écrivez simplement « conseiller ».`, transmettre: false, raison: "", resoudre: false };
     return { reponse: `${intro} ${TRANSMIS}`, transmettre: true, raison: "Le client demande une action sur son compte ou ses paiements", resoudre: false };
   }

@@ -1,7 +1,7 @@
 /* eslint-disable @next/next/no-img-element */
 /**
  * Affiche de la cagnotte (l'image que WhatsApp, Facebook… montrent quand on partage le lien).
- * Photo, logo Cotiz, motif, titre, montant, jauge et logos des opérateurs, aux couleurs de Cotiz.
+ * Photo, logo Sikaklo, motif, titre, montant, jauge et logos des opérateurs, aux couleurs de Sikaklo.
  * Renvoie un JPEG léger (environ 100 Ko) : WhatsApp refuse les images trop lourdes.
  */
 import { ImageResponse } from "next/og";
@@ -24,7 +24,7 @@ export async function dessinerAffiche(c: InfosAffiche | null): Promise<{ data: B
     .flatMap((b) => (b ? [`data:image/png;base64,${b.toString("base64")}`] : []));
   const logo = icone ? `data:image/png;base64,${icone.toString("base64")}` : null;
   const pct = c?.objectif ? Math.min(100, Math.round((c.collecte / c.objectif) * 100)) : null;
-  const titre = c?.nom ?? "Cagnotte Cotiz";
+  const titre = c?.nom ?? "Cagnotte Sikaklo";
   // Titre : plus il est long, plus il est petit (3 lignes maximum, jamais sur le montant)
   // Le motif : une phrase courte qui explique pourquoi on collecte (tirée du message du trésorier)
   const motifTexte = phraseMotif(c?.message ?? c?.description, 95);
@@ -46,7 +46,7 @@ export async function dessinerAffiche(c: InfosAffiche | null): Promise<{ data: B
             ? <img src={c.photo} alt="" width={560} height={630} style={{ width: 560, height: 630, objectFit: "cover" }} />
             : (
               <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {logo ? <img src={logo} alt="" width={200} height={200} style={{ borderRadius: 48 }} /> : <span style={{ fontSize: 96, fontWeight: 800, color: t.texte }}>Cotiz</span>}
+                {logo ? <img src={logo} alt="" width={200} height={200} style={{ borderRadius: 48 }} /> : <span style={{ fontSize: 96, fontWeight: 800, color: t.texte }}>Sikaklo</span>}
               </div>
             )}
           <div style={{ position: "absolute", top: 0, right: 0, width: 12, height: "100%", display: "flex", flexDirection: "column" }}>
@@ -59,7 +59,7 @@ export async function dessinerAffiche(c: InfosAffiche | null): Promise<{ data: B
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             {logo && <img src={logo} alt="" width={64} height={64} style={{ borderRadius: 16 }} />}
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <span style={{ fontSize: 38, fontWeight: 800, letterSpacing: -1 }}>Cotiz</span>
+              <span style={{ fontSize: 38, fontWeight: 800, letterSpacing: -1 }}>Sikaklo</span>
               <span style={{ fontSize: 18, color: t.etiquette, letterSpacing: 3 }}>CAGNOTTE</span>
             </div>
           </div>

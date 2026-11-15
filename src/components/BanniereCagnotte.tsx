@@ -45,7 +45,7 @@ export function BanniereCagnotte({ groupId, nom, cause, gestionnaire, etat }: { 
     <Link href={`/groupes/${groupId}/parametres#cagnotte`} className="carte relative block overflow-hidden bg-gradient-to-r from-orange-500 to-orange-600 p-4 text-white">
       <span className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/15" />
       <p className="relative text-lg font-extrabold">🌍 Publier la cagnotte sur une belle page</p>
-      <p className="relative mt-0.5 text-sm text-orange-50">Photo, jauge de l’objectif et participants : envoie-la sur WhatsApp, même à ceux qui n’ont pas Cotiz.</p>
+      <p className="relative mt-0.5 text-sm text-orange-50">Photo, jauge de l’objectif et participants : envoie-la sur WhatsApp, même à ceux qui n’ont pas Sikaklo.</p>
       <span className="relative mt-2 inline-block rounded-full bg-white px-3 py-1.5 text-sm font-extrabold text-orange-700">Créer la page →</span>
     </Link>
   );

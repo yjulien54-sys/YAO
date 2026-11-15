@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 export const dynamic = "force-dynamic";
 
 export function GET() {
-  // Valeurs publiques de l'application Cotiz (clé d'envoi). Ajouter dans ANDROID_SHA256 l'empreinte
+  // Valeurs publiques de l'application Sikaklo (clé d'envoi). Ajouter dans ANDROID_SHA256 l'empreinte
   // « Clé de signature d'application » affichée par la Play Console (Intégrité de l'application).
   const pkg = process.env.ANDROID_PACKAGE ?? "ci.cotiz.app";
   const fps = [

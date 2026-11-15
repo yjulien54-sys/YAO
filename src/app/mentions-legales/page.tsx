@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ACompleter, DocumentLegal, type Article } from "@/components/DocumentLegal";
 import { SUPPORT_AFFICHE } from "@/lib/support";
 
-export const metadata: Metadata = { title: "Mentions légales — Cotiz" };
+export const metadata: Metadata = { title: "Mentions légales — Sikaklo" };
 
 const ARTICLES: Article[] = [
   {
@@ -11,7 +11,7 @@ const ARTICLES: Article[] = [
     titre: "Éditeur du service",
     contenu: (
       <ul>
-        <li>Nom commercial : <b>Cotiz</b></li>
+        <li>Nom commercial : <b>Sikaklo</b></li>
         <li>Raison sociale : <ACompleter>nom de l’entreprise</ACompleter></li>
         <li>Forme juridique : <ACompleter>entreprise individuelle, SARL…</ACompleter></li>
         <li>RCCM : <ACompleter>numéro d’immatriculation au registre du commerce</ACompleter></li>
@@ -45,7 +45,7 @@ const ARTICLES: Article[] = [
     titre: "Nature de l’activité",
     contenu: (
       <p>
-        Cotiz est un service numérique de gestion et de suivi de tontines, d’associations et de collectes. <b>Cotiz ne collecte pas et ne détient pas de
+        Sikaklo est un service numérique de gestion et de suivi de tontines, d’associations et de collectes. <b>Sikaklo ne collecte pas et ne détient pas de
         fonds</b> : les paiements sont réalisés directement entre les utilisateurs par l’intermédiaire d’opérateurs agréés (Wave, Orange Money, MTN Mobile
         Money, Moov Money). Voir les <Link href="/cgu">conditions générales d’utilisation</Link>.
       </p>
@@ -72,7 +72,7 @@ const ARTICLES: Article[] = [
     titre: "Propriété intellectuelle",
     contenu: (
       <p>
-        L’ensemble des éléments de Cotiz (nom, logo, charte graphique, textes, code) est la propriété exclusive de l’Éditeur. Les marques des opérateurs de
+        L’ensemble des éléments de Sikaklo (nom, logo, charte graphique, textes, code) est la propriété exclusive de l’Éditeur. Les marques des opérateurs de
         paiement citées (Wave, Orange Money, MTN, Moov) appartiennent à leurs propriétaires respectifs et ne sont mentionnées qu’à titre d’information.
       </p>
     ),
@@ -94,7 +94,7 @@ export default function MentionsLegales() {
     <DocumentLegal
       actuel="/mentions-legales"
       titre="Mentions légales"
-      chapeau="Qui édite Cotiz, qui l’héberge, et comment nous contacter."
+      chapeau="Qui édite Sikaklo, qui l’héberge, et comment nous contacter."
       version="1.0"
       maj="10 novembre 2026"
       articles={ARTICLES}

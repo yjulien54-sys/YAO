@@ -20,14 +20,14 @@ export async function generateMetadata({ params }: { params: Promise<{ id: strin
   const { id } = await params;
   const g = await lireGroupe(id);
   if (!g) return {};
-  const titre = `Rejoignez ${TYPE[g.type]} « ${g.nom} » sur Cotiz`;
+  const titre = `Rejoignez ${TYPE[g.type]} « ${g.nom} » sur Sikaklo`;
   const montant = g.type !== "collecte" && g.montant ? `Cotisation : ${g.montant.toLocaleString("fr-FR")} F par ${parFrequence(g.frequence)}. ` : "";
   const desc = `${montant}${g.membres} membre${g.membres > 1 ? "s" : ""}${g.tresorier ? `, trésorier : ${g.tresorier}` : ""}. Tout le monde voit qui a payé. Inscription gratuite.`;
   const image = { url: `/groupes/${id}/affiche?v=${g.theme ?? "a"}-${g.membres}`, width: 1200, height: 630, type: "image/jpeg", alt: titre };
   return {
-    title: `${g.nom} · Cotiz`,
+    title: `${g.nom} · Sikaklo`,
     description: desc,
-    openGraph: { title: titre, description: desc, siteName: "Cotiz", locale: "fr_FR", type: "website", images: [image] },
+    openGraph: { title: titre, description: desc, siteName: "Sikaklo", locale: "fr_FR", type: "website", images: [image] },
     twitter: { card: "summary_large_image", title: titre, description: desc, images: [image.url] },
     robots: { index: false },
   };

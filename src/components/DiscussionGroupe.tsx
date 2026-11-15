@@ -93,7 +93,7 @@ export function DiscussionGroupe({ groupId, userId, gestionnaire, membres = [] }
     charger();
   }
 
-  if (msgs === "indispo") return <p className="carte p-4 text-sm text-amber-800">La discussion de groupe arrive bientôt (mise à jour n°39 à faire par l’administrateur Cotiz).</p>;
+  if (msgs === "indispo") return <p className="carte p-4 text-sm text-amber-800">La discussion de groupe arrive bientôt (mise à jour n°39 à faire par l’administrateur Sikaklo).</p>;
 
   return (
     <div className="carte overflow-hidden">

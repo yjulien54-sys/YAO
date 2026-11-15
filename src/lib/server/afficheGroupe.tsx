@@ -18,7 +18,7 @@ const TYPE: Record<Group["type"], string> = { tontine: "TONTINE", association: "
 const fcfa = (n: number) => `${Math.round(n).toLocaleString("fr-FR").replace(/[  ]/g, " ")} F`;
 // Initiales parlantes : on saute « Tontine », « des », « de »… (« Tontine des amies de Man-Grédan » → « AM »)
 const VIDES = new Set(["tontine", "association", "collecte", "cagnotte", "groupe", "mutuelle", "des", "de", "du", "la", "le", "les", "et", "pour", "au", "aux", "d", "l"]);
-const initiales = (n: string) => n.trim().split(/[\s'’]+/).filter((m) => m && !VIDES.has(m.toLowerCase())).slice(0, 2).map((m) => m[0]?.toUpperCase()).join("") || n.trim()[0]?.toUpperCase() || "C";
+const initiales = (n: string) => n.trim().split(/[\s'’]+/).filter((m) => m && !VIDES.has(m.toLowerCase())).slice(0, 2).map((m) => m[0]?.toUpperCase()).join("") || n.trim()[0]?.toUpperCase() || "S";
 
 export async function dessinerInvitation(g: InfosGroupe | null): Promise<{ data: Buffer; type: "image/jpeg" | "image/png" }> {
   const lire = (chemin: string) => readFile(join(process.cwd(), chemin)).catch(() => null);
@@ -27,7 +27,7 @@ export async function dessinerInvitation(g: InfosGroupe | null): Promise<{ data:
   const logo = icone ? `data:image/png;base64,${icone.toString("base64")}` : null;
   const t = THEMES[themePour(g?.id, g?.theme)];
   const motif = Array.from({ length: 30 }, (_, k) => t.motif[k % t.motif.length]);
-  const nom = g?.nom ?? "Votre groupe Cotiz";
+  const nom = g?.nom ?? "Votre groupe Sikaklo";
   const taille = nom.length > 48 ? 46 : nom.length > 30 ? 54 : 64;
   const montant = g?.type === "collecte"
     ? (g.objectif ? `Objectif ${fcfa(g.objectif)}` : "Participation libre")
@@ -48,7 +48,7 @@ export async function dessinerInvitation(g: InfosGroupe | null): Promise<{ data:
           <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
             {logo && <img src={logo} alt="" width={64} height={64} style={{ borderRadius: 16 }} />}
             <div style={{ display: "flex", flexDirection: "column" }}>
-              <span style={{ fontSize: 38, fontWeight: 800, letterSpacing: -1 }}>Cotiz</span>
+              <span style={{ fontSize: 38, fontWeight: 800, letterSpacing: -1 }}>Sikaklo</span>
               <span style={{ fontSize: 18, color: t.etiquette, letterSpacing: 3 }}>INVITATION</span>
             </div>
           </div>

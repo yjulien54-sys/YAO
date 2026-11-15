@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ACompleter, DocumentLegal, type Article } from "@/components/DocumentLegal";
 import { SUPPORT_AFFICHE } from "@/lib/support";
 
-export const metadata: Metadata = { title: "Conditions générales d’utilisation — Cotiz" };
+export const metadata: Metadata = { title: "Conditions générales d’utilisation — Sikaklo" };
 
 const ARTICLES: Article[] = [
   {
@@ -13,10 +13,10 @@ const ARTICLES: Article[] = [
       <>
         <p>
           Les présentes conditions générales d’utilisation (ci-après les « CGU ») ont pour objet de définir les conditions dans lesquelles l’Éditeur met à
-          disposition l’application Cotiz, accessible à l’adresse <b>tontine-et-cotise.vercel.app</b> et via l’application mobile Android, ainsi que les droits et
+          disposition l’application Sikaklo, accessible à l’adresse <b>tontine-et-cotise.vercel.app</b> et via l’application mobile Android, ainsi que les droits et
           obligations des personnes qui l’utilisent.
         </p>
-        <p>L’utilisation de Cotiz implique l’acceptation pleine et entière des présentes CGU. Si vous n’acceptez pas ces conditions, vous devez renoncer à utiliser le service.</p>
+        <p>L’utilisation de Sikaklo implique l’acceptation pleine et entière des présentes CGU. Si vous n’acceptez pas ces conditions, vous devez renoncer à utiliser le service.</p>
       </>
     ),
   },
@@ -25,9 +25,9 @@ const ARTICLES: Article[] = [
     titre: "Définitions",
     contenu: (
       <ul>
-        <li><b>Éditeur</b> : la personne qui exploite Cotiz, identifiée dans les <Link href="/mentions-legales">mentions légales</Link>.</li>
-        <li><b>Utilisateur</b> : toute personne qui utilise Cotiz, qu’elle soit gestionnaire ou membre d’un groupe.</li>
-        <li><b>Groupe</b> : une tontine, une association, une mutuelle ou une collecte (funérailles, mariage, baptême…) créée dans Cotiz.</li>
+        <li><b>Éditeur</b> : la personne qui exploite Sikaklo, identifiée dans les <Link href="/mentions-legales">mentions légales</Link>.</li>
+        <li><b>Utilisateur</b> : toute personne qui utilise Sikaklo, qu’elle soit gestionnaire ou membre d’un groupe.</li>
+        <li><b>Groupe</b> : une tontine, une association, une mutuelle ou une collecte (funérailles, mariage, baptême…) créée dans Sikaklo.</li>
         <li><b>Trésorier</b> : l’Utilisateur qui crée un Groupe et en assure la gestion. Il reçoit les cotisations sur le numéro de paiement qu’il indique.</li>
         <li><b>Co-gestionnaire</b> : un membre à qui le Trésorier confie des droits de gestion.</li>
         <li><b>Membre</b> : une personne inscrite dans un Groupe, qui s’engage à verser des cotisations.</li>
@@ -41,7 +41,7 @@ const ARTICLES: Article[] = [
     titre: "Description du service",
     contenu: (
       <>
-        <p>Cotiz est un outil de <b>gestion et de suivi</b> des cotisations. Il permet notamment :</p>
+        <p>Sikaklo est un outil de <b>gestion et de suivi</b> des cotisations. Il permet notamment :</p>
         <ul>
           <li>de créer un Groupe, d’y inviter des membres et de fixer le montant, la fréquence et l’ordre des tours ;</li>
           <li>d’afficher à tous les membres qui a payé, ce qui reste dû et qui est le prochain bénéficiaire ;</li>
@@ -56,16 +56,16 @@ const ARTICLES: Article[] = [
   },
   {
     id: "fonds",
-    titre: "Rôle de Cotiz dans les paiements",
+    titre: "Rôle de Sikaklo dans les paiements",
     contenu: (
       <>
         <p className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-900">
-          <b className="text-emerald-900">Cotiz ne détient pas, ne garde pas et ne transfère pas l’argent des Utilisateurs.</b> Cotiz n’est ni une banque, ni un
+          <b className="text-emerald-900">Sikaklo ne détient pas, ne garde pas et ne transfère pas l’argent des Utilisateurs.</b> Sikaklo n’est ni une banque, ni un
           établissement de paiement, ni un établissement de monnaie électronique.
         </p>
         <p>
           Les cotisations sont envoyées directement par chaque Membre au Trésorier, au moyen de l’Opérateur de paiement de son choix. Ces opérations sont
-          soumises aux conditions de l’Opérateur concerné. Cotiz se limite à enregistrer les informations déclarées par les Utilisateurs afin d’assurer la
+          soumises aux conditions de l’Opérateur concerné. Sikaklo se limite à enregistrer les informations déclarées par les Utilisateurs afin d’assurer la
           transparence au sein du Groupe.
         </p>
         <p>
@@ -81,7 +81,7 @@ const ARTICLES: Article[] = [
     contenu: (
       <>
         <p>
-          L’accès à Cotiz est gratuit, hors coût de la connexion Internet. L’Utilisateur s’identifie avec son nom et son numéro de téléphone. Lorsque la
+          L’accès à Sikaklo est gratuit, hors coût de la connexion Internet. L’Utilisateur s’identifie avec son nom et son numéro de téléphone. Lorsque la
           vérification par SMS est activée, un code à usage unique lui est envoyé.
         </p>
         <p>L’Utilisateur s’engage à :</p>
@@ -91,7 +91,7 @@ const ARTICLES: Article[] = [
           <li>préserver la confidentialité de son téléphone et des codes reçus ;</li>
           <li>avertir sans délai le service client en cas d’utilisation frauduleuse de son compte.</li>
         </ul>
-        <p>Le service est réservé aux personnes majeures ou, à défaut, utilisant Cotiz avec l’accord de leur représentant légal.</p>
+        <p>Le service est réservé aux personnes majeures ou, à défaut, utilisant Sikaklo avec l’accord de leur représentant légal.</p>
       </>
     ),
   },
@@ -136,8 +136,8 @@ const ARTICLES: Article[] = [
           solidarité, récompense ou don). Ces règles sont fixées par le Groupe et n’engagent que ses membres.
         </p>
         <p>
-          L’acceptation du règlement et la reconnaissance de dette générée par Cotiz sont horodatées et conservées. Elles peuvent servir d’élément de preuve
-          entre les membres. Cotiz n’intervient pas dans le recouvrement des sommes dues et n’est pas partie aux engagements pris entre les membres.
+          L’acceptation du règlement et la reconnaissance de dette générée par Sikaklo sont horodatées et conservées. Elles peuvent servir d’élément de preuve
+          entre les membres. Sikaklo n’intervient pas dans le recouvrement des sommes dues et n’est pas partie aux engagements pris entre les membres.
         </p>
       </>
     ),
@@ -147,7 +147,7 @@ const ARTICLES: Article[] = [
     titre: "Utilisations interdites",
     contenu: (
       <>
-        <p>Il est strictement interdit d’utiliser Cotiz pour :</p>
+        <p>Il est strictement interdit d’utiliser Sikaklo pour :</p>
         <ul>
           <li>organiser une escroquerie, un système pyramidal ou toute activité illicite ;</li>
           <li>blanchir de l’argent ou financer une activité illégale ;</li>
@@ -216,7 +216,7 @@ const ARTICLES: Article[] = [
     titre: "Propriété intellectuelle",
     contenu: (
       <p>
-        Le nom Cotiz, le logo, les textes, les illustrations et le code de l’application sont protégés. Toute reproduction ou utilisation sans autorisation
+        Le nom Sikaklo, le logo, les textes, les illustrations et le code de l’application sont protégés. Toute reproduction ou utilisation sans autorisation
         écrite de l’Éditeur est interdite.
       </p>
     ),
@@ -226,7 +226,7 @@ const ARTICLES: Article[] = [
     titre: "Modification des CGU",
     contenu: (
       <p>
-        L’Éditeur peut modifier les présentes CGU. Les Utilisateurs en sont informés dans l’application. La poursuite de l’utilisation de Cotiz après cette
+        L’Éditeur peut modifier les présentes CGU. Les Utilisateurs en sont informés dans l’application. La poursuite de l’utilisation de Sikaklo après cette
         information vaut acceptation des nouvelles conditions.
       </p>
     ),
@@ -262,7 +262,7 @@ export default function CGU() {
     <DocumentLegal
       actuel="/cgu"
       titre="Conditions générales d’utilisation"
-      chapeau="Les règles d’utilisation de Cotiz : ce que fait le service, ce qu’il ne fait pas, et les engagements de chacun."
+      chapeau="Les règles d’utilisation de Sikaklo : ce que fait le service, ce qu’il ne fait pas, et les engagements de chacun."
       version="1.0"
       maj="10 novembre 2026"
       articles={ARTICLES}

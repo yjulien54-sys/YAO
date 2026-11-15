@@ -153,7 +153,7 @@ export function messageModele(c: ContexteMessage): string {
       if (c.type === "groupe") {
         if (c.moment === "retard")
           return `⏰ *${c.groupe}*\n\nL’échéance du tour ${c.tour} est passée (${c.echeance}).${liste}${c.penalite ? `\nLa pénalité de ${fcfa(c.penalite)} s’applique désormais.` : ""}\n\nMerci de régulariser rapidement pour ne pas bloquer le bénéficiaire 🙏${p}`;
-        return `📢 *${c.groupe}*\n\nRappel : les cotisations du tour ${c.tour} sont attendues ${quand(c)}.${liste}${p}\n\nLa liste à jour est visible par tous sur Cotiz ✅`;
+        return `📢 *${c.groupe}*\n\nRappel : les cotisations du tour ${c.tour} sont attendues ${quand(c)}.${liste}${p}\n\nLa liste à jour est visible par tous sur Sikaklo ✅`;
       }
       switch (c.moment) {
         case "avance":

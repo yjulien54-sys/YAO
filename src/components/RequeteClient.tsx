@@ -12,7 +12,7 @@ const MOTIFS = ["Un paiement", "Mon compte / mon code", "Un groupe", "Un verseme
 type Requete = { masquee_client?: boolean; id: string; numero: number; cree_le: string; motif: string; message: string; statut: "nouvelle" | "en_cours" | "resolue"; reponse: string | null; dernier_auteur?: string | null; note?: number | null; avis?: string | null };
 type Msg = { id: string; requete_id: string; cree_le: string; auteur: "client" | "agent" | "ia"; texte: string };
 
-/** Demande à Cotiz IA de lire la conversation et de répondre (sans effet si elle n'est pas configurée) */
+/** Demande à Sikaklo IA de lire la conversation et de répondre (sans effet si elle n'est pas configurée) */
 async function appelerCotizIA(requete: string) {
   try {
     const { data } = await supabase.auth.getSession();
@@ -67,7 +67,7 @@ export function RequeteClient({ integre = false }: { integre?: boolean } = {}) {
     return () => { clearInterval(t); window.removeEventListener("focus", f); };
   }, [liste, charger]);
 
-  if (!userId || !dispo) return integre ? <p className="rounded-2xl bg-violet-50 p-3 text-sm text-violet-900">Connectez-vous à Cotiz pour discuter avec Cotiz IA.</p> : null;
+  if (!userId || !dispo) return integre ? <p className="rounded-2xl bg-violet-50 p-3 text-sm text-violet-900">Connectez-vous à Sikaklo pour discuter avec Sikaklo IA.</p> : null;
 
   async function envoyer(e: React.FormEvent) {
     e.preventDefault();
@@ -86,14 +86,14 @@ export function RequeteClient({ integre = false }: { integre?: boolean } = {}) {
       {!integre && <div className="flex items-center gap-3">
         <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-white shadow-sm"><Sparkles size={20} /></span>
         <div className="min-w-0">
-          <p className="flex flex-wrap items-center gap-2 font-bold">Discuter avec Cotiz IA <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[0.65rem] font-bold text-violet-800">🤖 Assistant automatique</span></p>
+          <p className="flex flex-wrap items-center gap-2 font-bold">Discuter avec Sikaklo IA <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[0.65rem] font-bold text-violet-800">🤖 Assistant automatique</span></p>
           <p className="text-xs text-stone-500">Il répond tout de suite, 24h/24. Si besoin, un conseiller prend le relais dans la même conversation.</p>
         </div>
       </div>}
       {etat === "ok" ? (
         <div className="rounded-2xl bg-emerald-50 p-4 text-sm text-emerald-800">
           <p className="flex items-center gap-2 font-bold"><CheckCircle2 size={18} /> Message envoyé</p>
-          <p className="mt-1">Cotiz IA vous répond juste en dessous. Si votre demande nécessite une vérification, un conseiller prendra le relais.</p>
+          <p className="mt-1">Sikaklo IA vous répond juste en dessous. Si votre demande nécessite une vérification, un conseiller prendra le relais.</p>
           <button onClick={() => setEtat("")} className="mt-2 text-xs font-bold underline">Écrire un autre message</button>
         </div>
       ) : (
@@ -164,7 +164,7 @@ function Conversation({ r, fil, statut: [l, c], nouveau, ouverte, basculer, peut
             <span className="truncate font-semibold">{r.motif}</span>
             {nouveau && <span className="shrink-0 rounded-full bg-emerald-600 px-2 py-0.5 text-[0.65rem] font-bold text-white">Nouveau message</span>}
           </span>
-          <span className="block truncate text-xs text-stone-500">{fil[fil.length - 1]?.auteur === "agent" ? "Service client : " : fil[fil.length - 1]?.auteur === "ia" ? "Cotiz IA : " : "Toi : "}{fil[fil.length - 1]?.texte}</span>
+          <span className="block truncate text-xs text-stone-500">{fil[fil.length - 1]?.auteur === "agent" ? "Service client : " : fil[fil.length - 1]?.auteur === "ia" ? "Sikaklo IA : " : "Toi : "}{fil[fil.length - 1]?.texte}</span>
         </span>
         <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.7rem] font-bold ${c}`}>{l}</span>
         <ChevronDown size={16} className={`shrink-0 text-stone-400 transition ${ouverte ? "rotate-180" : ""}`} />
@@ -174,15 +174,15 @@ function Conversation({ r, fil, statut: [l, c], nouveau, ouverte, basculer, peut
           {fil.map((m) => (
             <div key={m.id} className={`flex ${m.auteur === "client" ? "justify-end" : "justify-start"}`}>
               <div className={`max-w-[85%] rounded-2xl px-3 py-2 ${m.auteur === "client" ? "rounded-br-md bg-emerald-700 text-white" : m.auteur === "ia" ? "rounded-bl-md bg-gradient-to-br from-violet-50 to-sky-50 text-stone-800 ring-1 ring-violet-200" : "rounded-bl-md bg-white text-stone-800 ring-1 ring-stone-200"}`}>
-                {m.auteur === "agent" && <p className="text-[0.7rem] font-bold text-emerald-700">👤 Conseiller Cotiz</p>}
-                {m.auteur === "ia" && <p className="mb-0.5 flex items-center gap-1.5 text-[0.7rem] font-bold text-violet-700"><LogoIA taille={18} anime={false} /> Cotiz IA <span className="font-normal text-stone-400">· assistant automatique</span></p>}
+                {m.auteur === "agent" && <p className="text-[0.7rem] font-bold text-emerald-700">👤 Conseiller Sikaklo</p>}
+                {m.auteur === "ia" && <p className="mb-0.5 flex items-center gap-1.5 text-[0.7rem] font-bold text-violet-700"><LogoIA taille={18} anime={false} /> Sikaklo IA <span className="font-normal text-stone-400">· assistant automatique</span></p>}
                 <p className="whitespace-pre-line">{m.texte}</p>
                 <p className={`mt-0.5 text-right text-[0.65rem] ${m.auteur === "client" ? "text-emerald-100" : "text-stone-400"}`}>{heure(m.cree_le)}</p>
               </div>
             </div>
           ))}
           {iaEcrit ? (
-            <p className="flex items-center gap-1.5 text-xs text-violet-700"><Sparkles size={12} className="animate-pulse" /> Cotiz IA écrit<span className="animate-pulse">…</span></p>
+            <p className="flex items-center gap-1.5 text-xs text-violet-700"><Sparkles size={12} className="animate-pulse" /> Sikaklo IA écrit<span className="animate-pulse">…</span></p>
           ) : r.statut !== "resolue" && fil[fil.length - 1]?.auteur === "client" && (
             <p className="flex items-center justify-center gap-1 text-xs text-stone-400"><Clock size={12} /> Un conseiller va te répondre ici</p>
           )}
@@ -204,7 +204,7 @@ function Conversation({ r, fil, statut: [l, c], nouveau, ouverte, basculer, peut
         </div>
       )}
       {menu && <MenuActions titre={r.motif} apercu={fil[fil.length - 1]?.texte} fermer={() => setMenu(false)} actions={[
-        { label: "Copier la conversation", icone: Copy, onClick: () => copier(fil.map((m) => `${m.auteur === "client" ? "Moi" : m.auteur === "ia" ? "Cotiz IA" : "Conseiller"} : ${m.texte}`).join("\n\n")) },
+        { label: "Copier la conversation", icone: Copy, onClick: () => copier(fil.map((m) => `${m.auteur === "client" ? "Moi" : m.auteur === "ia" ? "Sikaklo IA" : "Conseiller"} : ${m.texte}`).join("\n\n")) },
         { label: "Supprimer de ma liste", icone: Trash2, danger: true, desactive: r.statut !== "resolue", note: r.statut !== "resolue" ? "Possible quand la conversation est terminée" : undefined, onClick: () => supprimerConv(r.id, envoye, setErr) },
       ]} />}
     </div>

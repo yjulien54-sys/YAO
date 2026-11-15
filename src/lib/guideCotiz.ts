@@ -1,13 +1,13 @@
 /**
- * Guide pas à pas de l'application Cotiz : c'est ce que « Cotiz IA » apprend pour expliquer
+ * Guide pas à pas de l'application Sikaklo : c'est ce que « Sikaklo IA » apprend pour expliquer
  * aux clients comment faire (s'inscrire, créer un groupe, inviter, payer…).
  *
- * Pour apprendre une nouvelle chose à Cotiz IA : ajouter un bloc ici.
+ * Pour apprendre une nouvelle chose à Sikaklo IA : ajouter un bloc ici.
  *  - questions : différentes façons dont les gens posent la question (plus il y en a, mieux elle comprend)
  *  - etapes : la marche à suivre, une étape par ligne
  *  - note : une précision utile (facultatif)
  *
- * Cotiz IA EXPLIQUE seulement. Elle ne fait aucune action à la place du client :
+ * Sikaklo IA EXPLIQUE seulement. Elle ne fait aucune action à la place du client :
  * elle ne supprime rien, ne valide aucun paiement, ne change aucune donnée.
  */
 export type Guide = { id: string; titre: string; questions: string[]; etapes: string[]; note?: string };
@@ -15,13 +15,13 @@ export type Guide = { id: string; titre: string; questions: string[]; etapes: st
 export const GUIDES: Guide[] = [
   {
     id: "inscription",
-    titre: "S’inscrire sur Cotiz",
-    questions: ["comment s’inscrire", "comment créer un compte", "je veux m’inscrire", "ouvrir un compte cotiz", "comment commencer sur cotiz", "inscription"],
+    titre: "S’inscrire sur Sikaklo",
+    questions: ["comment s’inscrire", "comment créer un compte", "je veux m’inscrire", "ouvrir un compte sikaklo", "comment commencer sur sikaklo", "ouvrir un compte cotiz", "inscription"],
     etapes: [
-      "Ouvrez Cotiz (application Android ou tontine-et-cotise.vercel.app).",
+      "Ouvrez Sikaklo (application Android ou tontine-et-cotise.vercel.app).",
       "Sur la page d’accueil, écrivez votre nom, votre date de naissance et votre numéro de téléphone (10 chiffres).",
       "Touchez « Continuer ».",
-      "Créez votre code secret Cotiz à 4 chiffres (ce n’est pas votre code Mobile Money).",
+      "Créez votre code secret Sikaklo à 4 chiffres (ce n’est pas votre code Mobile Money).",
     ],
     note: "Utilisez le même numéro que celui donné au trésorier de votre groupe : vous retrouvez alors automatiquement vos groupes.",
   },
@@ -30,11 +30,11 @@ export const GUIDES: Guide[] = [
     titre: "Se connecter sur un autre téléphone ou un ordinateur",
     questions: ["se connecter sur ordinateur", "j’ai changé de téléphone", "nouveau téléphone", "connexion sur pc", "retrouver mon compte", "je ne vois pas mes groupes sur l’ordinateur", "deux comptes", "même compte sur téléphone et ordinateur", "se connecter à mon compte"],
     etapes: [
-      "Sur la page d’accueil de Cotiz, touchez « J’ai déjà un compte (autre téléphone, ordinateur) ».",
-      "Écrivez votre numéro, votre date de naissance et votre code secret Cotiz.",
+      "Sur la page d’accueil de Sikaklo, touchez « J’ai déjà un compte (autre téléphone, ordinateur) ».",
+      "Écrivez votre numéro, votre date de naissance et votre code secret Sikaklo.",
       "Touchez « Retrouver mon compte » : vous retrouvez tous vos groupes, avec les mêmes droits.",
     ],
-    note: "Ne créez pas un deuxième compte avec le même numéro. Si Cotiz vous indique « Ce numéro a déjà un compte », touchez « Me connecter à mon compte ». Si votre date de naissance n’est pas encore enregistrée, ajoutez-la d’abord sur votre premier appareil : Profil → Sécurité.",
+    note: "Ne créez pas un deuxième compte avec le même numéro. Si Sikaklo vous indique « Ce numéro a déjà un compte », touchez « Me connecter à mon compte ». Si votre date de naissance n’est pas encore enregistrée, ajoutez-la d’abord sur votre premier appareil : Profil → Sécurité.",
   },
   {
     id: "creer-groupe",
@@ -79,9 +79,9 @@ export const GUIDES: Guide[] = [
       "Choisissez votre moyen de paiement : Wave, Orange Money, MTN MoMo ou Moov Money.",
       "Suivez l’écran : le paiement s’ouvre avec le bon montant (ou le numéro du trésorier est copié).",
       "Vérifiez le nom du destinataire, validez avec votre code Mobile Money dans l’application de votre opérateur.",
-      "Revenez dans Cotiz et touchez « J’ai envoyé » si on vous le demande.",
+      "Revenez dans Sikaklo et touchez « J’ai envoyé » si on vous le demande.",
     ],
-    note: "Cotiz ne vous demandera jamais votre code secret Mobile Money. Votre paiement apparaît « en attente » jusqu’à ce que le trésorier confirme l’avoir reçu.",
+    note: "Sikaklo ne vous demandera jamais votre code secret Mobile Money. Votre paiement apparaît « en attente » jusqu’à ce que le trésorier confirme l’avoir reçu.",
   },
   {
     id: "confirmer-paiement",
@@ -92,7 +92,7 @@ export const GUIDES: Guide[] = [
       "Dans le groupe, il touche « Reçu » à côté du paiement en attente.",
       "Le paiement passe à « Payé » et un reçu est créé pour le membre.",
     ],
-    note: "Seul le trésorier peut confirmer un paiement : ni Cotiz IA ni les membres ne peuvent le faire à sa place.",
+    note: "Seul le trésorier peut confirmer un paiement : ni Sikaklo IA ni les membres ne peuvent le faire à sa place.",
   },
   {
     id: "remettre-fonds",
@@ -116,7 +116,7 @@ export const GUIDES: Guide[] = [
       "Écrivez le motif (ex : Funérailles, Solidarité du village) et un message qui explique à quoi sert l’argent.",
       "Touchez « Publier », puis « Partager » pour envoyer le lien sur WhatsApp.",
     ],
-    note: "Toute personne qui a le lien peut voir la page et participer, même sans avoir Cotiz.",
+    note: "Toute personne qui a le lien peut voir la page et participer, même sans avoir Sikaklo.",
   },
   {
     id: "ordre-tirage",
@@ -147,7 +147,7 @@ export const GUIDES: Guide[] = [
       "Ouvrez le groupe, touchez « Réglages ».",
       "Dans la liste des membres, touchez « Retirer » sous la personne, puis confirmez.",
     ],
-    note: "C’est le trésorier qui le fait lui-même ; Cotiz IA ne peut retirer personne. Les paiements déjà enregistrés restent dans l’historique.",
+    note: "C’est le trésorier qui le fait lui-même ; Sikaklo IA ne peut retirer personne. Les paiements déjà enregistrés restent dans l’historique.",
   },
   {
     id: "code-oublie",
@@ -188,14 +188,14 @@ export const GUIDES: Guide[] = [
       "Pour supprimer un groupe (trésorier) : groupe → Réglages → « Supprimer le groupe » tout en bas.",
       "Pour quitter un groupe : demandez au trésorier de vous retirer, ou utilisez le bouton prévu dans le groupe s’il est affiché.",
     ],
-    note: "Cotiz IA ne supprime rien elle-même : c’est toujours vous (ou le trésorier) qui décidez et qui le faites.",
+    note: "Sikaklo IA ne supprime rien elle-même : c’est toujours vous (ou le trésorier) qui décidez et qui le faites.",
   },
   {
     id: "installer",
-    titre: "Installer Cotiz",
-    questions: ["installer l’application", "télécharger cotiz", "application android", "installer sur iphone", "play store"],
+    titre: "Installer Sikaklo",
+    questions: ["installer l’application", "télécharger sikaklo", "télécharger cotiz", "application android", "installer sur iphone", "play store"],
     etapes: [
-      "Android : Profil → « Télécharger l’application Android », ou cherchez Cotiz sur le Play Store.",
+      "Android : Profil → « Télécharger l’application Android », ou cherchez Sikaklo sur le Play Store.",
       "iPhone : ouvrez tontine-et-cotise.vercel.app dans Safari, touchez Partager (carré avec une flèche), puis « Sur l’écran d’accueil ».",
     ],
   },
@@ -205,7 +205,7 @@ export const GUIDES: Guide[] = [
     questions: ["notifications", "je ne reçois pas les alertes", "la cloche", "être prévenu des paiements"],
     etapes: [
       "Touchez la cloche en haut de l’écran pour voir vos notifications (paiements, demandes, versements).",
-      "Si votre téléphone le propose, autorisez les notifications de Cotiz dans les réglages du téléphone.",
+      "Si votre téléphone le propose, autorisez les notifications de Sikaklo dans les réglages du téléphone.",
     ],
   },
 ];

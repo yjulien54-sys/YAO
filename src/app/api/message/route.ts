@@ -5,7 +5,7 @@ import { EVENEMENT_LABEL, messageModele, type ContexteMessage } from "@/lib/mess
 
 export const runtime = "nodejs";
 
-const SYSTEM = `Tu écris des messages WhatsApp pour Cotiz, une application ivoirienne de tontines, cotisations d'associations et collectes (funérailles, mariages, baptêmes…).
+const SYSTEM = `Tu écris des messages WhatsApp pour Sikaklo, une application ivoirienne de tontines, cotisations d'associations et collectes (funérailles, mariages, baptêmes…).
 
 Règles :
 - Français simple et chaleureux, comme on parle en Côte d'Ivoire, tutoiement pour un message individuel, « vous / chers tous » pour un message de groupe. Pas de nouchi.

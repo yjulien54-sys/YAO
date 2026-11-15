@@ -116,7 +116,7 @@ export const payoutFor = (g: Group, round = g.currentRound) =>
   g.payouts.find((p) => p.round === round && p.status !== "echoue" && (p.nature ?? "versement") === "versement");
 
 /** Caisse : entrées nettes (après frais) moins les versements. */
-/** Part des pénalités revenue à Cotiz (paiements en ligne) : elle ne va pas dans la caisse du groupe */
+/** Part des pénalités revenue à Sikaklo (paiements en ligne) : elle ne va pas dans la caisse du groupe */
 const partCotiz = (ps: Payment[]) => ps.reduce((s, p) => s + (p.penaliteCotiz ?? 0), 0);
 
 export function caisse(g: Group) {

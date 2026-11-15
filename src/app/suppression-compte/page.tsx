@@ -11,7 +11,7 @@ export default function SuppressionCompte() {
   const [etat, setEtat] = useState<"idle" | "busy" | "done" | "erreur">("idle");
 
   async function supprimer() {
-    if (!userId || !confirm("Supprimer définitivement ton compte Cotiz ?")) return;
+    if (!userId || !confirm("Supprimer définitivement ton compte Sikaklo ?")) return;
     setEtat("busy");
     const { error } = await supabase.from("profiles").delete().eq("id", userId);
     if (error) return setEtat("erreur");
@@ -21,8 +21,8 @@ export default function SuppressionCompte() {
 
   return (
     <main className="mx-auto min-h-dvh max-w-2xl bg-white px-5 py-8 text-base leading-relaxed text-stone-800">
-      <Link href="/" className="text-sm font-semibold text-emerald-700">← Retour à Cotiz</Link>
-      <h1 className="mt-4 text-2xl font-extrabold">Supprimer mon compte Cotiz</h1>
+      <Link href="/" className="text-sm font-semibold text-emerald-700">← Retour à Sikaklo</Link>
+      <h1 className="mt-4 text-2xl font-extrabold">Supprimer mon compte Sikaklo</h1>
       <p className="mt-2">La suppression efface ton profil (nom et numéro de téléphone) et te déconnecte de l’application.</p>
       <p className="mt-2 text-sm text-stone-600">
         L’historique des paiements des groupes (montants, dates) est conservé pour la transparence de ces groupes : ton nom y reste associé tel que le trésorier l’a saisi. Tu peux demander au trésorier de te retirer de la liste des membres.
@@ -36,7 +36,7 @@ export default function SuppressionCompte() {
           </Button>
         ) : (
           <p className="rounded-xl bg-stone-100 p-3 text-sm">
-            Ouvre Cotiz, connecte-toi, puis reviens sur cette page pour supprimer ton compte. Tu peux aussi écrire à l’adresse e-mail indiquée sur la fiche de Cotiz dans Google Play.
+            Ouvre Sikaklo, connecte-toi, puis reviens sur cette page pour supprimer ton compte. Tu peux aussi écrire à l’adresse e-mail indiquée sur la fiche de Sikaklo dans Google Play.
           </p>
         )}
         {etat === "erreur" && <p className="mt-2 text-sm text-red-600">La suppression a échoué. Réessaie plus tard.</p>}

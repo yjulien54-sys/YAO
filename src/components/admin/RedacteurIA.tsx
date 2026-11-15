@@ -1,8 +1,8 @@
 "use client";
 
 /**
- * Pour les agents : « Rédiger avec Cotiz IA ».
- * L'agent écrit ou DICTE (micro) ce qu'il veut dire au client ; Cotiz IA rédige un message
+ * Pour les agents : « Rédiger avec Sikaklo IA ».
+ * L'agent écrit ou DICTE (micro) ce qu'il veut dire au client ; Sikaklo IA rédige un message
  * professionnel qui arrive dans la zone de réponse. L'agent relit, corrige, puis envoie lui-même.
  */
 import { useEffect, useRef, useState } from "react";
@@ -77,7 +77,7 @@ export function RedacteurIA({ nom, motif, messages, onTexte }: { nom: string | n
     }).catch(() => null);
     const r = (await res?.json().catch(() => null)) as { ok?: boolean; texte?: string; raison?: string } | null;
     setOccupe(false);
-    if (!r?.ok || !r.texte) return setMsg(r?.raison ?? "Cotiz IA n’a pas pu rédiger. Réessayez.");
+    if (!r?.ok || !r.texte) return setMsg(r?.raison ?? "Sikaklo IA n’a pas pu rédiger. Réessayez.");
     onTexte(r.texte);
     setConsigne("");
     setOuvert(false);
@@ -86,7 +86,7 @@ export function RedacteurIA({ nom, motif, messages, onTexte }: { nom: string | n
   if (!ouvert) {
     return (
       <button type="button" onClick={() => setOuvert(true)} className="inline-flex w-full items-center justify-center gap-1.5 rounded-xl bg-gradient-to-r from-violet-600 to-indigo-600 py-2.5 text-sm font-bold text-white shadow-sm">
-        <Sparkles size={15} /> Rédiger avec Cotiz IA
+        <Sparkles size={15} /> Rédiger avec Sikaklo IA
       </button>
     );
   }

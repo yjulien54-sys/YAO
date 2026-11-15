@@ -182,7 +182,7 @@ export default function ListePaiements() {
             </div>
             <span className="flex shrink-0 items-center gap-2 font-extrabold text-[#0b3d2c]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="/icons/logo.svg" alt="" width={36} height={36} className="h-9 w-9 rounded-[11px]" /> Cotiz
+              <img src="/icons/logo.svg" alt="" width={36} height={36} className="h-9 w-9 rounded-[11px]" /> Sikaklo
             </span>
           </div>
 

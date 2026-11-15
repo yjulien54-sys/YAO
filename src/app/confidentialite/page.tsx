@@ -3,7 +3,7 @@ import Link from "next/link";
 import { ACompleter, DocumentLegal, type Article } from "@/components/DocumentLegal";
 import { SUPPORT_AFFICHE } from "@/lib/support";
 
-export const metadata: Metadata = { title: "Politique de confidentialité — Cotiz" };
+export const metadata: Metadata = { title: "Politique de confidentialité — Sikaklo" };
 
 const ARTICLES: Article[] = [
   {
@@ -11,7 +11,7 @@ const ARTICLES: Article[] = [
     titre: "Responsable du traitement",
     contenu: (
       <p>
-        Le responsable du traitement des données est l’Éditeur de Cotiz, identifié dans les <Link href="/mentions-legales">mentions légales</Link>. Cotiz aide
+        Le responsable du traitement des données est l’Éditeur de Sikaklo, identifié dans les <Link href="/mentions-legales">mentions légales</Link>. Sikaklo aide
         les tontines, associations et familles de Côte d’Ivoire à suivre leurs cotisations en toute transparence.
       </p>
     ),
@@ -53,12 +53,12 @@ const ARTICLES: Article[] = [
     contenu: (
       <>
         <p>
-          Vos données sont visibles uniquement par les <b>membres des groupes dont vous faites partie</b>. Les autres utilisateurs de Cotiz ne voient rien de vos
+          Vos données sont visibles uniquement par les <b>membres des groupes dont vous faites partie</b>. Les autres utilisateurs de Sikaklo ne voient rien de vos
           groupes. Nous ne vendons pas vos données et ne les utilisons pas à des fins publicitaires.
         </p>
         <p>
           <b>Discussions de groupe :</b> les messages écrits dans la discussion d’un groupe (y compris les messages privés entre membres) peuvent être
-          consultés par le responsable de Cotiz, uniquement pour la sécurité des utilisateurs (arnaques, menaces, litiges) et la modération. Chaque
+          consultés par le responsable de Sikaklo, uniquement pour la sécurité des utilisateurs (arnaques, menaces, litiges) et la modération. Chaque
           consultation est enregistrée dans un journal. Ces messages ne sont jamais vendus ni utilisés à des fins publicitaires.
         </p>
         <p>Nos prestataires techniques y ont accès dans la stricte limite de leur mission :</p>
@@ -90,7 +90,7 @@ const ARTICLES: Article[] = [
         <li>règles d’accès qui limitent chaque utilisateur à ses propres groupes ;</li>
         <li>paiements confirmés impossibles à effacer ;</li>
         <li>alerte à tous les membres en cas de changement du numéro qui reçoit l’argent ;</li>
-        <li>journal horodaté des actions importantes, consultable uniquement par l’équipe Cotiz pour la sécurité et l’assistance.</li>
+        <li>journal horodaté des actions importantes, consultable uniquement par l’équipe Sikaklo pour la sécurité et l’assistance.</li>
       </ul>
     ),
   },
@@ -130,7 +130,7 @@ export default function Confidentialite() {
     <DocumentLegal
       actuel="/confidentialite"
       titre="Politique de confidentialité"
-      chapeau="Quelles données Cotiz utilise, pourquoi, qui peut les voir, et comment exercer vos droits."
+      chapeau="Quelles données Sikaklo utilise, pourquoi, qui peut les voir, et comment exercer vos droits."
       version="2.0"
       maj="10 novembre 2026"
       articles={ARTICLES}

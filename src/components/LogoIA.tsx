@@ -1,11 +1,11 @@
 /**
- * Logo de « Cotiz IA » : une bulle de discussion souriante dans un carré violet,
- * avec l'étincelle orange de Cotiz. Animé doucement (l'étincelle scintille).
+ * Logo de « Sikaklo IA » : une bulle de discussion souriante dans un carré violet,
+ * avec l'étincelle orange de Sikaklo. Animé doucement (l'étincelle scintille).
  */
 export function LogoIA({ taille = 44, anime = true, className = "" }: { taille?: number; anime?: boolean; className?: string }) {
   const id = "ia" + taille;
   return (
-    <svg width={taille} height={taille} viewBox="0 0 64 64" className={`shrink-0 ${className}`} role="img" aria-label="Cotiz IA">
+    <svg width={taille} height={taille} viewBox="0 0 64 64" className={`shrink-0 ${className}`} role="img" aria-label="Sikaklo IA">
       <defs>
         <linearGradient id={`${id}-fond`} x1="0" y1="0" x2="1" y2="1">
           <stop offset="0" stopColor="#8b5cf6" />
@@ -29,7 +29,7 @@ export function LogoIA({ taille = 44, anime = true, className = "" }: { taille?:
       <circle cx="24.5" cy="32" r="2.6" fill="#4338ca" />
       <circle cx="35.5" cy="32" r="2.6" fill="#4338ca" />
       <path d="M24 38 q6 4.5 12 0" fill="none" stroke="#009e60" strokeWidth="2.6" strokeLinecap="round" />
-      {/* étincelle orange Cotiz */}
+      {/* étincelle orange Sikaklo */}
       <g className={anime ? "pulse-doux" : ""}>
         <path d="M50 8 l2.2 5.3 5.3 2.2 -5.3 2.2 -2.2 5.3 -2.2 -5.3 -5.3 -2.2 5.3 -2.2 z" fill={`url(#${id}-etincelle)`} />
       </g>

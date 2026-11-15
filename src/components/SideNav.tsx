@@ -24,7 +24,7 @@ export function SideNav() {
         <Link href="/groupes" className="inline-flex items-center gap-2.5 text-xl font-extrabold tracking-tight text-stone-900">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/logo.svg" alt="" width={36} height={36} className="h-9 w-9 rounded-xl shadow-sm" />
-          Cotiz
+          Sikaklo
         </Link>
       </div>
       <div className="bande-kente mx-5 rounded-full" />

@@ -31,7 +31,7 @@ type DossierInit = { motif?: string; client_profile_id?: string | null; client_n
 type Membre_Equipe = { email: string; nom: string | null; role: "fondateur" | "agent"; ajoute_le: string; numero: number | null; fonctions?: string[]; telephone: string | null; photo_path: string | null; cni_numero: string | null; cni_path: string | null; salaire: number | null; cnps_declare: boolean; cnps_numero: string | null; cnps_le: string | null; embauche_le: string | null; contrat: string | null; contact_urgence: string | null; note: string | null };
 type Requete = { id: string; numero: number; cree_le: string; profile_id: string; nom: string | null; telephone: string | null; motif: string; message: string; statut: "nouvelle" | "en_cours" | "resolue"; agent_email: string | null; reponse: string | null; maj_le: string; dernier_auteur?: string | null; nb_messages?: number; premiere_reponse_le?: string | null; fermee_le?: string | null; fermee_par?: string | null; note?: number | null; avis?: string | null; avis_le?: string | null; rouverte_par_client?: number; ia_statut?: "en_cours" | "transmis" | "resolu" | null; ia_raison?: string | null; ia_messages?: number; ia_verifiee?: boolean; ia_verifiee_par?: string | null; ia_verifiee_le?: string | null };
 type MsgRequete = { id: string; requete_id: string; cree_le: string; auteur: "client" | "agent" | "ia"; agent_email: string | null; texte: string };
-/** Conversation menée par Cotiz IA (pas encore reprise par un humain) */
+/** Conversation menée par Sikaklo IA (pas encore reprise par un humain) */
 const estIA = (r: Requete) => r.ia_statut === "en_cours" || r.ia_statut === "resolu";
 type Salaire = { email: string; nom: string | null; numero: number | null; telephone: string | null; salaire: number | null; cnps_declare: boolean; paye: boolean; montant_paye: number | null; paye_le: string | null; reference: string | null };
 /** Fonctions (postes) qu'on trouve dans l'entreprise, à cocher pour chaque membre de l'équipe */
@@ -118,12 +118,12 @@ const MOTIFS = [
 type Annonce = { id: string; titre: string; texte: string | null; lien: string | null; bouton: string | null; couleur: string; actif: boolean; ordre: number; video?: string | null };
 /** Vidéos pub disponibles sur le site (dossier public/pub) */
 const VIDEOS_PUB = [
-  ["/pub/Cotiz-bandeau-1-transparence-voix.mp4", "Pub 1 · Fini les palabres (voix)"],
-  ["/pub/Cotiz-bandeau-2-payer-en-1-clic-voix.mp4", "Pub 2 · Payer en 1 clic (voix)"],
-  ["/pub/Cotiz-bandeau-3-tresoriers-voix.mp4", "Pub 3 · Pour les trésoriers (voix)"],
-  ["/pub/Cotiz-bandeau-1-transparence-musique.mp4", "Pub 1 · Fini les palabres (musique)"],
-  ["/pub/Cotiz-bandeau-2-payer-en-1-clic-musique.mp4", "Pub 2 · Payer en 1 clic (musique)"],
-  ["/pub/Cotiz-bandeau-3-tresoriers-musique.mp4", "Pub 3 · Pour les trésoriers (musique)"],
+  ["/pub/Sikaklo-bandeau-1-transparence-voix.mp4", "Pub 1 · Fini les palabres (voix)"],
+  ["/pub/Sikaklo-bandeau-2-payer-en-1-clic-voix.mp4", "Pub 2 · Payer en 1 clic (voix)"],
+  ["/pub/Sikaklo-bandeau-3-tresoriers-voix.mp4", "Pub 3 · Pour les trésoriers (voix)"],
+  ["/pub/Sikaklo-bandeau-1-transparence-musique.mp4", "Pub 1 · Fini les palabres (musique)"],
+  ["/pub/Sikaklo-bandeau-2-payer-en-1-clic-musique.mp4", "Pub 2 · Payer en 1 clic (musique)"],
+  ["/pub/Sikaklo-bandeau-3-tresoriers-musique.mp4", "Pub 3 · Pour les trésoriers (musique)"],
 ] as const;
 
 const ONGLETS = [
@@ -233,7 +233,7 @@ function Attente_({ texte }: { texte: string }) {
   );
 }
 
-/** Fond vert Cotiz avec motif et bande kente */
+/** Fond vert Sikaklo avec motif et bande kente */
 function FondVert({ children }: { children: React.ReactNode }) {
   return (
     <div className="zone-admin degrade-vert relative flex min-h-dvh items-center justify-center overflow-hidden px-4 py-12">
@@ -272,7 +272,7 @@ function Connexion() {
           <div className="flex items-center gap-3">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons/logo.svg" alt="" width={52} height={52} className="h-[52px] w-[52px] rounded-2xl shadow-lg" />
-            <p className="text-3xl font-extrabold tracking-tight">Cotiz</p>
+            <p className="text-3xl font-extrabold tracking-tight">Sikaklo</p>
           </div>
           <h1 className="mt-8 text-4xl font-extrabold leading-tight tracking-tight">Le poste de pilotage<br />de ta plateforme.</h1>
           <p className="mt-4 max-w-md text-base text-emerald-50/85">Suis les inscriptions, les groupes et l’argent qui circule. Aide les membres, règle les problèmes, protège la communauté.</p>
@@ -324,7 +324,7 @@ function Connexion() {
           <button disabled={occupe} className="mt-6 w-full rounded-xl bg-gradient-to-r from-emerald-700 to-emerald-600 py-3.5 text-sm font-bold text-white shadow-lg shadow-emerald-700/30 transition hover:brightness-110 disabled:opacity-60">
             {occupe ? "Connexion…" : "Se connecter"}
           </button>
-          <p className="mt-5 flex items-center justify-center gap-1.5 text-xs text-stone-500"><Lock size={13} /> Connexion sécurisée · accès réservé à l’équipe Cotiz</p>
+          <p className="mt-5 flex items-center justify-center gap-1.5 text-xs text-stone-500"><Lock size={13} /> Connexion sécurisée · accès réservé à l’équipe Sikaklo</p>
         </form>
       </div>
     </FondVert>
@@ -448,7 +448,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/logo.svg" alt="" width={40} height={40} className="h-10 w-10 rounded-xl shadow-md" />
           <div>
-            <p className="text-lg font-extrabold leading-tight">Cotiz</p>
+            <p className="text-lg font-extrabold leading-tight">Sikaklo</p>
             <p className="text-[0.7rem] font-semibold uppercase tracking-[0.14em] text-emerald-100/80">Administration</p>
           </div>
         </div>
@@ -493,7 +493,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons/logo.svg" alt="" width={36} height={36} className="h-9 w-9 rounded-xl shadow" />
             <div className="min-w-0 flex-1">
-              <p className="font-extrabold leading-tight">Cotiz · {fondateur ? "Admin" : "Service client"}</p>
+              <p className="font-extrabold leading-tight">Sikaklo · {fondateur ? "Admin" : "Service client"}</p>
               <p className="truncate text-xs text-emerald-50/80">{maFiche?.numero ? `n°${maFiche.numero} · ` : ""}{maFiche?.nom ?? email}</p>
             </div>
             <button onClick={basculerDiscret} className="grid h-9 w-9 place-items-center rounded-full bg-white/15" aria-label={discret ? "Afficher les chiffres secrets" : "Cacher les chiffres secrets"} aria-pressed={discret}>{discret ? <EyeOff size={16} /> : <Eye size={16} />}</button>
@@ -755,7 +755,7 @@ function Apercu({ stats, inscrits, groupes, attente, demandes, aller, ouvrir, no
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Bloc fond="bleu" titre="Bulletin de santé de Cotiz" sous="5 notes sur 100 : plus la toile est grande, mieux c’est. Touche une note pour voir les personnes à aider.">
+        <Bloc fond="bleu" titre="Bulletin de santé de Sikaklo" sous="5 notes sur 100 : plus la toile est grande, mieux c’est. Touche une note pour voir les personnes à aider.">
           <Radar axes={[
             { label: "Paiements confirmés", pourcent: stats.paiements_confirmes + stats.paiements_attente ? (stats.paiements_confirmes / (stats.paiements_confirmes + stats.paiements_attente)) * 100 : 0 },
             { label: "Dans un groupe", pourcent: inscrits.length ? (inscrits.filter((i) => i.nb_groupes > 0).length / inscrits.length) * 100 : 0, onClick: () => voirListe({ titre: "Inscrits sans groupe", personnes: inscrits.filter((i) => i.nb_groupes === 0).map((i) => pInscrit(i)) }) },
@@ -1040,7 +1040,7 @@ function Paiements({ liste, versements, recharger, ouvrirGroupe }: { liste: Atte
             {liste.map((a) => (
               <div key={a.id} className="flex flex-wrap items-center gap-3 py-3 text-sm">
                 <div className="min-w-0 flex-1">
-                  <p className="truncate font-semibold">{a.encaisse_cotiz && <span className="mr-1.5 rounded-md bg-sky-100 px-1.5 py-0.5 text-[0.7rem] font-bold text-sky-800">Compte Cotiz</span>}{a.membre} · <span className="text-stone-600">{a.groupe}</span></p>
+                  <p className="truncate font-semibold">{a.encaisse_cotiz && <span className="mr-1.5 rounded-md bg-sky-100 px-1.5 py-0.5 text-[0.7rem] font-bold text-sky-800">Compte Sikaklo</span>}{a.membre} · <span className="text-stone-600">{a.groupe}</span></p>
                   {(a.reference || a.membre_tel) && <p className="text-xs text-stone-500">{a.reference && <>Réf. Wave : <b className="text-stone-800">{a.reference}</b></>}{a.reference && a.membre_tel && " · "}{a.membre_tel && <a href={`tel:${a.membre_tel}`} className="text-emerald-700 underline">{telAffiche(a.membre_tel)}</a>}</p>}
                   <p className="text-xs text-stone-500">{dateCourte(a.le)} · {a.moyen}{a.tresorier_tel && <> · trésorier <a href={`tel:${a.tresorier_tel}`} className="font-semibold text-emerald-700 underline">{telAffiche(a.tresorier_tel)}</a></>}</p>
                 </div>
@@ -1085,7 +1085,7 @@ function Paiements({ liste, versements, recharger, ouvrirGroupe }: { liste: Atte
   );
 }
 
-/** Réglage « Caisse Cotiz » : les membres paient par Wave sur le compte marchand de Cotiz */
+/** Réglage « Caisse Sikaklo » : les membres paient par Wave sur le compte marchand de Sikaklo */
 function ReglageCaisse() {
   const [f, setF] = useState<{ actif: boolean; lien: string; nom: string } | null>(null);
   const [msg, setMsg] = useState("");
@@ -1104,16 +1104,16 @@ function ReglageCaisse() {
       if (error) return setMsg("Erreur : " + error.message);
     }
     setF({ ...f, actif });
-    setMsg(actif ? "Caisse Cotiz activée : les paiements Wave arrivent sur ton compte marchand." : "Caisse Cotiz désactivée : les membres paient directement le trésorier.");
+    setMsg(actif ? "Caisse Sikaklo activée : les paiements Wave arrivent sur ton compte marchand." : "Caisse Sikaklo désactivée : les membres paient directement le trésorier.");
   };
   return (
-    <Bloc titre="Caisse Cotiz (compte marchand Wave)" sous="Quand c’est activé, les membres qui paient par Wave envoient l’argent sur ton compte marchand. Toi seul confirmes ces paiements ; le trésorier est prévenu." action={<span className={`rounded-full px-2.5 py-0.5 text-[0.7rem] font-bold ${f.actif ? "bg-emerald-100 text-emerald-800" : "bg-stone-100 text-stone-600"}`}>{f.actif ? "Activée" : "Désactivée"}</span>}>
+    <Bloc titre="Caisse Sikaklo (compte marchand Wave)" sous="Quand c’est activé, les membres qui paient par Wave envoient l’argent sur ton compte marchand. Toi seul confirmes ces paiements ; le trésorier est prévenu." action={<span className={`rounded-full px-2.5 py-0.5 text-[0.7rem] font-bold ${f.actif ? "bg-emerald-100 text-emerald-800" : "bg-stone-100 text-stone-600"}`}>{f.actif ? "Activée" : "Désactivée"}</span>}>
       <div className="grid gap-2 sm:grid-cols-[2fr_1fr]">
         <label className="text-xs font-semibold text-stone-500">Lien du compte marchand (pay.wave.com ou qr.wave.com)<input value={f.lien} onChange={(e) => setF({ ...f, lien: e.target.value })} placeholder="https://pay.wave.com/m/…" className={champ} autoCapitalize="none" /></label>
-        <label className="text-xs font-semibold text-stone-500">Nom affiché dans Wave<input value={f.nom} onChange={(e) => setF({ ...f, nom: e.target.value })} placeholder="ex : COTIZ" className={champ} /></label>
+        <label className="text-xs font-semibold text-stone-500">Nom affiché dans Wave<input value={f.nom} onChange={(e) => setF({ ...f, nom: e.target.value })} placeholder="ex : SIKAKLO" className={champ} /></label>
       </div>
       <div className="mt-3 flex flex-wrap gap-2">
-        <button onClick={() => enregistrer(true)} className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white">{f.actif ? "Enregistrer" : "Activer la Caisse Cotiz"}</button>
+        <button onClick={() => enregistrer(true)} className="rounded-xl bg-emerald-700 px-4 py-2.5 text-sm font-bold text-white">{f.actif ? "Enregistrer" : "Activer la Caisse Sikaklo"}</button>
         {f.actif && <button onClick={() => confirm("Désactiver ? Les membres paieront de nouveau directement le trésorier.") && enregistrer(false)} className="rounded-xl border border-stone-200 px-4 py-2.5 text-sm font-bold text-stone-700">Désactiver</button>}
       </div>
       {msg && <p className={`mt-2 text-sm font-medium ${msg.startsWith("Erreur") ? "text-red-600" : "text-emerald-800"}`}>{msg}</p>}
@@ -1440,7 +1440,7 @@ function FormDossier({ init, fermer, envoye }: { init: DossierInit; fermer: () =
         <div className="space-y-4 p-6">
           {auto && init.resume && (
             <div className="rounded-2xl border border-violet-200 bg-violet-50 p-3 text-sm text-violet-900">
-              <p className="text-xs font-bold uppercase tracking-wide text-violet-600">Si le fondateur valide, Cotiz fera automatiquement :</p>
+              <p className="text-xs font-bold uppercase tracking-wide text-violet-600">Si le fondateur valide, Sikaklo fera automatiquement :</p>
               <p className="mt-1 font-semibold">{init.resume}</p>
             </div>
           )}
@@ -1679,7 +1679,7 @@ function Requetes({ liste: listeComplete, moi, recharger, ouvrirUtilisateur }: {
   ];
   const onglets = (
     <div className="grid grid-cols-2 gap-2 rounded-2xl bg-white p-1.5 shadow-sm ring-1 ring-stone-200">
-      {([["personnel", "Traités par le personnel", Headset, toutes.length - listeIA.length], ["ia", "Traités par Cotiz IA", Sparkles, listeIA.length]] as const).map(([id, label, Ico, n]) => (
+      {([["personnel", "Traités par le personnel", Headset, toutes.length - listeIA.length], ["ia", "Traités par Sikaklo IA", Sparkles, listeIA.length]] as const).map(([id, label, Ico, n]) => (
         <button key={id} onClick={() => setEspace(id)} className={`flex items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-sm font-bold transition ${espace === id ? (id === "ia" ? "bg-gradient-to-r from-violet-600 to-sky-600 text-white shadow" : "bg-emerald-700 text-white shadow") : "text-stone-600 hover:bg-stone-50"}`}>
           <Ico size={16} /> <span className="truncate">{label}</span> <span className={`rounded-full px-1.5 text-xs ${espace === id ? "bg-white/20" : "bg-stone-100"}`}>{n}</span>
         </button>
@@ -1720,7 +1720,7 @@ function Requetes({ liste: listeComplete, moi, recharger, ouvrirUtilisateur }: {
   );
 }
 
-/** Espace Cotiz IA : interrupteur, chiffres, revue du matin et conversations de l'IA */
+/** Espace Sikaklo IA : interrupteur, chiffres, revue du matin et conversations de l'IA */
 function EspaceIA({ liste, toutes, moi, recharger, ouvrirUtilisateur }: { liste: Requete[]; toutes: Requete[]; moi: string; recharger: () => void; ouvrirUtilisateur: (id: string) => void }) {
   const { fondateur } = useContext(AdminCtx);
   const [actif, setActif] = useState<boolean | null>(null);
@@ -1740,7 +1740,7 @@ function EspaceIA({ liste, toutes, moi, recharger, ouvrirUtilisateur }: { liste:
   const basculer = async () => {
     const { error } = await db.rpc("admin_ia_activer", { actif: !actif });
     if (error) return setMsg("Erreur : " + error.message);
-    setActif(!actif); setMsg(!actif ? "Cotiz IA est allumée : elle lit chaque nouvelle requête." : "Cotiz IA est éteinte : toutes les requêtes vont directement au personnel.");
+    setActif(!actif); setMsg(!actif ? "Sikaklo IA est allumée : elle lit chaque nouvelle requête." : "Sikaklo IA est éteinte : toutes les requêtes vont directement au personnel.");
   };
   return (
     <>
@@ -1750,7 +1750,7 @@ function EspaceIA({ liste, toutes, moi, recharger, ouvrirUtilisateur }: { liste:
         <div className="relative flex flex-wrap items-center gap-4">
           <span className="relative grid h-14 w-14 place-items-center rounded-2xl bg-white/15"><span className="onde absolute inset-0 rounded-2xl bg-white/20" /><Bot size={28} /></span>
           <div className="min-w-0 flex-1">
-            <p className="text-2xl font-extrabold">Cotiz IA</p>
+            <p className="text-2xl font-extrabold">Sikaklo IA</p>
             <p className="text-sm text-white/90">Lit chaque nouvelle requête, répond aux questions d’utilisation et transmet au personnel tout ce qui touche aux données ou à l’argent.</p>
             <p className="mt-1 text-xs text-white/80">Mode <b>gratuit</b> par défaut : réponses automatiques tirées des questions fréquentes (0 F). Mode <b>intelligent</b> seulement si une clé Anthropic (payante) est ajoutée dans Vercel.</p>
           </div>
@@ -1761,7 +1761,7 @@ function EspaceIA({ liste, toutes, moi, recharger, ouvrirUtilisateur }: { liste:
           )}
         </div>
       </div>
-      {actif === null && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Pour activer Cotiz IA, fais la <b>mise à jour SQL n°35</b> dans Supabase (et vérifie que <code>SUPABASE_SERVICE_ROLE_KEY</code> est dans Vercel). Aucune clé payante n’est nécessaire.</p>}
+      {actif === null && <p className="rounded-xl bg-amber-50 p-3 text-sm text-amber-900">Pour activer Sikaklo IA, fais la <b>mise à jour SQL n°35</b> dans Supabase (et vérifie que <code>SUPABASE_SERVICE_ROLE_KEY</code> est dans Vercel). Aucune clé payante n’est nécessaire.</p>}
       {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") ? "bg-red-50 text-red-700" : "bg-violet-50 text-violet-800"}`}>{msg}</p>}
       <div className="grid grid-cols-2 gap-2.5 lg:grid-cols-4">
         {[
@@ -1779,7 +1779,7 @@ function EspaceIA({ liste, toutes, moi, recharger, ouvrirUtilisateur }: { liste:
         ))}
       </div>
       <div className="rounded-2xl border border-violet-200 bg-gradient-to-r from-violet-50 to-white p-4 text-sm text-violet-900">
-        <b>Revue du matin :</b> ouvre chaque conversation de « À vérifier », relis ce que Cotiz IA a répondu, puis touche <b>« Vérifié »</b>. Si une réponse est fausse, écris au client dans la conversation : tu prends la main et elle passe chez le personnel.
+        <b>Revue du matin :</b> ouvre chaque conversation de « À vérifier », relis ce que Sikaklo IA a répondu, puis touche <b>« Vérifié »</b>. Si une réponse est fausse, écris au client dans la conversation : tu prends la main et elle passe chez le personnel.
       </div>
       <Puces options={[
         { id: "a_verifier" as const, label: "À vérifier", n: liste.filter(tests.a_verifier).length },
@@ -1879,7 +1879,7 @@ function CarteRequete({ r, moi, recharger, ouvrirUtilisateur, setMsg, modeIA = f
     recharger();
   };
   const envoyer = (fermer: boolean) => agir(() => db.rpc("admin_requete_repondre", { r: r.id, texte, resoudre: fermer }), fermer ? "Réponse envoyée, conversation fermée." : "Message envoyé au client.", true);
-  const nomAgent = (e: string | null) => !e ? "Agent" : e === "cotiz-ia" ? "Cotiz IA" : e.toLowerCase() === moi.toLowerCase() ? "Toi" : e.replace("@tontine-et-cotise.vercel.app", "").replace("agent", "Agent n°");
+  const nomAgent = (e: string | null) => !e ? "Agent" : e === "cotiz-ia" ? "Sikaklo IA" : e.toLowerCase() === moi.toLowerCase() ? "Toi" : e.replace("@tontine-et-cotise.vercel.app", "").replace("agent", "Agent n°");
   const dernier = messages[messages.length - 1];
   return (
     <article className={`flex flex-col self-start rounded-2xl border p-4 shadow-sm ${modeIA ? "border-violet-200 bg-gradient-to-br from-white to-violet-50/40" : "bg-white"} ${attendReponse && !modeIA ? "border-sky-300 ring-2 ring-sky-100" : modeIA ? "" : "border-stone-200/80"}`}>
@@ -1895,7 +1895,7 @@ function CarteRequete({ r, moi, recharger, ouvrirUtilisateur, setMsg, modeIA = f
         </button>
       </div>
       {r.ia_statut === "transmis" && (
-        <p className="mt-2 inline-flex items-center gap-1.5 self-start rounded-full bg-violet-100 px-2.5 py-1 text-[0.7rem] font-bold text-violet-800"><Sparkles size={12} /> Transmis par Cotiz IA{r.ia_raison ? ` : ${r.ia_raison}` : ""}</p>
+        <p className="mt-2 inline-flex items-center gap-1.5 self-start rounded-full bg-violet-100 px-2.5 py-1 text-[0.7rem] font-bold text-violet-800"><Sparkles size={12} /> Transmis par Sikaklo IA{r.ia_raison ? ` : ${r.ia_raison}` : ""}</p>
       )}
       {modeIA && (
         <div className="mt-2 flex flex-wrap items-center gap-2">
@@ -1910,7 +1910,7 @@ function CarteRequete({ r, moi, recharger, ouvrirUtilisateur, setMsg, modeIA = f
       {!ouverte && (
         <button onClick={() => setOuverte(true)} className="mt-2 w-full rounded-xl bg-stone-50 p-2.5 text-left text-sm text-stone-600 hover:bg-stone-100">
           <span className="text-xs font-bold uppercase tracking-wide text-sky-700">{r.motif}</span>
-          <span className="mt-0.5 block truncate"><b className="font-semibold">{dernier?.auteur === "client" ? (r.nom ?? "Client") : dernier?.auteur === "ia" ? "Cotiz IA" : nomAgent(dernier?.agent_email ?? null)} :</b> {dernier?.texte}</span>
+          <span className="mt-0.5 block truncate"><b className="font-semibold">{dernier?.auteur === "client" ? (r.nom ?? "Client") : dernier?.auteur === "ia" ? "Sikaklo IA" : nomAgent(dernier?.agent_email ?? null)} :</b> {dernier?.texte}</span>
           <span className="mt-0.5 block text-[0.7rem] text-stone-400">{messages.length} message{messages.length > 1 ? "s" : ""}{r.note ? ` · ${r.note}/5 ★` : ""} · toucher pour déplier</span>
         </button>
       )}
@@ -1936,7 +1936,7 @@ function CarteRequete({ r, moi, recharger, ouvrirUtilisateur, setMsg, modeIA = f
         {messages.map((m) => (
           <div key={m.id} className={`flex ${m.auteur !== "client" ? "justify-end" : "justify-start"}`}>
             <div className={`max-w-[85%] rounded-2xl px-3 py-2 text-sm ${m.auteur === "agent" ? "rounded-br-md bg-emerald-700 text-white" : m.auteur === "ia" ? "rounded-br-md bg-gradient-to-br from-violet-600 to-indigo-600 text-white" : "rounded-bl-md bg-white text-stone-800 ring-1 ring-stone-200"}`}>
-              <p className={`flex items-center gap-1 text-[0.65rem] font-bold ${m.auteur === "agent" ? "text-emerald-100" : m.auteur === "ia" ? "text-violet-100" : "text-sky-700"}`}>{m.auteur === "ia" ? <><Sparkles size={10} /> Cotiz IA</> : m.auteur === "agent" ? nomAgent(m.agent_email) : r.nom ?? "Client"}</p>
+              <p className={`flex items-center gap-1 text-[0.65rem] font-bold ${m.auteur === "agent" ? "text-emerald-100" : m.auteur === "ia" ? "text-violet-100" : "text-sky-700"}`}>{m.auteur === "ia" ? <><Sparkles size={10} /> Sikaklo IA</> : m.auteur === "agent" ? nomAgent(m.agent_email) : r.nom ?? "Client"}</p>
               <p className="whitespace-pre-line">{m.texte}</p>
               <p className={`mt-0.5 text-right text-[0.6rem] ${m.auteur !== "client" ? "text-white/70" : "text-stone-400"}`}>{new Date(m.cree_le).toLocaleString("fr-FR", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" })}</p>
             </div>
@@ -2047,7 +2047,7 @@ function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string
       </div>
       {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") || msg.startsWith("Confirmation") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}>{msg}</p>}
       <div className="grid gap-4 lg:grid-cols-[1fr_1.3fr]">
-        <Bloc titre="Ajouter un agent" sous="Cotiz lui donne le numéro suivant (2702, 2703…). Il se connecte avec ce numéro et le mot de passe provisoire.">
+        <Bloc titre="Ajouter un agent" sous="Sikaklo lui donne le numéro suivant (2702, 2703…). Il se connecte avec ce numéro et le mot de passe provisoire.">
           {nouveau ? (
             <div className="space-y-3">
               <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 p-5 text-white">
@@ -2060,7 +2060,7 @@ function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string
                 </div>
               </div>
               <p className="text-xs text-stone-500">Note ces accès maintenant : le mot de passe ne sera plus affiché. Demande à l’agent de le changer à sa première connexion (bouton « Changer mon mot de passe »).</p>
-              <button onClick={() => navigator.clipboard?.writeText(`Cotiz — accès service client\nAdresse : https://tontine-et-cotise.vercel.app/admin\nNuméro : ${nouveau.numero}\nMot de passe : ${nouveau.mdp}`)} className="w-full rounded-xl border border-stone-200 py-2.5 text-sm font-bold"><Copy size={14} className="mr-1 inline" /> Copier les accès</button>
+              <button onClick={() => navigator.clipboard?.writeText(`Sikaklo — accès service client\nAdresse : https://tontine-et-cotise.vercel.app/admin\nNuméro : ${nouveau.numero}\nMot de passe : ${nouveau.mdp}`)} className="w-full rounded-xl border border-stone-200 py-2.5 text-sm font-bold"><Copy size={14} className="mr-1 inline" /> Copier les accès</button>
               <button onClick={() => setNouveau(null)} className="w-full rounded-xl bg-sky-700 py-2.5 text-sm font-bold text-white">Ajouter un autre agent</button>
             </div>
           ) : (
@@ -2258,11 +2258,11 @@ function Salaires() {
     charger();
   };
   const fichierWave = () => {
-    const lignes = [["Nom", "Numero", "Montant", "Motif"], ...aPayer.map((a) => [a.nom ?? "", a.telephone ? "+225" + a.telephone.slice(-10) : "", String(a.salaire ?? 0), `Salaire ${nomMois} Cotiz`])];
+    const lignes = [["Nom", "Numero", "Montant", "Motif"], ...aPayer.map((a) => [a.nom ?? "", a.telephone ? "+225" + a.telephone.slice(-10) : "", String(a.salaire ?? 0), `Salaire ${nomMois} Sikaklo`])];
     const csv = lignes.map((l) => l.map((x) => `"${x.replace(/"/g, '""')}"`).join(";")).join("\n");
     const lien = document.createElement("a");
     lien.href = URL.createObjectURL(new Blob(["﻿" + csv], { type: "text/csv;charset=utf-8" }));
-    lien.download = `cotiz-salaires-${mois}.csv`;
+    lien.download = `sikaklo-salaires-${mois}.csv`;
     lien.click();
   };
   return (
@@ -2273,7 +2273,7 @@ function Salaires() {
         <button onClick={fichierWave} disabled={aPayer.length === 0} className="inline-flex items-center gap-1.5 rounded-xl bg-[#1dc8f2] px-4 py-2.5 text-sm font-bold text-stone-900 shadow-sm disabled:opacity-40"><Download size={16} /> Fichier de paiement Wave</button>
       </div>
       <div className="rounded-2xl border border-sky-200 bg-sky-50 p-4 text-sm text-sky-900">
-        <b>Payer tout le monde d’un coup :</b> télécharge le fichier ci-dessus et dépose-le sur <b>Wave Business → Paiements en masse</b>. Le paiement direct depuis Cotiz arrivera quand Cotiz aura l’accès API Wave (compte entreprise). En attendant, paie chaque agent par Wave puis touche <b>« Marquer payé »</b>.
+        <b>Payer tout le monde d’un coup :</b> télécharge le fichier ci-dessus et dépose-le sur <b>Wave Business → Paiements en masse</b>. Le paiement direct depuis Sikaklo arrivera quand Sikaklo aura l’accès API Wave (compte entreprise). En attendant, paie chaque agent par Wave puis touche <b>« Marquer payé »</b>.
       </div>
       {msg && <p className={`rounded-xl p-3 text-sm font-medium ${msg.startsWith("Erreur") ? "bg-red-50 text-red-700" : "bg-emerald-50 text-emerald-800"}`}>{msg}</p>}
       {liste.some((a) => a.salaire) && (
@@ -2363,7 +2363,7 @@ function Revenus() {
     if (!d.error) await db.rpc("admin_parametre", { c: "frais_service_part_penalite", v: String(tp[tp.length - 1].part) });
     if (d.error && !c.error) { setOccupe(false); setMsg("Erreur : " + (d.error.message.includes("inconnu") ? "fais la mise à jour SQL n°28 pour les tranches de pénalités" : d.error.message)); return; }
     const e = a.error ?? b.error ?? (c.error ? { message: c.error.message.includes("inconnu") ? "fais la mise à jour SQL n°24 pour le pourcentage" : c.error.message } : null);
-    setMsg(e ? "Erreur : " + e.message : nouvelActif ? "Frais enregistrés : ils s’appliquent dès maintenant aux paiements en ligne." : "Frais de service désactivés : les paiements en ligne sont sans frais Cotiz.");
+    setMsg(e ? "Erreur : " + e.message : nouvelActif ? "Frais enregistrés : ils s’appliquent dès maintenant aux paiements en ligne." : "Frais de service désactivés : les paiements en ligne sont sans frais Sikaklo.");
     if (!e) setActif(nouvelActif);
   };
   const maj = (k: number, champ: "max" | "frais", v: string) => setTranches(tranches.map((t, j) => (j === k ? { ...t, [champ]: v === "" ? (champ === "max" ? null : 0) : Number(v.replace(/\D/g, "")) } : t)));
@@ -2383,7 +2383,7 @@ function Revenus() {
         <div className="halo pointer-events-none absolute -right-10 -top-16 h-56 w-56 rounded-full bg-orange-400/25 blur-2xl" />
         <div className="relative flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-emerald-50/90">Ce que Cotiz a gagné · {periode === "mois" ? "ce mois-ci" : periode === "30j" ? "30 derniers jours" : "cette année"}</p>
+            <p className="text-sm font-semibold text-emerald-50/90">Ce que Sikaklo a gagné · {periode === "mois" ? "ce mois-ci" : periode === "30j" ? "30 derniers jours" : "cette année"}</p>
             <p className="secret mt-1 text-4xl font-extrabold tabular-nums tracking-tight lg:text-5xl"><TexteAnime texte={fcfa(r.total)} /></p>
             <p className="secret mt-1 text-sm text-emerald-50/90">{r.nb} paiement{r.nb > 1 ? "s" : ""} en ligne · {fcfa(r.depuis_debut)} depuis le début</p>
           </div>
@@ -2393,7 +2393,7 @@ function Revenus() {
       </div>
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <Chiffre secret label="Mes revenus" valeur={fcfa(r.total)} detail={r.penalites ? `frais ${fcfa(r.frais ?? 0)} + pénalités ${fcfa(r.penalites)}` : `${r.nb} paiement${r.nb > 1 ? "s" : ""} en ligne`} icone={Coins} ton="amber" />
-        <Chiffre secret label="Argent passé en ligne" valeur={fcfa(r.volume)} detail={`soit ${pct} % pour Cotiz`} icone={Wallet} ton="emerald" />
+        <Chiffre secret label="Argent passé en ligne" valeur={fcfa(r.volume)} detail={`soit ${pct} % pour Sikaklo`} icone={Wallet} ton="emerald" />
         <Chiffre secret label="Moyenne par paiement" valeur={fcfa(r.nb ? Math.round(r.total / r.nb) : 0)} detail="frais de service" icone={BarChart3} ton="sky" />
         <Chiffre secret label="Depuis le début" valeur={fcfa(r.depuis_debut)} detail="total gagné" icone={BadgeCheck} ton="violet" />
       </div>
@@ -2409,7 +2409,7 @@ function Revenus() {
           <Anneau parts={[{ label: "Frais de service", n: r.frais ?? r.total - (r.penalites ?? 0), couleur: VERT }, { label: "Part des pénalités", n: r.penalites ?? 0, couleur: ORANGE }]} format={fcfa} sousCentre="gagnés" />
         </Bloc>
         <Bloc fond="bleu" secret titre="Ta part sur l’argent passé" sous={`${fcfa(r.total)} sur ${fcfa(r.volume)}`}>
-          <Jauge valeur={Number(pct.replace(",", "."))} max={5} unite="%" label="pour Cotiz" format={(n) => `${String(n).replace(".", ",")} %`} />
+          <Jauge valeur={Number(pct.replace(",", "."))} max={5} unite="%" label="pour Sikaklo" format={(n) => `${String(n).replace(".", ",")} %`} />
         </Bloc>
         <Bloc fond="creme" secret titre="Groupes qui te rapportent le plus">
           {r.par_groupe.length === 0 ? <p className="text-sm text-stone-500">Rien pour l’instant.</p> : (
@@ -2417,7 +2417,7 @@ function Revenus() {
           )}
         </Bloc>
       </div>
-      <Bloc titre="Frais de service Cotiz" sous="Payés par le membre en plus de sa cotisation, seulement pour un paiement en ligne. Le paiement manuel au trésorier reste gratuit."
+      <Bloc titre="Frais de service Sikaklo" sous="Payés par le membre en plus de sa cotisation, seulement pour un paiement en ligne. Le paiement manuel au trésorier reste gratuit."
         action={<button onClick={() => enregistrer(!actif)} disabled={occupe} className={`rounded-full px-3 py-1.5 text-xs font-bold ${actif ? "bg-emerald-100 text-emerald-800" : "bg-stone-100 text-stone-600"}`}>{actif ? "● Activés" : "○ Désactivés"}</button>}>
         <div className="grid gap-5 lg:grid-cols-2">
           <div className="space-y-2">
@@ -2448,7 +2448,7 @@ function Revenus() {
               <span className="self-center text-xs text-stone-500">0 % = seulement les montants fixes · 10 % maximum</span>
             </div>
             </Pliable>
-            <Pliable titre="Part de Cotiz sur les pénalités" resume={`${tranchesPen[tranchesPen.length - 1]?.part ?? 0} % Cotiz · ${100 - (tranchesPen[tranchesPen.length - 1]?.part ?? 0)} % groupe`} ton="rouge">
+            <Pliable titre="Part de Sikaklo sur les pénalités" resume={`${tranchesPen[tranchesPen.length - 1]?.part ?? 0} % Sikaklo · ${100 - (tranchesPen[tranchesPen.length - 1]?.part ?? 0)} % groupe`} ton="rouge">
               <p className="text-xs text-stone-600">Un seul réglage pour toute l’application. Le reste va à la caisse du groupe · paiements en ligne seulement.</p>
               <div className="flex flex-wrap gap-1.5">
                 {[0, 10, 20, 30, 40, 50, 60, 70, 80, 90, 100].map((n) => {
@@ -2461,7 +2461,7 @@ function Revenus() {
                   );
                 })}
               </div>
-              <p className="text-xs text-stone-600">Choisi : <b className="text-red-700">{tranchesPen[tranchesPen.length - 1]?.part ?? 0} % pour Cotiz</b>, {100 - (tranchesPen[tranchesPen.length - 1]?.part ?? 0)} % pour le groupe. Exemple : pénalité de 1 000 F → Cotiz {fcfa(partCotizPenalite(1000, [{ max: null, part: tranchesPen[tranchesPen.length - 1]?.part ?? 0 }]))}, groupe {fcfa(1000 - partCotizPenalite(1000, [{ max: null, part: tranchesPen[tranchesPen.length - 1]?.part ?? 0 }]))}.</p>
+              <p className="text-xs text-stone-600">Choisi : <b className="text-red-700">{tranchesPen[tranchesPen.length - 1]?.part ?? 0} % pour Sikaklo</b>, {100 - (tranchesPen[tranchesPen.length - 1]?.part ?? 0)} % pour le groupe. Exemple : pénalité de 1 000 F → Sikaklo {fcfa(partCotizPenalite(1000, [{ max: null, part: tranchesPen[tranchesPen.length - 1]?.part ?? 0 }]))}, groupe {fcfa(1000 - partCotizPenalite(1000, [{ max: null, part: tranchesPen[tranchesPen.length - 1]?.part ?? 0 }]))}.</p>
             </Pliable>
 
             <Pliable titre="Offre spéciale sur une période" resume="1 à 3 mois, avec annonce automatique" ton="orange">
@@ -2477,7 +2477,7 @@ function Revenus() {
           <div>
             <p className="mb-2 text-xs font-bold uppercase tracking-wide text-stone-500">Ce que paie le membre</p>
             <table className="w-full text-sm">
-              <thead className="text-left text-xs text-stone-500"><tr><th className="py-1">Cotisation</th><th className="text-right">Frais Cotiz</th><th className="text-right">Soit</th></tr></thead>
+              <thead className="text-left text-xs text-stone-500"><tr><th className="py-1">Cotisation</th><th className="text-right">Frais Sikaklo</th><th className="text-right">Soit</th></tr></thead>
               <tbody className="divide-y divide-stone-100">
                 {exemples.map((m) => { const f = actif ? fraisPour(m, tranches, Number(pourcent.replace(",", ".")) || 0) : 0; return (
                   <tr key={m}><td className="py-1.5">{fcfa(m)}</td><td className="text-right font-bold text-amber-700">{fcfa(f)}</td><td className="text-right text-stone-500">{((f / m) * 100).toFixed(1).replace(".", ",")} %</td></tr>
@@ -2599,7 +2599,7 @@ function Sante() {
       </div>
 
       <div className="grid gap-4 lg:grid-cols-2">
-        <Bloc fond="creme" titre="À quel moment on utilise Cotiz" sous="Ouvertures des 30 derniers jours, heure d’Abidjan">
+        <Bloc fond="creme" titre="À quel moment on utilise Sikaklo" sous="Ouvertures des 30 derniers jours, heure d’Abidjan">
           <Anneau parts={[
             { label: "Matin (6 h – 12 h)", n: d.moments.matin, couleur: "#f5c400" },
             { label: "Après-midi (12 h – 18 h)", n: d.moments.apres_midi, couleur: ORANGE },
@@ -2612,7 +2612,7 @@ function Sante() {
         </Bloc>
       </div>
 
-      <Bloc titre="Ce que Cotiz peut supporter" sous="Résultat du test de charge (copie de Cotiz remplie de faux comptes)"
+      <Bloc titre="Ce que Sikaklo peut supporter" sous="Résultat du test de charge (copie de Sikaklo remplie de faux comptes)"
         action={<button onClick={() => setReglage(!reglage)} className="rounded-full bg-stone-100 px-3 py-1.5 text-xs font-bold text-stone-700">{reglage ? "Fermer" : "Régler mes limites"}</button>}>
         <div className="grid gap-3 text-sm sm:grid-cols-3">
           {[["500 000", "comptes testés"], ["6 millions", "de paiements"], [`${CAPACITE_TESTEE_PAR_SECONDE.toLocaleString("fr-FR")} / s`, "ouvertures d’accueil encaissées"]].map(([a, b]) => (
@@ -2624,8 +2624,8 @@ function Sante() {
         </div>
         <div className="mt-4 space-y-3 rounded-2xl bg-white/70 p-4 text-sm leading-relaxed text-stone-700 ring-1 ring-emerald-100">
           <p className="font-bold text-stone-900">Comment lire ces chiffres ?</p>
-          <p>• <b>500 000, ce n’est pas une limite.</b> C’est la taille du test : on a rempli une copie de Cotiz avec 500 000 faux comptes inscrits, 62 500 groupes et 6 millions de paiements. L’application n’a <b>jamais bloqué</b> : elle répondait encore en 0,04 seconde. Elle peut donc aller au-delà ; on ne l’a simplement pas testée plus loin.</p>
-          <p>• <b>1 250 ouvertures par seconde</b>, c’est le nombre d’accueils que la base a affichés <b>en même temps</b>, chaque seconde, avec 200 personnes connectées au même instant. Exemple : si 1 inscrit sur 10 ouvre Cotiz 5 fois dans l’heure la plus chargée, 500 000 inscrits font environ 70 ouvertures par seconde, soit à peu près 1/18 de ce que Cotiz encaisse.</p>
+          <p>• <b>500 000, ce n’est pas une limite.</b> C’est la taille du test : on a rempli une copie de Sikaklo avec 500 000 faux comptes inscrits, 62 500 groupes et 6 millions de paiements. L’application n’a <b>jamais bloqué</b> : elle répondait encore en 0,04 seconde. Elle peut donc aller au-delà ; on ne l’a simplement pas testée plus loin.</p>
+          <p>• <b>1 250 ouvertures par seconde</b>, c’est le nombre d’accueils que la base a affichés <b>en même temps</b>, chaque seconde, avec 200 personnes connectées au même instant. Exemple : si 1 inscrit sur 10 ouvre Sikaklo 5 fois dans l’heure la plus chargée, 500 000 inscrits font environ 70 ouvertures par seconde, soit à peu près 1/18 de ce que Sikaklo encaisse.</p>
           <p>• <b>Que se passe-t-il au-delà ?</b> L’application ne s’arrête pas d’un coup : elle devient <b>plus lente</b> (quelques secondes d’attente). Il suffit alors de passer à une machine Supabase plus puissante, sans rien changer à l’application.</p>
           <p>• <b>Les vraies limites aujourd’hui</b> sont celles de ta formule Supabase : l’<b>espace de la base</b> et le nombre de <b>comptes actifs par mois</b> (les 2 jauges ci-dessus). Quand une jauge passe 80 %, le bandeau du haut devient orange : c’est le moment de changer de formule. Vérifie ces limites sur ta page de facturation Supabase et mets-les à jour avec « Régler mes limites ».</p>
         </div>
@@ -2644,16 +2644,16 @@ function Sante() {
 
 /** Les idées pour attirer plus de monde (proposées le 13/11/2026), avec leur avancement */
 const IDEES: { id: string; titre: string; quoi: string; pourquoi: string; effort: 1 | 2 | 3; impact: 1 | 2 | 3; emoji: string; attention?: string }[] = [
-  { id: "cagnottes", emoji: "🎉", titre: "Cagnottes publiques partageables", quoi: "Mariage, funérailles, baptême, urgence santé : une belle page avec photo, jauge de l’objectif et liste des donateurs, à envoyer sur WhatsApp.", pourquoi: "Chaque cagnotte est vue par des dizaines de personnes qui ne connaissent pas encore Cotiz : c’est le moteur de croissance n°1 des applis de collecte.", effort: 2, impact: 3 },
+  { id: "cagnottes", emoji: "🎉", titre: "Cagnottes publiques partageables", quoi: "Mariage, funérailles, baptême, urgence santé : une belle page avec photo, jauge de l’objectif et liste des donateurs, à envoyer sur WhatsApp.", pourquoi: "Chaque cagnotte est vue par des dizaines de personnes qui ne connaissent pas encore Sikaklo : c’est le moteur de croissance n°1 des applis de collecte.", effort: 2, impact: 3 },
   { id: "parrainage", emoji: "🤝", titre: "Parrainage récompensé", quoi: "« Invite 3 amis, ta prochaine cotisation est sans frais ». Lien de parrainage suivi, tableau dans l’admin.", pourquoi: "Les gens font confiance à ce que leurs proches utilisent : le bouche-à-oreille devient mesurable.", effort: 2, impact: 3 },
   { id: "rappels", emoji: "⏰", titre: "Rappels automatiques sur WhatsApp", quoi: "2 jours avant la date de cotisation et le jour même, avec le lien pour payer.", pourquoi: "Moins de retards, des trésoriers contents… qui en parlent autour d’eux.", effort: 2, impact: 3, attention: "Nécessite un compte WhatsApp Business (API) : petit coût par message." },
   { id: "confiance", emoji: "⭐", titre: "Score de confiance du membre", quoi: "« A payé 24 fois à l’heure » : un badge visible quand on rejoint un groupe.", pourquoi: "La grande peur dans les tontines, c’est celui qui ne paie plus : ça rassure pour rejoindre des inconnus.", effort: 2, impact: 2 },
   { id: "modeles", emoji: "🧩", titre: "Modèles de groupes prêts à l’emploi", quoi: "Tontine du marché, mutuelle du village, anciens élèves, cotisation de bureau, église…", pourquoi: "On crée un groupe en 30 secondes : moins d’abandons à la création.", effort: 1, impact: 2 },
   { id: "epargne", emoji: "🐷", titre: "Épargne personnelle avec objectif", quoi: "« 100 000 F pour la rentrée » : un objectif, une jauge, des petits versements.", pourquoi: "Les gens ouvrent l’appli même sans groupe : plus d’habitude, plus de fidélité.", effort: 3, impact: 2, attention: "Garder de l’argent est encadré par la BCEAO : passer par un partenaire agréé (GeniusPay, Wave) ou une licence. À valider avec un juriste." },
   { id: "attestation", emoji: "📄", titre: "Attestation PDF et relevé annuel", quoi: "Relevé des cotisations du membre ; export du groupe en un clic pour le trésorier.", pourquoi: "Utile pour prouver sa régularité (banque, bailleur, association) : une vraie raison de s’inscrire.", effort: 1, impact: 2 },
-  { id: "sms", emoji: "📱", titre: "Accès sans smartphone (SMS puis USSD)", quoi: "Rappels et confirmations par SMS ; plus tard un code *xxx# pour consulter son solde.", pourquoi: "Ouvre Cotiz aux mamans du marché et aux villages, là où les tontines sont les plus nombreuses.", effort: 3, impact: 3, attention: "USSD : contrat avec un agrégateur ou les opérateurs." },
+  { id: "sms", emoji: "📱", titre: "Accès sans smartphone (SMS puis USSD)", quoi: "Rappels et confirmations par SMS ; plus tard un code *xxx# pour consulter son solde.", pourquoi: "Ouvre Sikaklo aux mamans du marché et aux villages, là où les tontines sont les plus nombreuses.", effort: 3, impact: 3, attention: "USSD : contrat avec un agrégateur ou les opérateurs." },
   { id: "vocal", emoji: "🗣️", titre: "Assistant vocal en dioula / baoulé", quoi: "Un bouton qui lit le solde et la date du prochain paiement dans sa langue.", pourquoi: "Une vraie différence locale, pour ceux qui lisent peu le français.", effort: 2, impact: 2 },
-  { id: "verifie", emoji: "✅", titre: "Badge « Groupe vérifié »", quoi: "Pour les associations sérieuses : trésorier identifié, historique propre.", pourquoi: "Rassure les nouveaux membres et donne envie aux associations de venir sur Cotiz.", effort: 1, impact: 2 },
+  { id: "verifie", emoji: "✅", titre: "Badge « Groupe vérifié »", quoi: "Pour les associations sérieuses : trésorier identifié, historique propre.", pourquoi: "Rassure les nouveaux membres et donne envie aux associations de venir sur Sikaklo.", effort: 1, impact: 2 },
 ];
 const ETATS_IDEE = [
   { id: "idee", label: "Idée", cl: "bg-stone-100 text-stone-700" },
@@ -2683,7 +2683,7 @@ function Idees() {
         <div className="balaie pointer-events-none absolute inset-y-0 left-0" />
         <div className="relative flex flex-wrap items-end justify-between gap-4">
           <div>
-            <p className="text-sm font-semibold text-white/90">Idées pour attirer plus de monde sur Cotiz</p>
+            <p className="text-sm font-semibold text-white/90">Idées pour attirer plus de monde sur Sikaklo</p>
             <p className="mt-1 text-3xl font-extrabold">{IDEES.length} idées · {faits} faite{faits > 1 ? "s" : ""}</p>
             <p className="text-sm text-white/90">{enCours} en cours. Touche une idée pour la détailler et changer son avancement.</p>
           </div>
@@ -2762,7 +2762,7 @@ function OffrePenalite({ partHabituelle }: { partHabituelle: number }) {
   useEffect(() => { charger(); }, [charger]);
   const lancer = async () => {
     const dateFin = new Date(); dateFin.setMonth(dateFin.getMonth() + mois);
-    if (!confirm(`Lancer l’offre : ${part} % pour Cotiz et ${100 - part} % pour le groupe, jusqu’au ${dateFin.toLocaleDateString("fr-FR")} ?${publier ? "\n\nUne annonce sera publiée sur l’accueil de tout le monde." : ""}${notifier ? "\nTous les inscrits recevront une notification." : ""}`)) return;
+    if (!confirm(`Lancer l’offre : ${part} % pour Sikaklo et ${100 - part} % pour le groupe, jusqu’au ${dateFin.toLocaleDateString("fr-FR")} ?${publier ? "\n\nUne annonce sera publiée sur l’accueil de tout le monde." : ""}${notifier ? "\nTous les inscrits recevront une notification." : ""}`)) return;
     setOccupe(true); setMsg("");
     const { data, error } = await db.rpc("admin_offre_penalite", { part, mois, publier, notifier });
     setOccupe(false);
@@ -2779,15 +2779,15 @@ function OffrePenalite({ partHabituelle }: { partHabituelle: number }) {
   };
   return (
     <div className="space-y-2.5">
-      <p><span className="text-xs text-stone-600">Pendant la période, cette part remplace la part habituelle ({partHabituelle} % pour Cotiz). Elle revient toute seule à la fin.</span></p>
+      <p><span className="text-xs text-stone-600">Pendant la période, cette part remplace la part habituelle ({partHabituelle} % pour Sikaklo). Elle revient toute seule à la fin.</span></p>
       {offre?.fin && (
         <div className="flex flex-wrap items-center gap-2 rounded-xl bg-white p-2.5 ring-1 ring-orange-200">
-          <span className="flex-1"><b className="text-orange-800">Offre en cours :</b> {offre.part} % Cotiz · {100 - offre.part} % groupe, jusqu’au <b>{new Date(offre.fin).toLocaleDateString("fr-FR")}</b></span>
+          <span className="flex-1"><b className="text-orange-800">Offre en cours :</b> {offre.part} % Sikaklo · {100 - offre.part} % groupe, jusqu’au <b>{new Date(offre.fin).toLocaleDateString("fr-FR")}</b></span>
           <button onClick={arreter} className="rounded-lg border border-stone-200 px-2.5 py-1 text-xs font-bold text-stone-700">Arrêter</button>
         </div>
       )}
       <div>
-        <p className="mb-1 text-xs font-semibold text-stone-600">Part de Cotiz pendant l’offre</p>
+        <p className="mb-1 text-xs font-semibold text-stone-600">Part de Sikaklo pendant l’offre</p>
         <div className="flex flex-wrap gap-1.5">
           {[0, 10, 20, 30, 40, 50, 60].map((n) => (
             <button key={n} type="button" onClick={() => setPart(n)} className={`rounded-full border px-3 py-1.5 text-xs font-bold ${part === n ? "border-orange-600 bg-orange-600 text-white" : "border-stone-200 bg-white text-stone-700"}`}>{n} %</button>
@@ -2976,7 +2976,7 @@ function FicheUtilisateur({ id, fermer, ouvrirGroupe, recharger }: { id: string;
               ) : (
                 <button
                   onClick={() => {
-                    const motif = prompt(`Bloquer ${p.name} À VIE ? Il ne pourra plus rien faire sur Cotiz, ni recréer un compte avec ce numéro.\n\nMotif (facultatif) :`);
+                    const motif = prompt(`Bloquer ${p.name} À VIE ? Il ne pourra plus rien faire sur Sikaklo, ni recréer un compte avec ce numéro.\n\nMotif (facultatif) :`);
                     if (motif === null) return;
                     action(async () => { const r = await db.rpc("admin_bloquer", { p: id, bloquer: true, motif }); await bannir(true); return r; }, "Compte bloqué à vie.");
                   }}

@@ -1,5 +1,5 @@
 /**
- * Page publique d'une cagnotte Cotiz (mariage, funérailles, baptême, santé…).
+ * Page publique d'une cagnotte Sikaklo (mariage, funérailles, baptême, santé…).
  * Lisible sans compte, pensée pour être partagée sur WhatsApp. Mise en page sobre et
  * éditoriale : grande photo, histoire, participants, et une carte de participation
  * (fixe sur ordinateur, barre en bas sur téléphone).
@@ -35,29 +35,29 @@ async function lire(slug: string, compter = true): Promise<Cagnotte | null> {
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const c = await lire(slug, false);
-  if (!c) return { title: "Cagnotte introuvable · Cotiz" };
+  if (!c) return { title: "Cagnotte introuvable · Sikaklo" };
   const pct = c.objectif ? Math.min(100, Math.round((c.collecte / c.objectif) * 100)) : null;
-  const titre = `${c.nom} · Cagnotte Cotiz`;
+  const titre = `${c.nom} · Cagnotte Sikaklo`;
   const phraseDesc = phraseMotif(c.message ?? c.description, 110);
   const desc = `${c.cause ? `Motif : ${c.cause}. ` : ""}${phraseDesc ? `${phraseDesc} ` : ""}${fcfa(c.collecte)} collectés${c.objectif ? ` sur ${fcfa(c.objectif)} (${pct} %)` : ""}, ${c.donateurs_nb} participant${c.donateurs_nb > 1 ? "s" : ""}. Participez par Wave, Orange Money, MTN ou Moov.`.slice(0, 220);
   // L'image d'aperçu (photo + logo + montant) est fabriquée par opengraph-image.tsx
   return {
     metadataBase: new URL(site),
     title: titre, description: desc,
-    openGraph: { title: titre, description: desc, type: "website", url: `${site}/c/${slug}`, siteName: "Cotiz" },
+    openGraph: { title: titre, description: desc, type: "website", url: `${site}/c/${slug}`, siteName: "Sikaklo" },
     twitter: { card: "summary_large_image", title: titre, description: desc },
   };
 }
 
-/** Bandeau du haut : la marque Cotiz, toujours visible */
+/** Bandeau du haut : la marque Sikaklo, toujours visible */
 function Marque() {
   return (
     <header className="sticky top-0 z-30 border-b border-black/5 bg-[#fbfaf7]/90 backdrop-blur">
       <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
-        <Link href="/" className="flex items-center gap-2.5" aria-label="Cotiz, accueil">
+        <Link href="/" className="flex items-center gap-2.5" aria-label="Sikaklo, accueil">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="/icons/logo.svg" alt="" width={36} height={36} className="h-9 w-9 rounded-[10px]" />
-          <span className="text-[1.35rem] font-extrabold tracking-tight text-[#0b3d2c]">Cotiz</span>
+          <span className="text-[1.35rem] font-extrabold tracking-tight text-[#0b3d2c]">Sikaklo</span>
         </Link>
         <Link href="/" className="rounded-full border border-[#0b3d2c]/15 px-4 py-2 text-sm font-semibold text-[#0b3d2c] transition hover:bg-[#0b3d2c] hover:text-white">
           Créer une cagnotte
@@ -77,7 +77,7 @@ export default async function PageCagnotte({ params }: { params: Promise<{ slug:
         <div className="mx-auto max-w-md px-6 py-24 text-center">
           <p className="text-2xl font-extrabold tracking-tight">Cette cagnotte n’est plus disponible</p>
           <p className="mt-2 text-stone-600">Le lien est incorrect, ou l’organisateur a retiré la page.</p>
-          <Link href="/" className="mt-6 inline-block rounded-full bg-[#0b3d2c] px-6 py-3 text-sm font-semibold text-white">Découvrir Cotiz</Link>
+          <Link href="/" className="mt-6 inline-block rounded-full bg-[#0b3d2c] px-6 py-3 text-sm font-semibold text-white">Découvrir Sikaklo</Link>
         </div>
       </main>
     );
@@ -139,7 +139,7 @@ export default async function PageCagnotte({ params }: { params: Promise<{ slug:
               </span>
             )}
             <span className="flex items-center gap-1.5"><CalendarClock size={16} className="text-stone-400" /> Créée le {dateCreation}</span>
-            <span className="flex items-center gap-1.5"><ShieldCheck size={16} className="text-[#009e60]" /> Paiements suivis par Cotiz</span>
+            <span className="flex items-center gap-1.5"><ShieldCheck size={16} className="text-[#009e60]" /> Paiements suivis par Sikaklo</span>
           </div>
         </div>
 
@@ -154,7 +154,7 @@ export default async function PageCagnotte({ params }: { params: Promise<{ slug:
                   <div className="relative grid aspect-[16/10] w-full place-items-center bg-[#0b3d2c]">
                     <div className="motif absolute inset-0 opacity-25" />
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src="/icons/logo.svg" alt="Cotiz" width={88} height={88} className="relative h-20 w-20 rounded-[22px] shadow-2xl" />
+                    <img src="/icons/logo.svg" alt="Sikaklo" width={88} height={88} className="relative h-20 w-20 rounded-[22px] shadow-2xl" />
                   </div>
                 )}
             </figure>
@@ -196,7 +196,7 @@ export default async function PageCagnotte({ params }: { params: Promise<{ slug:
               <h2 className="text-xl font-bold tracking-tight text-[#0b2a20]">Comment participer</h2>
               <ol className="mt-4 grid gap-4 sm:grid-cols-3">
                 {[
-                  ["Touchez « Participer »", "Indiquez votre nom et votre numéro : votre espace Cotiz est créé en une minute."],
+                  ["Touchez « Participer »", "Indiquez votre nom et votre numéro : votre espace Sikaklo est créé en une minute."],
                   ["Choisissez le montant", "Payez avec Wave, Orange Money, MTN MoMo ou Moov Money depuis votre téléphone."],
                   ["Recevez votre reçu", "Votre participation apparaît dans la cagnotte, visible par l’organisateur."],
                 ].map(([t, d], k) => (
@@ -223,13 +223,13 @@ export default async function PageCagnotte({ params }: { params: Promise<{ slug:
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/icons/logo.svg" alt="" width={40} height={40} className="h-10 w-10 rounded-xl" />
             <div>
-              <p className="font-extrabold text-[#0b3d2c]">Cotiz</p>
+              <p className="font-extrabold text-[#0b3d2c]">Sikaklo</p>
               <p className="text-sm text-stone-500">Tontines, associations et cagnottes, en toute transparence.</p>
             </div>
           </div>
           <Link href="/" className="rounded-full bg-[#0b3d2c] px-5 py-3 text-center text-sm font-semibold text-white">Organiser ma cagnotte gratuitement</Link>
         </div>
-        <p className="mt-6 flex items-center gap-1.5 pb-6 text-xs text-stone-500"><Lock size={12} /> Cotiz ne vous demandera jamais votre code secret Mobile Money.</p>
+        <p className="mt-6 flex items-center gap-1.5 pb-6 text-xs text-stone-500"><Lock size={12} /> Sikaklo ne vous demandera jamais votre code secret Mobile Money.</p>
       </footer>
 
       {/* Barre d'action (téléphone) */}

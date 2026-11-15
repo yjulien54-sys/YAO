@@ -54,7 +54,7 @@ function Accueil() {
   const [naissance, setNaissance] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
-  // Le numéro tapé a déjà un compte Cotiz : on propose de s'y connecter au lieu d'en créer un deuxième
+  // Le numéro tapé a déjà un compte Sikaklo : on propose de s'y connecter au lieu d'en créer un deuxième
   const [dejaCompte, setDejaCompte] = useState<null | { peut: boolean }>(null);
   const [info, setInfo] = useState("");
   useEffect(() => {
@@ -62,10 +62,10 @@ function Accueil() {
       if (sessionStorage.getItem("cotiz:compte-reuni")) {
         sessionStorage.removeItem("cotiz:compte-reuni");
         setEtape("retrouver");
-        setInfo("Tes comptes Cotiz ont été réunis en un seul. Connecte-toi avec ton numéro, ta date de naissance et ton code secret.");
+        setInfo("Tes comptes Sikaklo ont été réunis en un seul. Connecte-toi avec ton numéro, ta date de naissance et ton code secret.");
       }
     } catch {}
-    // Retour de Google sans compte Cotiz : on préremplit le nom
+    // Retour de Google sans compte Sikaklo : on préremplit le nom
     supabase.auth.getSession().then(({ data }) => {
       const nomG = data.session?.user.user_metadata?.full_name as string | undefined;
       if (nomG) setName((n) => n || nomG);
@@ -218,7 +218,7 @@ function Accueil() {
             <form onSubmit={retrouver} className="space-y-4">
               <h2 className="text-lg font-bold">Retrouver mon compte</h2>
               {info ? <p className="rounded-2xl bg-emerald-50 p-3 text-sm font-medium text-emerald-900 ring-1 ring-emerald-200">{info}</p>
-                : <p className="text-sm text-stone-600">Autre téléphone ou ordinateur ? Tape les informations de ton compte Cotiz : tu retrouves tous tes groupes, avec les mêmes droits.</p>}
+                : <p className="text-sm text-stone-600">Autre téléphone ou ordinateur ? Tape les informations de ton compte Sikaklo : tu retrouves tous tes groupes, avec les mêmes droits.</p>}
               <Field label="Numéro de téléphone">
                 <div className="flex gap-2">
                   <span className="flex shrink-0 items-center gap-1.5 rounded-2xl border border-stone-200 bg-stone-50 px-3 text-sm font-semibold text-stone-600"><Drapeau /> +225</span>
@@ -228,7 +228,7 @@ function Accueil() {
               <Field label="Date de naissance">
                 <DateNaissance value={naissance} onChange={setNaissance} />
               </Field>
-              <Field label="Code secret Cotiz (4 chiffres)">
+              <Field label="Code secret Sikaklo (4 chiffres)">
                 <input
                   type="password"
                   className={`${inputClass} text-center text-xl font-bold tracking-[0.6em]`}
@@ -284,12 +284,12 @@ function Accueil() {
             </Field>
             {dejaCompte && (
               <div className="space-y-2.5 rounded-2xl bg-amber-50 p-3.5 ring-1 ring-amber-200">
-                <p className="text-sm font-bold text-amber-950">Ce numéro a déjà un compte Cotiz</p>
+                <p className="text-sm font-bold text-amber-950">Ce numéro a déjà un compte Sikaklo</p>
                 <p className="text-sm text-amber-900">Pour retrouver tes groupes avec les mêmes droits (sur ce téléphone ou cet ordinateur), connecte-toi à ce compte au lieu d’en créer un deuxième.</p>
                 {dejaCompte.peut ? (
                   <button type="button" onClick={() => { setEtape("retrouver"); setError(""); setDejaCompte(null); }} className="w-full rounded-xl bg-emerald-700 py-3 text-sm font-bold text-white">Me connecter à mon compte</button>
                 ) : (
-                  <p className="rounded-xl bg-white p-2.5 text-xs text-stone-600">Ton compte n’a pas encore de date de naissance ou de code secret. Sur ton premier appareil, ouvre Cotiz → Profil pour les ajouter, puis reviens ici. Ou contacte le service client.</p>
+                  <p className="rounded-xl bg-white p-2.5 text-xs text-stone-600">Ton compte n’a pas encore de date de naissance ou de code secret. Sur ton premier appareil, ouvre Sikaklo → Profil pour les ajouter, puis reviens ici. Ou contacte le service client.</p>
                 )}
                 <button type="submit" disabled={busy} className="w-full py-1 text-xs font-semibold text-stone-500 underline">Ce n’est pas moi (numéro récupéré) : créer un nouveau compte</button>
               </div>
@@ -306,7 +306,7 @@ function Accueil() {
           )}
         </Card>
         <p className="mt-6 text-center text-xs leading-relaxed text-stone-500">
-          Cotiz ne touche jamais à ton argent : tu paies directement le trésorier de ton groupe par Wave, Orange Money, MTN ou Moov, et tout le monde voit qui a payé.
+          Sikaklo ne touche jamais à ton argent : tu paies directement le trésorier de ton groupe par Wave, Orange Money, MTN ou Moov, et tout le monde voit qui a payé.
         </p>
         <p className="mt-4 text-center text-xs text-stone-400">
           <a href="/cgu" className="underline">Conditions d’utilisation</a> · <a href="/confidentialite" className="underline">Confidentialité</a> · <a href="/mentions-legales" className="underline">Mentions légales</a>
