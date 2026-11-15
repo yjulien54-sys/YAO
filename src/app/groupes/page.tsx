@@ -234,7 +234,7 @@ export default function Groupes() {
           ) : (
             <Card className="divide-y divide-stone-100 !p-0">
               {retards.map(({ g, membres }) => (
-                <Link key={g.id} href={`/groupes/${g.id}`} className="flex items-center gap-3 px-4 py-3 transition hover:bg-stone-50">
+                <Link key={g.id} href={`/groupes/${g.id}?relance=1`} className="flex items-center gap-3 px-4 py-3 transition hover:bg-stone-50">
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-red-50 text-red-600"><AlertCircle size={18} strokeWidth={2} /></span>
                   <div className="min-w-0 flex-1">
                     <p className="truncate text-sm font-semibold">{g.name}</p>

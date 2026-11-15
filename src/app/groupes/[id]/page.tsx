@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { DiscussionGroupe } from "@/components/DiscussionGroupe";
+import { RelanceGroupee } from "@/components/RelanceGroupee";
 import { marquerDiscussionLue, useNonLus } from "@/lib/nonLus";
 import { MenuActions, type Action } from "@/components/MenuActions";
 import { copier, useAppuiLong } from "@/lib/appuiLong";
@@ -58,6 +59,9 @@ export default function GroupeDetail() {
   const [newParts, setNewParts] = useState(1);
   const [toast, setToast] = useState("");
   const [msg, setMsg] = useState<{ type: "relance" | "groupe"; member?: Member } | null>(null);
+  const [relanceGroupee, setRelanceGroupee] = useState(false);
+  // Arrivée depuis « Membres en retard → Relancer » de l'accueil
+  useEffect(() => { if (new URLSearchParams(window.location.search).get("relance") === "1") setRelanceGroupee(true); }, []);
   const [versement, setVersement] = useState(false);
   const [numero, setNumero] = useState<string | null>(null);
   const [lienWave, setLienWave] = useState<string | null>(null);
@@ -443,6 +447,7 @@ export default function GroupeDetail() {
                 // Collecte en ligne : on partage le message de la cagnotte (motif + lien vers la belle page)
                 const wa = g.type === "collecte" ? lienPartageCagnotte(cagnotte, g.name, g.donCause) : null;
                 if (wa) window.open(wa, "_blank", "noopener");
+                else if (g.type !== "collecte" && unpaid.length > 0) setRelanceGroupee(true);
                 else setMsg({ type: "groupe" });
               }}
             >
@@ -864,6 +869,7 @@ export default function GroupeDetail() {
       )}
 
       {msg && <MessageModal group={g} member={msg.member} type={msg.type} onClose={() => setMsg(null)} />}
+      {relanceGroupee && <RelanceGroupee group={g} membres={unpaid.filter((m) => memberStatus(g, m.id) !== "a_confirmer")} fermer={() => setRelanceGroupee(false)} messageGroupe={() => setMsg({ type: "groupe" })} />}
 
       {toast && (
         <div className="fixed inset-x-0 bottom-6 z-20 mx-auto w-fit max-w-[90%] rounded-full bg-stone-900 px-4 py-2.5 text-sm font-medium text-white shadow-lg">
