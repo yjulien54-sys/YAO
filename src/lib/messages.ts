@@ -1,3 +1,4 @@
+import { lienFrais } from "./motif";
 /**
  * Messages intelligents : on détecte l'événement (décès, mariage, naissance…)
  * à partir du nom et de la description du groupe, et le moment (bien avant,
@@ -89,7 +90,7 @@ export function contexte(g: Group, type: TypeMessage, origin: string, m?: Member
   const due = amountDue(g);
   const st = roundStats(g);
   const evenement = detecterEvenement(g);
-  const lien = m ? `${origin}/groupes/${g.id}/payer?membre=${m.id}` : `${origin}/groupes/${g.id}/payer`;
+  const lien = lienFrais(m ? `${origin}/groupes/${g.id}/payer?membre=${m.id}` : `${origin}/groupes/${g.id}/payer`);
   return {
     type,
     evenement,

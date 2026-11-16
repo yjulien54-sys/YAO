@@ -1,3 +1,4 @@
+// Version de l’image : logo Sikaklo (anneau orange épais)
 /**
  * Affiche générale de Sikaklo : l'image qui apparaît quand on partage n'importe quel lien Sikaklo
  * (invitation dans un groupe, lien de l'application…). Fabriquée une seule fois, au déploiement.
