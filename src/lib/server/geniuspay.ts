@@ -107,7 +107,7 @@ export async function initierGeniuspay(p: {
 
 export type StatutPaiement = "ACCEPTED" | "REFUSED" | "WAITING" | "INCONNU";
 
-export async function lireGeniuspay(reference: string): Promise<{ statut: StatutPaiement; methode?: PayMethod; frais?: number }> {
+export async function lireGeniuspay(reference: string): Promise<{ statut: StatutPaiement; methode?: PayMethod; frais?: number; montant?: number; devise?: string }> {
   const d = await appel(`/payments/${encodeURIComponent(reference)}`);
   const s = String(d.status ?? "").toLowerCase();
   const statut: StatutPaiement =
@@ -117,7 +117,9 @@ export async function lireGeniuspay(reference: string): Promise<{ statut: Statut
   const m = String(d.payment_method ?? d.gateway ?? "").toLowerCase();
   const methode: PayMethod | undefined = m.includes("wave") ? "wave" : m.includes("orange") || m === "om" ? "orange" : m.includes("mtn") || m.includes("momo") ? "mtn" : m.includes("moov") || m.includes("flooz") ? "moov" : undefined;
   const frais = Number(d.fees);
-  return { statut, methode, frais: Number.isFinite(frais) ? frais : undefined };
+  const montant = Number(d.amount);
+  const devise = typeof d.currency === "string" ? d.currency.toUpperCase() : undefined;
+  return { statut, methode, frais: Number.isFinite(frais) ? frais : undefined, montant: Number.isFinite(montant) && montant > 0 ? montant : undefined, devise };
 }
 
 /** Signature du webhook : HMAC-SHA256 (hexadécimal) du corps brut, en-tête X-GeniusPay-Signature */

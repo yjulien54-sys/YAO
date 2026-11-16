@@ -13,6 +13,7 @@ import { NextResponse } from "next/server";
 import { GUIDES, texteGuide } from "@/lib/guideCotiz";
 import { FAQ } from "@/lib/faq";
 import { formel, trouverExplication } from "@/lib/server/iaGratuite";
+import { alerter, garde } from "@/lib/server/securite";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -39,7 +40,12 @@ export async function POST(req: Request) {
   if (!token) return NextResponse.json({ ok: false, raison: "non connecté" }, { status: 401 });
   const moi = createClient(url, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!, { global: { headers: { Authorization: `Bearer ${token}` } } });
   const { error: pasAdmin } = await moi.rpc("verifier_admin");
-  if (pasAdmin) return NextResponse.json({ ok: false, raison: "réservé à l’équipe Sikaklo" }, { status: 403 });
+  if (pasAdmin) {
+    await alerter("admin_refuse", "Rédaction IA demandée par quelqu’un qui n’est pas de l’équipe", req);
+    return NextResponse.json({ ok: false, raison: "réservé à l’équipe Sikaklo" }, { status: 403 });
+  }
+  const bloque = await garde(req, "brouillon_ia", 60, 600, token.slice(-24));
+  if (bloque) return bloque;
 
   const corps = await req.json().catch(() => null) as { consigne?: string; nom?: string | null; motif?: string; messages?: Msg[] } | null;
   const consigne = String(corps?.consigne ?? "").slice(0, 2000).trim();

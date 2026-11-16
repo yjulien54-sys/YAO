@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { cinetpayConfigured, synchroniserTransaction } from "@/lib/server/cinetpay";
+import { garde } from "@/lib/server/securite";
 
 export const runtime = "nodejs";
 
@@ -10,11 +11,13 @@ export const runtime = "nodejs";
  */
 export async function POST(req: Request) {
   if (!cinetpayConfigured()) return NextResponse.json({ ok: false }, { status: 503 });
+  const bloque = await garde(req, "webhook_cinetpay", 120, 60);
+  if (bloque) return bloque;
   let tx = "";
   const type = req.headers.get("content-type") ?? "";
   if (type.includes("json")) tx = String((await req.json().catch(() => ({})))?.cpm_trans_id ?? "");
   else tx = String((await req.formData().catch(() => null))?.get("cpm_trans_id") ?? "");
-  if (!tx) return NextResponse.json({ ok: false }, { status: 400 });
+  if (!/^[\w.-]{3,80}$/.test(tx)) return NextResponse.json({ ok: false }, { status: 400 });
   await synchroniserTransaction(tx);
   return NextResponse.json({ ok: true });
 }

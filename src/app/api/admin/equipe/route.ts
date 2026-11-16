@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { alerter } from "@/lib/server/securite";
 
 export const runtime = "nodejs";
 
@@ -18,7 +19,10 @@ export async function POST(req: Request) {
   const moi = createClient(url, anon, { global: { headers: { Authorization: `Bearer ${jeton}` } }, auth: { persistSession: false } });
   const { data: role, error: e1 } = await moi.rpc("mon_role_admin");
   if (e1) return NextResponse.json({ ok: false, erreur: "Fais d’abord la mise à jour SQL n°17." }, { status: 400 });
-  if (role !== "fondateur") return NextResponse.json({ ok: false, erreur: "Réservé au fondateur." }, { status: 403 });
+  if (role !== "fondateur") {
+    await alerter("admin_refuse", "Tentative d’ajouter un agent sans être fondateur", req);
+    return NextResponse.json({ ok: false, erreur: "Réservé au fondateur." }, { status: 403 });
+  }
 
   const corps = await req.json().catch(() => null);
   const nom = String(corps?.nom ?? "").trim().slice(0, 80);

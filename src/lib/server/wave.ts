@@ -39,11 +39,13 @@ export async function creerSessionWave(p: { amount: number; clientReference: str
 
 export type StatutWave = "ACCEPTED" | "REFUSED" | "WAITING" | "INCONNU";
 
-export async function lireSessionWave(id: string): Promise<StatutWave> {
+export async function lireSessionWave(id: string): Promise<{ statut: StatutWave; montant?: number; devise?: string }> {
   const res = await fetch(`${API}/checkout/sessions/${encodeURIComponent(id)}`, { headers: headers() });
-  if (!res.ok) return "INCONNU";
+  if (!res.ok) return { statut: "INCONNU" };
   const s = await res.json().catch(() => ({}));
-  if (s?.payment_status === "succeeded") return "ACCEPTED";
-  if (s?.checkout_status === "expired" || s?.payment_status === "cancelled") return "REFUSED";
-  return "WAITING";
+  const montant = Number(s?.amount);
+  const extra = { montant: Number.isFinite(montant) && montant > 0 ? montant : undefined, devise: typeof s?.currency === "string" ? s.currency.toUpperCase() : undefined };
+  if (s?.payment_status === "succeeded") return { statut: "ACCEPTED", ...extra };
+  if (s?.checkout_status === "expired" || s?.payment_status === "cancelled") return { statut: "REFUSED", ...extra };
+  return { statut: "WAITING", ...extra };
 }

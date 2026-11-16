@@ -7,6 +7,7 @@ import { geniuspayConfigure, initierGeniuspay } from "@/lib/server/geniuspay";
 import { waveConfigured } from "@/lib/server/wave";
 import type { PayMethod } from "@/lib/types";
 import { arrondi5, fraisOperateurPour, fraisPour, lirePourcent, lireTranches, lireTranchesPenalite, partCotizPenalite } from "@/lib/fraisService";
+import { estUuid, garde } from "@/lib/server/securite";
 
 export const runtime = "nodejs";
 
@@ -14,10 +15,14 @@ export async function POST(req: Request) {
   if (!fournisseurConfigure()) return NextResponse.json({ error: "Les vrais paiements ne sont pas encore activés." }, { status: 503 });
   const user = await userFromRequest(req);
   if (!user) return NextResponse.json({ error: "non connecté" }, { status: 401 });
+  const bloque = await garde(req, "paiement", 10, 600, user.id);
+  if (bloque) return bloque;
 
   const body = await req.json().catch(() => ({}));
   const { groupId, memberId, rounds, amount, phone, method } = body as { groupId?: string; memberId?: string; rounds?: number[]; amount?: number; phone?: string; method?: PayMethod };
-  if (!groupId || !memberId) return NextResponse.json({ error: "requête invalide" }, { status: 400 });
+  if (!estUuid(groupId) || !estUuid(memberId)) return NextResponse.json({ error: "requête invalide" }, { status: 400 });
+  if (method !== undefined && !["wave", "orange", "mtn", "moov"].includes(String(method))) return NextResponse.json({ error: "moyen de paiement invalide" }, { status: 400 });
+  if (phone !== undefined && phone !== null && phone !== "" && !/^\+?[\d\s.-]{8,20}$/.test(String(phone))) return NextResponse.json({ error: "numéro de téléphone invalide" }, { status: 400 });
 
   const sb = supabaseAdmin();
   const { data: row } = await sb.from("groups").select("*, members(*), payments(*), payouts(*)").eq("id", groupId).single();
@@ -32,6 +37,7 @@ export async function POST(req: Request) {
   if (g.type === "collecte") {
     const a = Math.round(Number(amount) || 0);
     if (a < 100) return NextResponse.json({ error: "montant trop faible (100 F minimum)" }, { status: 400 });
+    if (a > 5_000_000) return NextResponse.json({ error: "montant trop élevé (5 000 000 F maximum par paiement)" }, { status: 400 });
     lignes = [{ round: 1, amount: a, penalty: 0 }];
   } else {
     const possibles = roundsToPay(g, memberId);
@@ -90,7 +96,10 @@ export async function POST(req: Request) {
     lignesPaiement.forEach((l) => delete l[col]);
     ({ error } = await sb.from("payments").insert(lignesPaiement));
   }
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  if (error) {
+    console.error("Paiement : enregistrement impossible", error.message);
+    return NextResponse.json({ error: "Le paiement n’a pas pu être enregistré. Réessayez." }, { status: 500 });
+  }
 
   const origin = new URL(req.url).origin;
 

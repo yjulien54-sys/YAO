@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { alerter, garde } from "@/lib/server/securite";
 
 export const runtime = "nodejs";
 
@@ -13,6 +14,9 @@ export async function POST(req: Request) {
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
   const cle = process.env.SUPABASE_SERVICE_ROLE_KEY;
   if (!url || !cle) return NextResponse.json({ ok: false, raison: "indisponible", detail: "cle_absente" }, { status: 503 });
+
+  const bloque = await garde(req, "connexion", 10, 600);
+  if (bloque) return bloque;
 
   const corps = await req.json().catch(() => null);
   const telephone = String(corps?.telephone ?? "").replace(/\D/g, "").slice(-10);
@@ -30,6 +34,7 @@ export async function POST(req: Request) {
     return NextResponse.json({ ok: false, raison: detail === "sql_absent" ? "indisponible" : "erreur", detail }, { status: 500 });
   }
   const r = data as { ok: boolean; id?: string; raison?: string; restants?: number };
+  if (r.raison === "bloquee") await alerter("compte_bloque", `5 codes faux en 1 h pour le numéro …${telephone.slice(-4)}`, req);
   if (!r.ok || !r.id) return NextResponse.json({ ok: false, raison: r.raison ?? "faux", restants: r.restants }, { status: 401 });
 
   // Un numéro = un seul compte : les autres comptes créés avec ce numéro (autre appareil…) sont réunis dans celui-ci

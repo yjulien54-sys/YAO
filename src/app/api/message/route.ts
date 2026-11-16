@@ -2,6 +2,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
 import { EVENEMENT_LABEL, messageModele, type ContexteMessage } from "@/lib/messages";
+import { garde } from "@/lib/server/securite";
 
 export const runtime = "nodejs";
 
@@ -46,6 +47,8 @@ export async function POST(req: Request) {
   const supabase = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!);
   const { data: auth } = token ? await supabase.auth.getUser(token) : { data: { user: null } };
   if (!auth.user) return NextResponse.json({ error: "non connecté" }, { status: 401 });
+  const bloque = await garde(req, "message_ia", 30, 600, auth.user.id);
+  if (bloque) return bloque;
 
   const c = clean((await req.json().catch(() => null))?.contexte);
   if (!c) return NextResponse.json({ error: "contexte invalide" }, { status: 400 });

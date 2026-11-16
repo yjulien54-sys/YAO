@@ -88,9 +88,10 @@ function Accueil() {
     noterTentative(phone, name, "formulaire");
     // Un numéro = un seul compte : si ce numéro a déjà un compte, on propose de s'y connecter
     if (dejaCompte === null) {
-      const { data: d, error: ed } = await supabase.rpc("numero_a_un_compte", { tel: phone });
-      const r = d as { existe?: boolean; peut_se_connecter?: boolean } | null;
-      if (!ed && r?.existe) {
+      const jeton = (await supabase.auth.getSession()).data.session?.access_token;
+      const r = await fetch("/api/numero", { method: "POST", headers: { "Content-Type": "application/json", ...(jeton ? { Authorization: `Bearer ${jeton}` } : {}) }, body: JSON.stringify({ tel: phone }) })
+        .then((x) => (x.ok ? x.json() : null)).catch(() => null) as { existe?: boolean; peut_se_connecter?: boolean } | null;
+      if (r?.existe) {
         setDejaCompte({ peut: !!r.peut_se_connecter });
         setBusy(false);
         return;

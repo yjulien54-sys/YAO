@@ -1,5 +1,6 @@
 import { createClient } from "@supabase/supabase-js";
 import { NextResponse } from "next/server";
+import { alerter } from "@/lib/server/securite";
 
 export const runtime = "nodejs";
 
@@ -20,7 +21,10 @@ export async function POST(req: Request) {
   const { data: role, error: eRole } = await moi.rpc("mon_role_admin");
   const { data: admin } = await moi.rpc("is_admin");
   const autorise = eRole ? admin === true : role === "fondateur";
-  if (!autorise) return NextResponse.json({ ok: false, erreur: "réservé au fondateur" }, { status: 403 });
+  if (!autorise) {
+    await alerter("admin_refuse", "Tentative de bannir un compte sans être fondateur", req);
+    return NextResponse.json({ ok: false, erreur: "réservé au fondateur" }, { status: 403 });
+  }
 
   const corps = await req.json().catch(() => null);
   const id = String(corps?.profileId ?? "");
@@ -29,6 +33,9 @@ export async function POST(req: Request) {
 
   const serveur = createClient(url, cle, { auth: { persistSession: false, autoRefreshToken: false } });
   const { error } = await serveur.auth.admin.updateUserById(id, { ban_duration: bannir ? "876000h" : "none" });
-  if (error) return NextResponse.json({ ok: false, erreur: error.message }, { status: 500 });
+  if (error) {
+    console.error("Bannir", error.message);
+    return NextResponse.json({ ok: false, erreur: "Action impossible pour le moment." }, { status: 500 });
+  }
   return NextResponse.json({ ok: true });
 }

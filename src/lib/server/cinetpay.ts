@@ -105,6 +105,8 @@ export async function synchroniserTransaction(transactionId: string) {
   const sb = supabaseAdmin();
   let statut: StatutCinetpay;
   let m: PayMethod | undefined;
+  let montantRecu: number | undefined;
+  let devise: string | undefined;
   const mode = process.env.NEXT_PUBLIC_PAIEMENT_MODE;
   // Les sessions Wave commencent par « cos- » ; en mode mixte, le reste vient de GeniusPay
   if (mode === "geniuspay" || (mode === "mixte" && !transactionId.startsWith("cos-"))) {
@@ -112,9 +114,15 @@ export async function synchroniserTransaction(transactionId: string) {
     const r = await lireGeniuspay(transactionId);
     statut = r.statut;
     m = r.methode;
+    // Si GeniusPay donne le montant sans ses frais, on les rajoute pour comparer
+    montantRecu = r.montant !== undefined ? r.montant + (r.frais ?? 0) : undefined;
+    devise = r.devise;
   } else if (transactionId.startsWith("cos-") || process.env.NEXT_PUBLIC_PAIEMENT_MODE === "wave") {
     const { lireSessionWave } = await import("./wave");
-    statut = await lireSessionWave(transactionId);
+    const w = await lireSessionWave(transactionId);
+    statut = w.statut;
+    montantRecu = w.montant;
+    devise = w.devise;
     m = "wave";
   } else {
     const r = await verifierCinetpay(transactionId);
@@ -122,6 +130,16 @@ export async function synchroniserTransaction(transactionId: string) {
     m = methodeDepuisCinetpay(r.methode);
   }
   if (statut === "ACCEPTED") {
+    // Vérification du montant : on ne valide que si la somme payée couvre ce qui était demandé
+    let lignes = (await sb.from("payments").select("amount, penalty, frais_service, frais_operateur").eq("transaction_id", transactionId)).data as Record<string, number | null>[] | null;
+    lignes ??= (await sb.from("payments").select("amount, penalty").eq("transaction_id", transactionId)).data as Record<string, number | null>[] | null;
+    const attendu = (lignes ?? []).reduce((t, l) => t + (l.amount ?? 0) + (l.penalty ?? 0) + (l.frais_service ?? 0) + (l.frais_operateur ?? 0), 0);
+    if ((montantRecu !== undefined && attendu > 0 && montantRecu + 1 < attendu) || (devise && !["XOF", "FCFA", "CFA"].includes(devise))) {
+      const { alerter } = await import("./securite");
+      await alerter("paiement_montant_incorrect", `Transaction ${transactionId} : reçu ${montantRecu ?? "?"} ${devise ?? ""}, attendu ${attendu} F. Paiement NON validé.`);
+      const { data } = await sb.from("payments").select("id, group_id, status").eq("transaction_id", transactionId);
+      return { statut: "WAITING" as StatutCinetpay, paiements: data ?? [] };
+    }
     await sb
       .from("payments")
       .update({ status: "reussi", ...(m ? { method: m } : {}) })

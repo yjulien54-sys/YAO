@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { synchroniserTransaction } from "@/lib/server/cinetpay";
 import { geniuspayConfigure, signatureValide } from "@/lib/server/geniuspay";
+import { alerter, garde } from "@/lib/server/securite";
 
 export const runtime = "nodejs";
 
@@ -14,8 +15,12 @@ export const runtime = "nodejs";
  */
 export async function POST(req: Request) {
   if (!geniuspayConfigure()) return NextResponse.json({ ok: false }, { status: 503 });
+  const bloque = await garde(req, "webhook_geniuspay", 120, 60);
+  if (bloque) return bloque;
   const corps = await req.text();
+  if (corps.length > 100_000) return NextResponse.json({ error: "Trop gros" }, { status: 413 });
   if (signatureValide(corps, req.headers.get("x-geniuspay-signature")) === false) {
+    await alerter("webhook_signature_fausse", "Appel GeniusPay avec une signature invalide", req);
     return NextResponse.json({ error: "Invalid signature" }, { status: 401 });
   }
   let json: { event?: string; data?: { reference?: string } } = {};

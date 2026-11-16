@@ -2,6 +2,7 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { PlanningPro } from "@/components/admin/PlanningPro";
+import { AlertesSecurite } from "@/components/admin/AlertesSecurite";
 import { DiscussionsGroupes } from "@/components/admin/DiscussionsGroupes";
 import { BoutonMicro, RedacteurIA, useDictee } from "@/components/admin/RedacteurIA";
 import { Jauge, Montre, Anneau, Pyramide, Courbe, Colonnes, TexteAnime, Anneaux, Calendrier, Vague, Horloge24, Radar, Gaufre, VERT, ORANGE, VIOLET } from "@/components/admin/Graphiques";
@@ -139,6 +140,7 @@ const ONGLETS = [
   { id: "annonces", label: "Annonces", icon: Megaphone, ton: "orange" },
   { id: "dossiers", label: "Dossiers", icon: FolderOpen, ton: "violet" },
   { id: "journal", label: "Journal admin", icon: ScrollText, ton: "emerald" },
+  { id: "securite", label: "Sécurité", icon: ShieldAlert, ton: "rose" },
   { id: "planning", label: "Planning", icon: CalendarDays, ton: "teal" },
   { id: "equipe", label: "Équipe", icon: UserCog, ton: "sky" },
   { id: "salaires", label: "Salaires", icon: Wallet, ton: "emerald" },
@@ -147,7 +149,7 @@ const ONGLETS = [
   { id: "idees", label: "Idées & projets", icon: Lightbulb, ton: "amber" },
 ] as const;
 type Onglet = (typeof ONGLETS)[number]["id"];
-const RESERVE_FONDATEUR: Onglet[] = ["annonces", "discussions", "journal", "equipe", "salaires", "revenus", "sante", "idees"];
+const RESERVE_FONDATEUR: Onglet[] = ["annonces", "discussions", "journal", "securite", "equipe", "salaires", "revenus", "sante", "idees"];
 type Ton = (typeof ONGLETS)[number]["ton"] | "red";
 
 /** Couleurs par rubrique (pastille d'icône, carte chiffrée) */
@@ -556,6 +558,7 @@ function TableauDeBord({ email, role }: { email: string; role: "fondateur" | "ag
           {onglet === "revenus" && fondateur && <Revenus />}
           {onglet === "sante" && fondateur && <Sante />}
           {onglet === "discussions" && fondateur && <DiscussionsGroupes />}
+          {onglet === "securite" && fondateur && <AlertesSecurite />}
           {onglet === "idees" && fondateur && <Idees />}
           {onglet === "codes" && <Codes liste={demandes} recharger={charger} />}
           {onglet === "annonces" && fondateur && <Annonces liste={annonces} recharger={charger} />}
@@ -2133,6 +2136,7 @@ function FicheAgent({ a, fermer, recharger, retirer }: { a: Membre_Equipe; ferme
   async function televerser(type: "photo" | "cni", fichier: File | undefined) {
     if (!fichier) return;
     if (fichier.size > 5 * 1024 * 1024) return setMsg("Erreur : image trop lourde (5 Mo maximum).");
+    if (!/^image\/(jpeg|png|webp)$/.test(fichier.type)) return setMsg("Erreur : choisissez une photo JPG, PNG ou WEBP.");
     setEnvoi(type); setMsg("");
     const ext = (fichier.name.split(".").pop() || "jpg").toLowerCase().replace(/[^a-z0-9]/g, "");
     const chemin = `${a.numero ?? "agent"}/${type}-${Date.now()}.${ext}`;

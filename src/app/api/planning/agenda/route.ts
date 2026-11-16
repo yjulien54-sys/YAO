@@ -7,6 +7,7 @@
  * Heure de Côte d'Ivoire = heure UTC (pas de changement d'heure).
  */
 import { createClient } from "@supabase/supabase-js";
+import { garde } from "@/lib/server/securite";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -21,6 +22,7 @@ const dt = (jour: string, heure: string, plusUnJour = false) => {
 const plier = (l: string) => l.length <= 74 ? l : l.match(/.{1,73}/g)!.join("\r\n ");
 
 export async function GET(req: Request) {
+  if (await garde(req, "agenda", 60, 600)) return new Response("Trop de demandes", { status: 429 });
   const jeton = new URL(req.url).searchParams.get("j") ?? "";
   if (!/^[0-9a-f]{36}$/.test(jeton) || !process.env.SUPABASE_SERVICE_ROLE_KEY) return new Response("Lien invalide", { status: 404 });
   const sb = createClient(process.env.NEXT_PUBLIC_SUPABASE_URL!, process.env.SUPABASE_SERVICE_ROLE_KEY);

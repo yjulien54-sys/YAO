@@ -18,6 +18,7 @@ import { NextResponse } from "next/server";
 import { FAQ } from "@/lib/faq";
 import { GUIDES, texteGuide } from "@/lib/guideCotiz";
 import { repondreGratuit } from "@/lib/server/iaGratuite";
+import { garde } from "@/lib/server/securite";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -83,6 +84,8 @@ export async function POST(req: Request) {
   if (!token) return NextResponse.json({ ok: false, raison: "non connecté" }, { status: 401 });
   if (!process.env.SUPABASE_SERVICE_ROLE_KEY) return NextResponse.json({ ok: false, raison: "Sikaklo IA non configurée" });
 
+  const bloque = await garde(req, "service_ia", 30, 600, token.slice(-24));
+  if (bloque) return bloque;
   const r = (await req.json().catch(() => null))?.requete;
   if (typeof r !== "string" || !/^[0-9a-f-]{36}$/i.test(r)) return NextResponse.json({ ok: false, raison: "requête invalide" }, { status: 400 });
 
