@@ -10,7 +10,7 @@ const nextConfig: NextConfig = {
     "/c/[slug]": ["./public/polices/*.ttf", "./public/icons/icon-192.png", "./public/operateurs/*.png"],
     "/api/cagnotte/affiche": ["./public/polices/*.ttf", "./public/icons/icon-192.png", "./public/operateurs/*.png"],
     "/groupes/[id]/affiche": ["./public/polices/*.ttf", "./public/icons/icon-192.png", "./public/operateurs/*.png"],
-    "/opengraph-image": ["./public/polices/*.ttf", "./public/icons/icon-192.png", "./public/operateurs/*.png"],
+    "/opengraph-image": ["./public/polices/*.ttf", "./public/icons/icon-512.png", "./public/icons/icon-192.png", "./public/operateurs/*.png"],
   },
   // Ancien lien de téléchargement de l'application Android
   async redirects() {

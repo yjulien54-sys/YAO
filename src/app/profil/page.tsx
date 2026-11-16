@@ -1,5 +1,6 @@
 "use client";
 
+import { lienFrais } from "@/lib/motif";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { CalendarDays, ChevronRight, Globe, Download, Fingerprint, Headset, FileText, HelpCircle, KeyRound, Landmark, LogOut, Pencil, Share2, ShieldCheck, Smartphone, Trash2 } from "lucide-react";
@@ -57,7 +58,7 @@ export default function ProfilPage() {
   if (!ok || !loaded) return <Loading />;
 
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const partage = waLink(`Bonjour 👋\n\nJe gère mes tontines avec *Sikaklo* : chacun voit qui a payé, les retards sont calculés tout seuls et les relances partent sur WhatsApp en 1 clic. Fini le cahier et les palabres 😄\n\nC’est gratuit 👉 ${origin}\nCrée ton groupe, puis touche « Inviter » pour l’envoyer à tes membres.`);
+  const partage = waLink(`Bonjour 👋\n\nJe gère mes tontines avec *Sikaklo* : chacun voit qui a payé, les retards sont calculés tout seuls et les relances partent sur WhatsApp en 1 clic. Fini le cahier et les palabres 😄\n\nC’est gratuit 👉 ${lienFrais(`${origin}/`)}\nCrée ton groupe, puis touche « Inviter » pour l’envoyer à tes membres.`);
 
   return (
     <Page>
