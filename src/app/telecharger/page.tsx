@@ -48,7 +48,7 @@ export default function Telecharger() {
         <div className="carte p-4 text-sm leading-relaxed text-stone-700">
           <h2 className="font-bold">Sur iPhone</h2>
           <p className="mt-2">
-            Ouvre <b>tontine-et-cotise.vercel.app</b> dans Safari, touche <b>Partager</b>, puis <b>« Sur l’écran d’accueil »</b>.
+            Ouvre <b>sikaklo.com</b> dans Safari, touche <b>Partager</b>, puis <b>« Sur l’écran d’accueil »</b>.
           </p>
         </div>
         <p className="text-center text-xs text-stone-500">

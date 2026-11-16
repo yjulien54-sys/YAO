@@ -1,5 +1,6 @@
 "use client";
 
+import { SITE } from "@/lib/site";
 import { useParams } from "next/navigation";
 import { Printer } from "lucide-react";
 import { Button, Header, Loading, Page, WhatsAppIcon, btnClass, useRequireUser } from "@/components/ui";
@@ -42,7 +43,7 @@ export default function DettePage() {
   const paiements = g.payments.filter((p) => p.memberId === m.id);
   const engagement = m.profileId ? g.engagements.find((e) => e.profileId === m.profileId) : undefined;
   const tresorier = g.members.find((x) => x.role === "tresorier");
-  const lien = typeof window !== "undefined" ? `${window.location.origin}/groupes/${g.id}/dette/${m.id}` : "";
+  const lien = `${SITE}/groupes/${g.id}/dette/${m.id}`;
   const message = `Bonjour ${m.name},\n\nSelon l’historique du groupe « ${g.name} » sur Sikaklo, ${tours.length} cotisation(s) restent impayées, pour un total de *${fcfa(total)}*.${recus.length ? ` Pour rappel, tu as reçu la caisse le ${dateCourte(recus[0].date)}.` : ""}\n\nMerci de régulariser rapidement. Le détail est ici :\n${lien}`;
 
   return (

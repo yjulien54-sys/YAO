@@ -1,6 +1,7 @@
 "use client";
 
 /** Sur la page d'une collecte : bannière bien visible pour publier ou partager la cagnotte publique */
+import { SITE } from "@/lib/site";
 import Link from "next/link";
 import { useEffect, useState } from "react";
 import { Eye, Globe, Share2 } from "lucide-react";
@@ -22,7 +23,7 @@ export function useCagnotte(groupId: string, gestionnaire: boolean) {
 /** Lien WhatsApp avec le message complet de la cagnotte (motif compris), ou null si elle n'est pas en ligne */
 export function lienPartageCagnotte(etat: EtatCagnotte | null | undefined, nom: string, cause?: string | null) {
   if (!etat?.actif || !etat.slug) return null;
-  const lien = `${window.location.origin}/c/${etat.slug}`;
+  const lien = `${SITE}/c/${etat.slug}`;
   return `https://wa.me/?text=${encodeURIComponent(messageCagnotte({ nom, cause, message: etat.message, lien }))}`;
 }
 

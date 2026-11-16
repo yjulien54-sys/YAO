@@ -1,3 +1,4 @@
+import { SITE } from "@/lib/site";
 import type { Metadata, Viewport } from "next";
 import { StoreProvider } from "@/lib/store";
 import { ServiceWorker } from "@/components/ServiceWorker";
@@ -9,7 +10,7 @@ import "@fontsource-variable/plus-jakarta-sans";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  metadataBase: new URL(process.env.NEXT_PUBLIC_SITE_URL ?? "https://tontine-et-cotise.vercel.app"),
+  metadataBase: new URL(SITE),
   title: { default: "Sikaklo — Application de tontine, association et collecte en Côte d’Ivoire", template: "%s" },
   keywords: ["Sikaklo", "tontine", "tontine en ligne", "application tontine", "cotisation", "association", "collecte", "cagnotte", "Côte d’Ivoire", "Abidjan", "Wave", "Orange Money", "MTN MoMo", "Moov Money", "épargne"],
   applicationName: "Sikaklo",
@@ -26,7 +27,6 @@ export const metadata: Metadata = {
   appleWebApp: { capable: true, title: "Sikaklo", statusBarStyle: "default" },
 };
 
-const SITE = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tontine-et-cotise.vercel.app";
 const DONNEES_GOOGLE = {
   "@context": "https://schema.org",
   "@graph": [

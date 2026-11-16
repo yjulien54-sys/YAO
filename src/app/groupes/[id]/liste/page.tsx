@@ -248,7 +248,7 @@ export default function ListePaiements() {
           </div>
           <p className="flex flex-col gap-1 px-5 py-3 text-[0.7rem] text-stone-400 sm:flex-row sm:items-center sm:justify-between">
             <span>Montants confirmés par le trésorier. Les paiements « à confirmer » ne sont pas comptés dans les totaux.</span>
-            <span className="inline-flex shrink-0 items-center gap-1"><Download size={11} /> tontine-et-cotise.vercel.app</span>
+            <span className="inline-flex shrink-0 items-center gap-1"><Download size={11} /> sikaklo.com</span>
           </p>
         </article>
       </div>

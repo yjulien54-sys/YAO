@@ -1,5 +1,6 @@
 "use client";
 
+import { SITE } from "@/lib/site";
 import { lienFrais } from "@/lib/motif";
 import Link from "next/link";
 import { useEffect, useState } from "react";
@@ -57,7 +58,7 @@ export default function ProfilPage() {
   const [msg, setMsg] = useState("");
   if (!ok || !loaded) return <Loading />;
 
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const origin = SITE;
   const partage = waLink(`Bonjour 👋\n\nJe gère mes tontines avec *Sikaklo* : chacun voit qui a payé, les retards sont calculés tout seuls et les relances partent sur WhatsApp en 1 clic. Fini le cahier et les palabres 😄\n\nC’est gratuit 👉 ${lienFrais(`${origin}/`)}\nCrée ton groupe, puis touche « Inviter » pour l’envoyer à tes membres.`);
 
   return (

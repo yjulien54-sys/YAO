@@ -13,7 +13,7 @@ const ARTICLES: Article[] = [
       <>
         <p>
           Les présentes conditions générales d’utilisation (ci-après les « CGU ») ont pour objet de définir les conditions dans lesquelles l’Éditeur met à
-          disposition l’application Sikaklo, accessible à l’adresse <b>tontine-et-cotise.vercel.app</b> et via l’application mobile Android, ainsi que les droits et
+          disposition l’application Sikaklo, accessible à l’adresse <b>sikaklo.com</b> et via l’application mobile Android, ainsi que les droits et
           obligations des personnes qui l’utilisent.
         </p>
         <p>L’utilisation de Sikaklo implique l’acceptation pleine et entière des présentes CGU. Si vous n’acceptez pas ces conditions, vous devez renoncer à utiliser le service.</p>

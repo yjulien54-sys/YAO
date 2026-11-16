@@ -318,7 +318,7 @@ export default function Groupes() {
               </p>
             )}
             <div className="flex gap-2">
-              <input className={inputClass} value={lien} onChange={(e) => { setLien(e.target.value); setErreurLien(""); }} placeholder="https://tontine-et-cotise.vercel.app/groupes/…" inputMode="url" />
+              <input className={inputClass} value={lien} onChange={(e) => { setLien(e.target.value); setErreurLien(""); }} placeholder="https://www.sikaklo.com/groupes/…" inputMode="url" />
               <Button
                 type="button"
                 variant="secondary"

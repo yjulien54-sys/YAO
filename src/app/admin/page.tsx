@@ -2053,14 +2053,14 @@ function Equipe({ liste, moi, recharger }: { liste: Membre_Equipe[]; moi: string
               <div className="rounded-2xl bg-gradient-to-br from-emerald-600 to-emerald-800 p-5 text-white">
                 <p className="text-sm text-emerald-100">Accès de {nouveau.nom}{roleNouveau === "fondateur" ? " · co-fondateur" : ""}</p>
                 <p className="mt-2 text-xs uppercase tracking-wide text-emerald-200">Adresse</p>
-                <p className="font-bold">tontine-et-cotise.vercel.app/admin</p>
+                <p className="font-bold">sikaklo.com/admin</p>
                 <div className="mt-3 grid grid-cols-2 gap-3">
                   <div><p className="text-xs uppercase tracking-wide text-emerald-200">Numéro</p><p className="text-3xl font-extrabold">{nouveau.numero}</p></div>
                   <div><p className="text-xs uppercase tracking-wide text-emerald-200">Mot de passe</p><p className="secret break-all font-mono text-lg font-bold">{nouveau.mdp}</p></div>
                 </div>
               </div>
               <p className="text-xs text-stone-500">Note ces accès maintenant : le mot de passe ne sera plus affiché. Demande à l’agent de le changer à sa première connexion (bouton « Changer mon mot de passe »).</p>
-              <button onClick={() => navigator.clipboard?.writeText(`Sikaklo — accès service client\nAdresse : https://tontine-et-cotise.vercel.app/admin\nNuméro : ${nouveau.numero}\nMot de passe : ${nouveau.mdp}`)} className="w-full rounded-xl border border-stone-200 py-2.5 text-sm font-bold"><Copy size={14} className="mr-1 inline" /> Copier les accès</button>
+              <button onClick={() => navigator.clipboard?.writeText(`Sikaklo — accès service client\nAdresse : https://www.sikaklo.com/admin\nNuméro : ${nouveau.numero}\nMot de passe : ${nouveau.mdp}`)} className="w-full rounded-xl border border-stone-200 py-2.5 text-sm font-bold"><Copy size={14} className="mr-1 inline" /> Copier les accès</button>
               <button onClick={() => setNouveau(null)} className="w-full rounded-xl bg-sky-700 py-2.5 text-sm font-bold text-white">Ajouter un autre agent</button>
             </div>
           ) : (

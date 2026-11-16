@@ -8,6 +8,7 @@
  *    personnalisé ; on envoie, on revient, et Sikaklo passe tout seul à la personne suivante.
  * (L'envoi 100 % automatique sans rien toucher demandera WhatsApp Business, payant.)
  */
+import { SITE } from "@/lib/site";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Check, CheckCircle2, ChevronRight, MessageCircle, Send, Users } from "lucide-react";
 import { contexte, messageModele } from "@/lib/messages";
@@ -25,7 +26,7 @@ export function RelanceGroupee({ group, membres, fermer, messageGroupe }: { grou
   const [enCours, setEnCours] = useState<string | null>(null); // la personne dont WhatsApp vient de s'ouvrir
   const enCoursRef = useRef<string | null>(null);
   enCoursRef.current = enCours;
-  const origine = typeof window !== "undefined" ? window.location.origin : "";
+  const origine = SITE;
 
   const texte = (m: Member) => messageModele(contexte(group, "relance", origine, m));
   const liste = avecNumero.filter((m) => choisis.includes(m.id));

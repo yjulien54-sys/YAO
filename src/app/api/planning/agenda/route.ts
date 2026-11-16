@@ -47,7 +47,7 @@ export async function GET(req: Request) {
       `DTSTART:${dt(c.jour, c.debut)}`,
       `DTEND:${dt(c.jour, c.fin, nuit)}`,
       `SUMMARY:${echapper(`Sikaklo · Service client${c.note ? ` (${c.note})` : ""}`)}`,
-      `DESCRIPTION:${echapper(`Créneau de travail Sikaklo pour ${agent.nom ?? agent.email}${agent.numero ? ` (n°${agent.numero})` : ""}.${c.note ? `\nNote : ${c.note}` : ""}\nAdmin : https://tontine-et-cotise.vercel.app/admin`)}`,
+      `DESCRIPTION:${echapper(`Créneau de travail Sikaklo pour ${agent.nom ?? agent.email}${agent.numero ? ` (n°${agent.numero})` : ""}.${c.note ? `\nNote : ${c.note}` : ""}\nAdmin : https://www.sikaklo.com/admin`)}`,
       `LAST-MODIFIED:${new Date(c.modifie_le ?? c.cree_le).toISOString().replace(/[-:]/g, "").replace(/\.\d{3}/, "")}`,
       "BEGIN:VALARM", "ACTION:DISPLAY", "DESCRIPTION:Ton service Sikaklo commence dans 30 minutes", "TRIGGER:-PT30M", "END:VALARM",
       "END:VEVENT",

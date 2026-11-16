@@ -1,8 +1,9 @@
+import { SITE } from "./site";
 import { lienFrais } from "./motif";
 import { fcfa, normaliserTel } from "./format";
 import type { Group, Member, Payment } from "./types";
 
-const origin = () => (typeof window !== "undefined" ? window.location.origin : "");
+const origin = () => SITE;
 
 export const waLink = (text: string, phone?: string) =>
   `https://wa.me/${phone ? normaliserTel(phone) : ""}?text=${encodeURIComponent(text)}`;

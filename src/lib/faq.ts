@@ -15,6 +15,6 @@ export const FAQ: { q: string; r: string; id?: string }[] = [
   { q: "J’ai changé de téléphone", r: "Sur l’écran d’accueil, touchez « J’ai déjà un compte (autre téléphone, ordinateur) », puis entrez votre numéro, votre date de naissance et votre code secret. Vous retrouvez tous vos groupes." },
   { q: "Comment contacter le service client ?", r: "Juste au-dessus, dans « Écrire au service client » : choisissez le sujet et expliquez votre problème. Un agent vous répond ici et vous recevez une notification. Vous pouvez aussi écrire sur WhatsApp ou appeler." },
   { q: "À quoi sert l’œil sur la caisse du groupe ?", r: "Dans un groupe, la carte « Somme de la caisse » montre tout ce qui a été cotisé, votre cotisation et ce qui reste. Touchez l’œil pour cacher ou afficher les montants, par exemple en public." },
-  { q: "Comment installer Sikaklo sur iPhone ?", id: "iphone", r: "Ouvrez tontine-et-cotise.vercel.app dans Safari, touchez le bouton Partager (carré avec une flèche), puis « Sur l’écran d’accueil ». Sikaklo apparaît avec son logo, comme une application." },
+  { q: "Comment installer Sikaklo sur iPhone ?", id: "iphone", r: "Ouvrez sikaklo.com dans Safari, touchez le bouton Partager (carré avec une flèche), puis « Sur l’écran d’accueil ». Sikaklo apparaît avec son logo, comme une application." },
   { q: "Mes informations sont-elles protégées ?", r: "Seuls les membres de vos groupes voient vos informations. Sikaklo ne vous demande jamais votre code secret Mobile Money. Détails dans la politique de confidentialité." },
 ];

@@ -4,6 +4,7 @@
  * éditoriale : grande photo, histoire, participants, et une carte de participation
  * (fixe sur ordinateur, barre en bas sur téléphone).
  */
+import { SITE } from "@/lib/site";
 import type { Metadata } from "next";
 import { LogosOperateurs } from "@/components/LogosOperateurs";
 import { messageCagnotte, phraseMotif } from "@/lib/motif";
@@ -23,7 +24,7 @@ type Cagnotte = {
 };
 
 const fcfa = (n: number) => `${Math.round(n).toLocaleString("fr-FR").replace(/[  ]/g, " ")} F CFA`;
-const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tontine-et-cotise.vercel.app";
+const site = SITE;
 
 async function lire(slug: string, compter = true): Promise<Cagnotte | null> {
   if (!/^[a-z0-9-]{3,60}$/.test(slug)) return null;

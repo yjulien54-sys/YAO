@@ -1,6 +1,7 @@
+import { SITE } from "@/lib/site";
 import type { MetadataRoute } from "next";
 
-const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tontine-et-cotise.vercel.app";
+const site = SITE;
 
 /** Ce que Google peut lire : les pages publiques. Les groupes et reçus portent « noindex » (aperçus WhatsApp autorisés, mais pas dans Google). */
 export default function robots(): MetadataRoute.Robots {

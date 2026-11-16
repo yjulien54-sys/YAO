@@ -18,7 +18,7 @@ export const GUIDES: Guide[] = [
     titre: "S’inscrire sur Sikaklo",
     questions: ["comment s’inscrire", "comment créer un compte", "je veux m’inscrire", "ouvrir un compte sikaklo", "comment commencer sur sikaklo", "ouvrir un compte cotiz", "inscription"],
     etapes: [
-      "Ouvrez Sikaklo (application Android ou tontine-et-cotise.vercel.app).",
+      "Ouvrez Sikaklo (application Android ou sikaklo.com).",
       "Sur la page d’accueil, écrivez votre nom, votre date de naissance et votre numéro de téléphone (10 chiffres).",
       "Touchez « Continuer ».",
       "Créez votre code secret Sikaklo à 4 chiffres (ce n’est pas votre code Mobile Money).",
@@ -196,7 +196,7 @@ export const GUIDES: Guide[] = [
     questions: ["installer l’application", "télécharger sikaklo", "télécharger cotiz", "application android", "installer sur iphone", "play store"],
     etapes: [
       "Android : Profil → « Télécharger l’application Android », ou cherchez Sikaklo sur le Play Store.",
-      "iPhone : ouvrez tontine-et-cotise.vercel.app dans Safari, touchez Partager (carré avec une flèche), puis « Sur l’écran d’accueil ».",
+      "iPhone : ouvrez sikaklo.com dans Safari, touchez Partager (carré avec une flèche), puis « Sur l’écran d’accueil ».",
     ],
   },
   {

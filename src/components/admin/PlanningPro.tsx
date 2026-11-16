@@ -5,6 +5,7 @@
  * d'un jour ou d'une personne à l'autre, durée de 7 h par défaut (la fin se calcule seule),
  * échange de créneaux, remplissage automatique d'une semaine, et lien d'agenda pour le téléphone.
  */
+import { SITE } from "@/lib/site";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalendarDays, ChevronLeft, ChevronRight, Copy, Moon, Plus, Repeat2, Smartphone, Sparkles, Sun, Sunrise, Sunset, Trash2, Wand2, X } from "lucide-react";
 import { supabaseAdmin as db } from "@/lib/supabaseAdmin";
@@ -421,7 +422,7 @@ function AgendaTelephone({ fondateur, agents, moi }: { fondateur: boolean; agent
   const [lien, setLien] = useState<string | null | undefined>(undefined);
   const [liens, setLiens] = useState<Record<string, string>>({});
   const [copie, setCopie] = useState("");
-  const base = typeof window !== "undefined" ? window.location.origin : "https://tontine-et-cotise.vercel.app";
+  const base = SITE;
   const url = (j: string) => `${base}/api/planning/agenda?j=${j}`;
   const google = (j: string) => `https://calendar.google.com/calendar/r?cid=${encodeURIComponent(url(j).replace(/^https?:/, "webcal:"))}`;
   const iphone = (j: string) => url(j).replace(/^https?:/, "webcal:");

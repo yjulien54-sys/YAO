@@ -5,7 +5,7 @@ Visuels (dans ce dossier) :
 - `sikaklo-pub-vertical.png` — TikTok, statuts WhatsApp, stories Facebook / Instagram
 - `sikaklo-pub-flyer.png` — à imprimer en A5 ou A4 (marchés, églises, mosquées, gares)
 
-Le code QR ouvre : https://tontine-et-cotise.vercel.app
+Le code QR ouvre : https://www.sikaklo.com
 
 ---
 
@@ -22,7 +22,7 @@ Le code QR ouvre : https://tontine-et-cotise.vercel.app
 > ✅ Le trésorier relance sur WhatsApp en 1 clic
 > ✅ Un reçu pour chaque paiement
 >
-> C'est gratuit 👉 tontine-et-cotise.vercel.app
+> C'est gratuit 👉 sikaklo.com
 >
 > #Sikaklo #Tontine #CoteDIvoire #Abidjan #Association #Cotisation
 
@@ -55,7 +55,7 @@ Le code QR ouvre : https://tontine-et-cotise.vercel.app
 > Bonjour 👋
 > Vous avez une tontine, une association ou une collecte (funérailles, mariage…) ?
 > Essayez **Sikaklo** : tout le monde voit qui a payé, les rappels partent sur WhatsApp et chacun reçoit un reçu. Fini les palabres 😄
-> C'est gratuit 👉 tontine-et-cotise.vercel.app
+> C'est gratuit 👉 sikaklo.com
 
 ---
 

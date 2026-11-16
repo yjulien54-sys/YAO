@@ -1,6 +1,7 @@
 "use client";
 
 /** Écran du trésorier : rendre sa collecte publique (photo, message, jauge) et partager le lien sur WhatsApp */
+import { SITE } from "@/lib/site";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Camera, Check, ExternalLink, Eye, Globe, Loader2, Move, Share2, X, ZoomIn } from "lucide-react";
 import { supabase } from "@/lib/supabase";
@@ -39,7 +40,7 @@ export function CagnottePublique({ groupId, nom, cause }: { groupId: string; nom
   if (etat === undefined) return null;
   if (etat === null) return <p className="rounded-2xl bg-amber-50 p-3 text-sm text-amber-900">Pour publier ta cagnotte sur une belle page à partager, l’administrateur Sikaklo doit faire la mise à jour n°37.</p>;
 
-  const lien = etat.slug ? `${window.location.origin}/c/${etat.slug}` : "";
+  const lien = etat.slug ? `${SITE}/c/${etat.slug}` : "";
   const enregistrer = async (actif: boolean, nouvellePhoto: string | null = photo) => {
     setEnvoi(true); setMsg("");
     // Le motif (ex : « Funérailles », « Solidarité du village ») s'affiche en tête de la page et du lien partagé

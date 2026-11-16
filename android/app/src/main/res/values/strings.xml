@@ -1,9 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Sikaklo</string>
-    <string name="launch_url">https://tontine-et-cotise.vercel.app/groupes?source=app</string>
+    <string name="launch_url">https://www.sikaklo.com/groupes?source=app</string>
     <string name="asset_statements" translatable="false">
         [{
+            \"relation\": [\"delegate_permission/common.handle_all_urls\"],
+            \"target\": {
+                \"namespace\": \"web\",
+                \"site\": \"https://www.sikaklo.com\"
+            }
+        },{
             \"relation\": [\"delegate_permission/common.handle_all_urls\"],
             \"target\": {
                 \"namespace\": \"web\",
@@ -11,4 +17,7 @@
             }
         }]
     </string>
+    <string-array name="autres_adresses">
+        <item>https://tontine-et-cotise.vercel.app</item>
+    </string-array>
 </resources>

@@ -1,5 +1,6 @@
 "use client";
 
+import { SITE } from "@/lib/site";
 import { useCallback, useEffect, useState } from "react";
 import { EVENEMENT_LABEL, contexte, messageModele, type TypeMessage } from "@/lib/messages";
 import { supabase } from "@/lib/supabase";
@@ -11,7 +12,7 @@ import { RefreshCw, Sparkles } from "lucide-react";
 const MOMENT_LABEL = { avance: "Bien avant l’échéance", bientot: "Échéance proche", jour: "Jour J", retard: "En retard" };
 
 export function MessageModal({ group, member, type, onClose }: { group: Group; member?: Member; type: TypeMessage; onClose: () => void }) {
-  const ctx = contexte(group, type, typeof window !== "undefined" ? window.location.origin : "", member);
+  const ctx = contexte(group, type, SITE, member);
   const [texte, setTexte] = useState(() => messageModele(ctx));
   const [source, setSource] = useState<"modele" | "ia" | "chargement">("chargement");
   const ctxKey = JSON.stringify(ctx);

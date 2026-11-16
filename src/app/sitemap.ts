@@ -1,6 +1,7 @@
+import { SITE } from "@/lib/site";
 import type { MetadataRoute } from "next";
 
-const site = process.env.NEXT_PUBLIC_SITE_URL ?? "https://tontine-et-cotise.vercel.app";
+const site = SITE;
 
 /** Plan du site pour Google (pages publiques) */
 export default function sitemap(): MetadataRoute.Sitemap {
