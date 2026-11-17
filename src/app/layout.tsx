@@ -1,6 +1,7 @@
 import { SITE } from "@/lib/site";
 import type { Metadata, Viewport } from "next";
 import { StoreProvider } from "@/lib/store";
+import { BandeauIPhone } from "@/components/InstallerIPhone";
 import { ServiceWorker } from "@/components/ServiceWorker";
 import { Glisser } from "@/components/Glisser";
 import { Bienvenue } from "@/components/Bienvenue";
@@ -61,6 +62,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           </NotificationsProvider>
         </StoreProvider>
         <ServiceWorker />
+        <BandeauIPhone />
         <Glisser />
       </body>
     </html>
